@@ -5,7 +5,7 @@
 ## [소개]
 
 ### ㅇGame Server (Redis Cluster) 
-
+ 
   #### 1. 네트워크 최적화
     - Circular Buffer를 활용하여 메모리 사용 최적화
     - 동적 할당 최소화를 위한 설계 적용
