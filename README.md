@@ -42,6 +42,11 @@
    - 게임 시작시 Session Server에서 JWT 토큰을 발급 받아 Game Server에 인증 요청
    - 보안 강화를 위해 클라이언트에서 연산 처리를 하지 않도록 설계
 
+<br> 
+
+#### ㅇ 프로젝트 소개서 - [IOCP & Redis Cluster를 활용한 MMO 게임 서버 프로젝트.pdf](https://github.com/user-attachments/files/19143541/IOCP.Redis.Cluster.MMO.pdf)
+
+
 
 <br>  
 
