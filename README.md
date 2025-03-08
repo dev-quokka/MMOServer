@@ -48,7 +48,8 @@
 ## [Flow Chart]
 
 - #### User Connect
-![Game Server Connect drawio](https://github.com/user-attachments/assets/0c77c9ea-7465-40ea-a879-89db8c29817e)
+![Game Server Connect drawio](https://github.com/user-attachments/assets/0a0cbbc9-df53-453d-b4c8-a5e2b5911349)
+
 
 
 <br>
