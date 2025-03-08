@@ -111,7 +111,7 @@
 <br>
 
 - #### Raid Group Check by Level
-![레이드 레벨 그룹별 체크](https://github.com/user-attachments/assets/8679f382-0efd-4fea-acb9-29969147b9a0)
+![레이드 그룹별](https://github.com/user-attachments/assets/803de230-8b49-434c-9746-e3d4f310c9f9)
 
 
 - 다른 레벨의 그룹이면 매칭이 불가능합니다.
