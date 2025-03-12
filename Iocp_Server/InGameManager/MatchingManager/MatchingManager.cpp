@@ -1,7 +1,7 @@
 #include "MatchingManager.h"
 
 void MatchingManager::Init(const uint16_t maxClientCount_, RedisManager* redisManager_, InGameUserManager* inGameUserManager_, RoomManager* roomManager_, ConnUsersManager* connUsersManager_) {
-    for (int i = 1; i <= USER_MAX_LEVEL/3 + 1; i++ ) { // Max i = MaxLevel/3 + 1 (Level Check Set)
+    for (int i = 1; i <= USER_MAX_LEVEL / 3 + 1; i++) { // Max i = MaxLevel/3 + 1 (Level Check Set)
         matchingMap.emplace(i, std::set<MatchingRoom*, MatchingRoomComp>());
     }
 
@@ -13,7 +13,7 @@ void MatchingManager::Init(const uint16_t maxClientCount_, RedisManager* redisMa
     roomManager = roomManager_;
     connUsersManager = connUsersManager_;
     redisManager = redisManager_;
-      
+
     CreateMatchThread();
     CreateTimeCheckThread();
 }
@@ -34,8 +34,29 @@ bool MatchingManager::Insert(uint16_t userObjNum_, InGameUser* inGameUser_) {
     return false;
 }
 
+bool MatchingManager::CancelMatching(uint16_t userObjNum_, InGameUser* inGameUser_) {
+    tbb::concurrent_hash_map<uint16_t, std::set<MatchingRoom*, MatchingRoomComp>>::accessor accessor;
+    uint16_t groupNum = inGameUser_->GetLevel() / 3 + 1;
+    matchingMap.find(accessor, groupNum);
+    auto tempM = accessor->second;
+
+    {
+        std::lock_guard<std::mutex> guard(mDeleteMatch);
+        for (auto iter = tempM.begin(); iter != tempM.end(); iter++) {
+            if ((*iter)->userObjNum == userObjNum_) { // 매칭 취소한 유저 찾기
+                delete* iter;
+                tempM.erase(iter);
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+
 bool MatchingManager::CreateMatchThread() {
-	matchRun = true;
+    matchRun = true;
     matchingThread = std::thread([this]() {MatchingThread(); });
     std::cout << "MatchThread Start" << std::endl;
     return true;
@@ -109,7 +130,7 @@ void MatchingManager::MatchingThread() {
                                     connUsersManager->FindUser(tempMatching1->userObjNum)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&rReadyResPacket1);
                                     connUsersManager->FindUser(tempMatching2->userObjNum)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&rReadyResPacket2);
 
-                                    endRoomCheckSet.insert(roomManager->MakeRoom(tempRoomNum, 2, 30, tempMatching1->userObjNum, 
+                                    endRoomCheckSet.insert(roomManager->MakeRoom(tempRoomNum, 2, 30, tempMatching1->userObjNum,
                                         tempMatching2->userObjNum, tempMatching1->inGameUser, tempMatching2->inGameUser));
                                 }
 
@@ -216,7 +237,7 @@ void MatchingManager::DeleteMob(Room* room_) { // 몹 직접 죽였을때
         std::lock_guard<std::mutex> guard(mDeleteRoom);
         for (auto iter = endRoomCheckSet.begin(); iter != endRoomCheckSet.end(); iter++) {
             if (*iter == room_) {
-                delete *iter;
+                delete* iter;
                 endRoomCheckSet.erase(iter);
                 break;
             }
@@ -242,7 +263,7 @@ void MatchingManager::TimeCheckThread() {
                 std::cout << "종료대기" << std::endl;
                 std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             }
-        } 
+        }
         else { // Room Not Exist
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         }

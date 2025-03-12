@@ -62,7 +62,7 @@ public:
 				for (auto tRoom : accessor->second) {
 					delete tRoom;
 				}
-				
+
 				accessor->second.clear();
 			}
 		}
@@ -70,6 +70,7 @@ public:
 
 	void Init(const uint16_t maxClientCount_, RedisManager* redisManager_, InGameUserManager* inGameUserManager_, RoomManager* roomManager_, ConnUsersManager* connUsersManager_);
 	bool Insert(uint16_t userObjNum_, InGameUser* inGameUser_);
+	bool CancelMatching(uint16_t userObjNum_, InGameUser* inGameUser_);
 	bool CreateMatchThread();
 	bool CreateTimeCheckThread();
 	void MatchingThread();
@@ -96,8 +97,9 @@ private:
 	std::set<Room*, EndTimeComp> endRoomCheckSet;
 	// 80 bytes
 	std::mutex mDeleteRoom;
+	std::mutex mDeleteMatch;
 	// 136 bytes
-	boost::lockfree::queue<uint16_t> roomNumQueue{10}; // MaxClient set
+	boost::lockfree::queue<uint16_t> roomNumQueue{ 10 }; // MaxClient set
 	// 576 bytes
 	tbb::concurrent_hash_map<uint16_t, std::set<MatchingRoom*, MatchingRoomComp>> matchingMap; // {Level/3 + 1 (0~2 = 1, 3~5 = 2 ...), UserSkt}
 };
