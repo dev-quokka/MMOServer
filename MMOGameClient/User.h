@@ -21,9 +21,7 @@ public:
         WorkRun = false;
         if (workThread.joinable()) workThread.join();
         std::this_thread::sleep_for(std::chrono::seconds(2));
-        CloseHandle(udpHandle);
         closesocket(userSkt);
-        closesocket(udpSocket);
         WSACleanup();
     }
 
@@ -210,28 +208,25 @@ public:
 
         std::cout << "Connect Success In Game Server" << std::endl;
 
-        udpSocket = WSASocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, WSA_FLAG_OVERLAPPED);
+        std::cout << userId << " 게임 접속 성공 !" << std::endl;
+    }
+
+    bool makeUDPSocket() {
+        udpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
         if (udpSocket == INVALID_SOCKET) {
             std::cout << "Udp Socket Make Fail Error : " << WSAGetLastError() << std::endl;
             return false;
         }
 
-        udpHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 1);
-        auto bIOCPHandle = CreateIoCompletionPort((HANDLE)udpSocket, udpHandle, (ULONG_PTR)0, 0);
-
         udpAddr.sin_family = AF_INET;
         udpAddr.sin_port = htons(SERVER_UDP_PORT);
-        inet_pton(AF_INET, SERVER_IP, &udpAddr.sin_addr);
+        udpAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+        bind(udpSocket, (sockaddr*)&udpAddr, sizeof(udpAddr));
 
         std::cout << "Udp Socket Make Success" << std::endl;
 
-        CreateUdpThread();
-
-        std::cout << userId << " 게임 접속 성공 !" << std::endl;
-    }
-
-    bool CreateUdpThread() {
-        workThread = std::thread([this]() {UdpWorkThread(); });
         return true;
     }
 
@@ -273,33 +268,6 @@ public:
         std::cout << "현재 레벨 : " << level.load() << std::endl;
         std::cout << "현재 경험치 : " << exp.load() << std::endl;
         return { level, exp };
-    }
-
-    void UdpWorkThread() {
-        std::cout << "Start Udp Work Thread" << std::endl;
-        LPOVERLAPPED lpOverlapped = NULL;
-        DWORD dwIoSize = 0;
-        bool gqSucces = TRUE;
-
-        while (WorkRun) {
-            gqSucces = GetQueuedCompletionStatus(
-                udpHandle,
-                &dwIoSize,
-                nullptr,
-                &lpOverlapped,
-                INFINITE
-            );
-
-            auto overlapped = (OverlappedUDP*)lpOverlapped;
-
-            if (overlapped->taskType == TaskType::UDP_RECV) { // 레이드 몹 hp 동기화 요청
-                auto hp = reinterpret_cast<unsigned int*>(overlapped->wsaBuf.buf);
-                std::cout << "Current Mob Hp : " << mobHp << std::endl;
-                mobHp.store(*hp);
-                delete[] overlapped->wsaBuf.buf;
-                delete overlapped;
-            }
-        }
     }
 
     void GetInventory(uint16_t invenNum_) {
@@ -461,104 +429,104 @@ public:
     }
 
     bool AddItem(uint16_t invenNum_, uint16_t itemCode_, uint16_t count_) {
-            ADD_ITEM_REQUEST aiReq;
-            aiReq.PacketId = (UINT16)PACKET_ID::ADD_ITEM_REQUEST;
-            aiReq.PacketLength = sizeof(ADD_ITEM_REQUEST);
+        ADD_ITEM_REQUEST aiReq;
+        aiReq.PacketId = (UINT16)PACKET_ID::ADD_ITEM_REQUEST;
+        aiReq.PacketLength = sizeof(ADD_ITEM_REQUEST);
 
-            if (invenNum_ == 2) { // 소비
-                uint16_t addPosition = 0;
-                uint16_t addCount = count_;
+        if (invenNum_ == 2) { // 소비
+            uint16_t addPosition = 0;
+            uint16_t addCount = count_;
 
+            for (int i = 1; i < INVENTORY_SIZE; i++) {
+                if (cs[i].itemCode == itemCode_) {
+                    addPosition = i;
+                    addCount += cs[i].count;
+                    break;
+                }
+            }
+
+            if (count_ == addCount) {
                 for (int i = 1; i < INVENTORY_SIZE; i++) {
-                    if (cs[i].itemCode == itemCode_) {
+                    if (cs[i].itemCode == 0) {
                         addPosition = i;
-                        addCount += cs[i].count;
                         break;
                     }
                 }
-
-                if (count_ == addCount) {
-                    for (int i = 1; i < INVENTORY_SIZE; i++) {
-                        if (cs[i].itemCode == 0) {
-                            addPosition = i;
-                            break;
-                        }
-                    }
-                }
-
-                if (addPosition == 0) { // 넣을 공간 없으면 false 반환
-                    std::cout << "Consumables Full" << std::endl;
-                    return false;
-                }
-
-                aiReq.itemType = invenNum_ - 1;
-                aiReq.itemCode = itemCode_;
-                aiReq.itemPosition = addPosition;
-                aiReq.itemCount = addCount;
-
-                send(userSkt, (char*)&aiReq, sizeof(aiReq), 0);
-                recv(userSkt, recvBuffer, PACKET_SIZE, 0);
-
-                auto miResPacket = reinterpret_cast<ADD_ITEM_RESPONSE*>(recvBuffer);
-
-                if (!miResPacket->isSuccess) return false;
-
-                CONSUMABLES tempC;
-                tempC.itemCode = itemCode_;
-                tempC.position = addPosition;
-                tempC.count = addCount;
-
-                cs[addPosition] = tempC;
-
-                return true;
             }
-            else if (invenNum_ == 3) {
-                uint16_t addPosition = 0;
-                uint16_t addCount = count_;
 
+            if (addPosition == 0) { // 넣을 공간 없으면 false 반환
+                std::cout << "Consumables Full" << std::endl;
+                return false;
+            }
+
+            aiReq.itemType = invenNum_ - 1;
+            aiReq.itemCode = itemCode_;
+            aiReq.itemPosition = addPosition;
+            aiReq.itemCount = addCount;
+
+            send(userSkt, (char*)&aiReq, sizeof(aiReq), 0);
+            recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+
+            auto miResPacket = reinterpret_cast<ADD_ITEM_RESPONSE*>(recvBuffer);
+
+            if (!miResPacket->isSuccess) return false;
+
+            CONSUMABLES tempC;
+            tempC.itemCode = itemCode_;
+            tempC.position = addPosition;
+            tempC.count = addCount;
+
+            cs[addPosition] = tempC;
+
+            return true;
+        }
+        else if (invenNum_ == 3) {
+            uint16_t addPosition = 0;
+            uint16_t addCount = count_;
+
+            for (int i = 1; i < INVENTORY_SIZE; i++) {
+                if (mt[i].itemCode == itemCode_) {
+                    addPosition = i;
+                    addCount += mt[i].count;
+                    break;
+                }
+            }
+
+            if (count_ == addCount) {
                 for (int i = 1; i < INVENTORY_SIZE; i++) {
-                    if (mt[i].itemCode == itemCode_) {
+                    if (mt[i].itemCode == 0) {
                         addPosition = i;
-                        addCount += mt[i].count;
                         break;
                     }
                 }
-
-                if (count_ == addCount) {
-                    for (int i = 1; i < INVENTORY_SIZE; i++) {
-                        if (mt[i].itemCode == 0) {
-                            addPosition = i;
-                            break;
-                        }
-                    }
-                }
-
-                if (addPosition == 0) { // 넣을 공간 없으면 false 반환
-                    std::cout << "Materials Full" << std::endl;
-                    return false;
-                }
-
-                aiReq.itemType = invenNum_ - 1;
-                aiReq.itemCode = itemCode_;
-                aiReq.itemPosition = addPosition;
-                aiReq.itemCount = count_;
-
-                send(userSkt, (char*)&aiReq, sizeof(aiReq), 0);
-                recv(userSkt, recvBuffer, PACKET_SIZE, 0);
-
-                auto miResPacket = reinterpret_cast<ADD_ITEM_RESPONSE*>(recvBuffer);
-
-                if (!miResPacket->isSuccess) return false;
-
-                MATERIALS tempM;
-                tempM.itemCode = itemCode_;
-                tempM.position = addPosition;
-                tempM.count = addCount;
-
-                mt[addPosition] = tempM;
-
-                return true;
             }
+
+            if (addPosition == 0) { // 넣을 공간 없으면 false 반환
+                std::cout << "Materials Full" << std::endl;
+                return false;
+            }
+
+            aiReq.itemType = invenNum_ - 1;
+            aiReq.itemCode = itemCode_;
+            aiReq.itemPosition = addPosition;
+            aiReq.itemCount = count_;
+
+            send(userSkt, (char*)&aiReq, sizeof(aiReq), 0);
+            recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+
+            auto miResPacket = reinterpret_cast<ADD_ITEM_RESPONSE*>(recvBuffer);
+
+            if (!miResPacket->isSuccess) return false;
+
+            MATERIALS tempM;
+            tempM.itemCode = itemCode_;
+            tempM.position = addPosition;
+            tempM.count = addCount;
+
+            mt[addPosition] = tempM;
+
+            return true;
+        }
     }
 
     bool DeleteItem(uint16_t invenNum_, uint16_t pos_) {
@@ -828,7 +796,6 @@ private:
     SOCKET sessionSkt;
     SOCKET userSkt;
     SOCKET udpSocket;
-    HANDLE udpHandle;
     std::thread workThread;
 
     sockaddr_in udpAddr;
@@ -836,7 +803,7 @@ private:
 
     std::chrono::time_point<std::chrono::steady_clock> rEndTime;
 
-    std::vector<EQUIPMENT> eq{INVENTORY_SIZE};
+    std::vector<EQUIPMENT> eq{ INVENTORY_SIZE };
     std::vector<CONSUMABLES> cs{ INVENTORY_SIZE };
     std::vector<MATERIALS> mt{ INVENTORY_SIZE };
 
