@@ -24,7 +24,7 @@ bool QuokkaServer::init(const uint16_t MaxThreadCnt_, int port_) {
 
     check = bind(serverSkt, (SOCKADDR*)&addr, sizeof(addr));
     if (check) {
-        std::cout << "bind 함수 실패:" << WSAGetLastError() <<std::endl;
+        std::cout << "bind 함수 실패:" << WSAGetLastError() << std::endl;
         return false;
     }
 
@@ -52,27 +52,10 @@ bool QuokkaServer::init(const uint16_t MaxThreadCnt_, int port_) {
     udpOverLappedManager = new UdpOverLappedManager;
     udpOverLappedManager->init();
 
-    udpSkt = WSASocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, NULL, WSA_FLAG_OVERLAPPED);
+    udpSkt = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
     if (udpSkt == INVALID_SOCKET) {
         std::cout << "Server Socket 생성 실패" << std::endl;
-        return false;
-    }
-
-    sockaddr_in udpAddr = {0};
-    udpAddr.sin_family = AF_INET;
-    udpAddr.sin_port = htons(UDP_PORT);
-    udpAddr.sin_addr.s_addr = INADDR_ANY;
-
-    if (bind(udpSkt, (SOCKADDR*)&udpAddr, sizeof(udpAddr)) == SOCKET_ERROR) {
-        std::cout << "UDP SOCKET BIND FAIL" << std::endl;
-        closesocket(udpSkt);
-    }
-
-    udpHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 1);
-
-    auto result = CreateIoCompletionPort((HANDLE)udpSkt, udpHandle, (ULONG_PTR)udpSkt, 0);
-    if (result == nullptr) {
-        std::cout << "iocp UDP 핸들 바인드 실패" << std::endl;
         return false;
     }
 
@@ -91,12 +74,6 @@ bool QuokkaServer::StartWork() {
     if (!check) {
         std::cout << "CreateAccepterThread 생성 실패" << std::endl;
         return false;
-    } 
-
-    check = CreateUDPWorkThread();
-    if (!check) {
-        std::cout << "CreateAccepterThread 생성 실패" << std::endl;
-        return false;
     }
 
     connUsersManager = new ConnUsersManager(maxClientCount);
@@ -106,13 +83,13 @@ bool QuokkaServer::StartWork() {
     redisManager = new RedisManager;
 
     for (int i = 0; i < maxClientCount; i++) { // Make ConnUsers Queue
-        ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE,i, sIOCPHandle, overLappedManager);
+        ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE, i, sIOCPHandle, overLappedManager);
 
         AcceptQueue.push(connUser); // Push ConnUser
         connUsersManager->InsertUser(i, connUser); // Init ConnUsers
     }
 
-    for (int i = maxClientCount; i < maxClientCount*2; i++) { // Make Waitting Users Queue
+    for (int i = maxClientCount; i < maxClientCount * 2; i++) { // Make Waitting Users Queue
         ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE, i, sIOCPHandle, overLappedManager);
 
         WaittingQueue.push(connUser); // Push ConnUser
@@ -136,16 +113,9 @@ bool QuokkaServer::CreateWorkThread() {
     return true;
 }
 
-bool QuokkaServer::CreateUDPWorkThread() {
-    udpWorkRun = true;
-    udpWorkThread = std::thread([this]() {UDPWorkThread(); });
-    std::cout << "UDPWorkThread 시작" << std::endl;
-    return true;
-}
-
 bool QuokkaServer::CreateAccepterThread() {
     AccepterRun = true;
-    auto threadCnt = MaxThreadCnt/4+1; // (core/4)
+    auto threadCnt = MaxThreadCnt / 4 + 1; // (core/4)
     for (int i = 0; i < threadCnt; i++) {
         acceptThreads.emplace_back([this]() { AccepterThread(); });
     }
@@ -179,7 +149,7 @@ void QuokkaServer::WorkThread() {
 
         if (!gqSucces || (dwIoSize == 0 && overlappedTCP->taskType != TaskType::ACCEPT)) { // User Disconnect
             std::cout << "socket " << connUser->GetSocket() << " Disconnect" << std::endl;
-            
+
             redisManager->Disconnect(connObjNum);
             inGameUserManager->Reset(connObjNum);
             connUser->Reset(); // Reset 
@@ -189,15 +159,15 @@ void QuokkaServer::WorkThread() {
         }
 
         if (overlappedTCP->taskType == TaskType::ACCEPT) { // User Connect
-                if (connUser->ConnUserRecv()) {
-                    std::cout << "socket " << connUser->GetSocket() << " Connect Requset" << std::endl;
-                    UserCnt.fetch_add(1); // UserCnt +1
-                }
-                else { // Bind Fail
-                    connUser->Reset(); // Reset ConnUser
-                    AcceptQueue.push(connUser);
-                    std::cout << "socket " << connUser->GetSocket() << " ConnectFail" << std::endl;
-                }
+            if (connUser->ConnUserRecv()) {
+                std::cout << "socket " << connUser->GetSocket() << " Connect Requset" << std::endl;
+                UserCnt.fetch_add(1); // UserCnt +1
+            }
+            else { // Bind Fail
+                connUser->Reset(); // Reset ConnUser
+                AcceptQueue.push(connUser);
+                std::cout << "socket " << connUser->GetSocket() << " ConnectFail" << std::endl;
+            }
         }
         else if (overlappedTCP->taskType == TaskType::RECV) {
             redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedTCP->wsaBuf.buf); // Proccess In Redismanager
@@ -218,41 +188,6 @@ void QuokkaServer::WorkThread() {
             delete[] overlappedTCP->wsaBuf.buf;
             delete overlappedTCP;
             connUser->SendComplete();
-        }
-    }
-}
-
-void QuokkaServer::UDPWorkThread() {
-    LPOVERLAPPED lpOverlapped = NULL;
-    DWORD dwIoSize = 0;
-    ULONG_PTR completionKey;
-    bool gqSucces = TRUE;
-
-    while (udpWorkRun) {
-        gqSucces = GetQueuedCompletionStatus(
-            udpHandle,
-            &dwIoSize,
-            &completionKey,
-            &lpOverlapped,
-            INFINITE
-        );
-
-        if (gqSucces && dwIoSize == 0 && lpOverlapped == NULL) { // Server End Request
-            udpWorkRun = false;
-            continue;
-        }
-
-        auto overlappedUDP = (OverlappedUDP*)lpOverlapped;
-
-        if (overlappedUDP->taskType == TaskType::SEND) {
-            udpOverLappedManager->returnOvLap(overlappedUDP);
-        }
-        else if (overlappedUDP->taskType == TaskType::NEWSEND) {
-            delete[] overlappedUDP->wsaBuf.buf;
-            delete overlappedUDP;
-        }
-        else if (overlappedUDP->taskType == TaskType::RECV) { // 나중에 필요할때 추가 생성
-
         }
     }
 }
@@ -299,7 +234,7 @@ void QuokkaServer::ServerEnd() {
     }
 
     for (int i = 0; i < acceptThreads.size(); i++) { // Accept 쓰레드 종료
-        if (acceptThreads[i].joinable()) { 
+        if (acceptThreads[i].joinable()) {
             acceptThreads[i].join();
         }
     }
@@ -323,7 +258,7 @@ void QuokkaServer::ServerEnd() {
     delete roomManager;
     delete matchingManager;
 
-    CloseHandle(sIOCPHandle); 
+    CloseHandle(sIOCPHandle);
     CloseHandle(udpHandle);
     closesocket(serverSkt);
     closesocket(udpSkt);

@@ -61,8 +61,7 @@ private:
     SOCKET serverSkt = INVALID_SOCKET;
     HANDLE sIOCPHandle = INVALID_HANDLE_VALUE;
     SOCKET udpSkt = INVALID_SOCKET;
-    HANDLE udpHandle = INVALID_HANDLE_VALUE;
- 
+
     OverLappedManager* overLappedManager;
     UdpOverLappedManager* udpOverLappedManager;
     ConnUsersManager* connUsersManager;
