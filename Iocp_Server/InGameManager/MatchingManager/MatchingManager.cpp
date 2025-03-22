@@ -5,7 +5,7 @@ void MatchingManager::Init(const uint16_t maxClientCount_, RedisManager* redisMa
         matchingMap.emplace(i, std::set<MatchingRoom*, MatchingRoomComp>());
     }
 
-    for (int i = 1; i <= maxClientCount_; i++) { // Room Number Set
+    for (int i = 1; i <= MAX_ROOM; i++) { // Room Number Set
         roomNumQueue.push(i);
     }
 
@@ -16,6 +16,7 @@ void MatchingManager::Init(const uint16_t maxClientCount_, RedisManager* redisMa
 
     CreateMatchThread();
     CreateTimeCheckThread();
+    CreateTickRateThread1();
 }
 
 bool MatchingManager::Insert(uint16_t userObjNum_, InGameUser* inGameUser_) {
@@ -32,6 +33,30 @@ bool MatchingManager::Insert(uint16_t userObjNum_, InGameUser* inGameUser_) {
 
     // Match Queue Full || Insert Fail
     return false;
+}
+
+bool MatchingManager::CreateTickRateThread1() {
+    tickRateRun1 = true;
+    tickRateThread1 = std::thread([this]() {TickRateThread1(); });
+    std::cout << "TickRateThread1 Start" << std::endl;
+    return true;
+}
+
+void MatchingManager::TickRateThread1() {
+
+    while (tickRateRun1) {
+        auto tickRate = std::chrono::milliseconds(1000 / TICK_RATE);
+        auto timeCheck = std::chrono::steady_clock::now() + tickRate;
+
+        for (int i = 1; i <= MAX_ROOM; i++) {
+
+        }
+
+        while (timeCheck > std::chrono::steady_clock::now()) { // 틱레이트 까지 대기
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }
+
 }
 
 bool MatchingManager::CancelMatching(uint16_t userObjNum_, InGameUser* inGameUser_) {
