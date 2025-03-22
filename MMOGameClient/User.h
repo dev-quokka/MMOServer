@@ -658,9 +658,6 @@ public:
 
         auto rsReqPacket = reinterpret_cast<RAID_START_REQUEST*>(recvBuffer);
 
-        unsigned int myScore = 0;
-        unsigned int teamScore = 0;
-
         std::cout << "Raid Start !" << std::endl;
         std::cout << "Mob Hp : " << mobHp << std::endl;
         std::cout << "My ID : " << userId << " / Level : " << level << std::endl;
@@ -668,66 +665,27 @@ public:
 
         rEndTime = rsReqPacket->endTime;
 
-        while (1) {
-            while (mobHp >= 0 || (std::chrono::steady_clock::now() < rEndTime)) {
-                std::cout << "Input Damage" << std::endl;
-                unsigned int damage;
-                std::cin >> damage;
+        CreateSyncThread();
+        CreateInGameThread();
+        syncRun = true;
+        inGameRun = true;
 
-                RAID_HIT_REQUEST rhReq;
-                rhReq.PacketId = (UINT16)PACKET_ID::RAID_HIT_REQUEST;
-                rhReq.PacketLength = sizeof(RAID_HIT_REQUEST);
-                rhReq.myNum = myNum;
-                rhReq.roomNum = roomNum;
-                rhReq.damage = damage;
+        while (inGameRun && syncRun) { std::this_thread::sleep_for(std::chrono::seconds(1)); }
+        std::this_thread::sleep_for(std::chrono::seconds(1));
 
-                send(userSkt, (char*)&rhReq, sizeof(rhReq), 0);
-                recv(userSkt, recvBuffer, PACKET_SIZE, 0);
-
-                auto rhResPacket = reinterpret_cast<RAID_HIT_RESPONSE*>(recvBuffer);
-
-                if (rhResPacket->currentMobHp <= 0) { // mob dead
-                    if (rhResPacket->yourScore != 0) {
-                        std::cout << "My Socre : " << rhResPacket->yourScore << std::endl;
-                    }
-                    std::cout << "Game End Waitting..." << std::endl;
-
-                    recv(userSkt, recvBuffer, PACKET_SIZE, 0);
-
-                    auto reReq = reinterpret_cast<RAID_END_REQUEST*>(recvBuffer);
-
-                    std::cout << "Raid End. Your Score : " << reReq->userScore << std::endl;
-                    std::cout << "Raid End. Team Score : " << reReq->teamScore << std::endl;
-                    std::cout << "Raid End." << std::endl;
-                    break;
-                }
-                else {
-                    if (mobHp.load() > rhResPacket->currentMobHp) mobHp.store(rhResPacket->currentMobHp);
-                    myScore = rhResPacket->yourScore;
-                    std::cout << "My Socre : " << rhResPacket->yourScore << std::endl;
-                }
-            }
-            break;
-        }
-        mobHp = 0;
-        timer = 0;
-        roomNum = 0;
-        myNum = 0;
-
-        if (syncRun) {
-            syncRun = false;
-            if (syncThread.joinable()) syncThread.join();
-            std::this_thread::sleep_for(std::chrono::seconds(2));
-            closesocket(udpSocket);
-            std::cout << "Sync Thread End" << std::endl;
-        }
-
+        if (inGameThread.joinable()) inGameThread.join();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
     bool CreateSyncThread() {
-        syncRun = true;
-        std::thread(User::SyncThread, this);
-        std::cout << "WorkThread Start" << std::endl;
+        syncThread = std::thread([this]() {SyncThread(); });
+        std::cout << "SyncThread Start" << std::endl;
+        return true;
+    }
+
+    bool CreateInGameThread() {
+        inGameThread = std::thread([this]() {InGameThread(); });
+        std::cout << "InGameThread Start" << std::endl;
         return true;
     }
 
@@ -748,6 +706,67 @@ public:
             }
         }
     }
+
+    void InGameThread() {
+        unsigned int myScore = 0;
+        unsigned int teamScore = 0;
+
+        while (mobHp >= 0 || (std::chrono::steady_clock::now() < rEndTime)) {
+            std::cout << "Input Damage" << std::endl;
+            unsigned int damage;
+            std::cin >> damage;
+
+            RAID_HIT_REQUEST rhReq;
+            rhReq.PacketId = (UINT16)PACKET_ID::RAID_HIT_REQUEST;
+            rhReq.PacketLength = sizeof(RAID_HIT_REQUEST);
+            rhReq.myNum = myNum;
+            rhReq.roomNum = roomNum;
+            rhReq.damage = damage;
+
+            send(userSkt, (char*)&rhReq, sizeof(rhReq), 0);
+            recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+
+            auto rhResPacket = reinterpret_cast<RAID_HIT_RESPONSE*>(recvBuffer);
+
+            if (rhResPacket->currentMobHp <= 0) { // mob dead
+                if (rhResPacket->yourScore != 0) {
+                    std::cout << "My Socre : " << rhResPacket->yourScore << std::endl;
+                }
+                std::cout << "Game End Waitting..." << std::endl;
+
+                recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+
+                auto reReq = reinterpret_cast<RAID_END_REQUEST*>(recvBuffer);
+
+                std::cout << "Raid End. Your Score : " << reReq->userScore << std::endl;
+                std::cout << "Raid End. Team Score : " << reReq->teamScore << std::endl;
+                std::cout << "Raid End." << std::endl;
+                break;
+            }
+            else {
+                if (mobHp.load() > rhResPacket->currentMobHp) mobHp.store(rhResPacket->currentMobHp);
+                myScore = rhResPacket->yourScore;
+                std::cout << "My Socre : " << rhResPacket->yourScore << std::endl;
+            }
+        }
+
+        mobHp = 0;
+        timer = 0;
+        roomNum = 0;
+        myNum = 0;
+
+        if (syncRun) {
+            syncRun = false;
+            if (syncThread.joinable()) syncThread.join();
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            closesocket(udpSocket);
+            std::cout << "Sync Thread End" << std::endl;
+        }
+
+        inGameRun = false;
+    }
+
+
 
     bool GetRaidScore(uint16_t startNum_) { // 마지막 유저 스코어면 false 반환. 그 뒤 유저 없으니까 체크 x
         int rank;
@@ -814,7 +833,8 @@ public:
     }
 
 private:
-    bool syncRun = false;
+    std::atomic<bool> syncRun = false;
+    std::atomic<bool> inGameRun = false;
     std::atomic<uint16_t> level;
     std::atomic<unsigned int> exp;
     unsigned int raidScore;
@@ -829,12 +849,14 @@ private:
     SOCKET sessionSkt;
     SOCKET userSkt;
     SOCKET udpSocket;
-    std::thread syncThread;
-
-    sockaddr_in udpAddr;
-    std::string userId = "quokka";
 
     std::chrono::time_point<std::chrono::steady_clock> rEndTime;
+
+    std::thread syncThread;
+    std::thread inGameThread;
+    sockaddr_in udpAddr;
+
+    std::string userId = "quokka";
 
     std::vector<EQUIPMENT> eq{ INVENTORY_SIZE };
     std::vector<CONSUMABLES> cs{ INVENTORY_SIZE };
