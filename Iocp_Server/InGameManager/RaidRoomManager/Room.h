@@ -63,7 +63,7 @@ public:
 
 	bool StartCheck() {
 		if (startCheck.fetch_add(1) + 1 == 2) {
-			endTime = std::chrono::steady_clock::now() + std::chrono::minutes(2)+ std::chrono::seconds(8);
+			endTime = std::chrono::steady_clock::now() + std::chrono::minutes(2) + std::chrono::seconds(8);
 			return true;
 		}
 		return false;
@@ -88,7 +88,7 @@ public:
 		if (userNum_ == 0) return ruInfos[0]->inGameUser;
 		else if (userNum_ == 1) return ruInfos[1]->inGameUser;
 	}
-	
+
 	std::chrono::time_point<std::chrono::steady_clock> SetEndTime() {
 		endTime = std::chrono::steady_clock::now() + std::chrono::seconds(10);
 		return endTime;
@@ -123,15 +123,15 @@ public:
 		else if (userNum == 0) return ruInfos[1]->userScore;
 	}
 
-	std::pair<unsigned int, unsigned int> Hit(uint16_t userNum_, unsigned int damage_){ // current mobhp, score
+	std::pair<unsigned int, unsigned int> Hit(uint16_t userNum_, unsigned int damage_) { // current mobhp, score
 		if (mobHp <= 0 || finishCheck.load()) {
-			return {0,0};
+			return { 0,0 };
 		}
-		
-		unsigned int score_;
-		int currentMobHp_;
 
-		if ((currentMobHp_ = mobHp.fetch_sub(damage_) - damage_)<=0) { // Hit
+		unsigned int score_;
+		unsigned int currentMobHp_;
+
+		if ((currentMobHp_ = mobHp.fetch_sub(damage_) - damage_) <= 0) { // Hit
 			finishCheck.store(true);
 			score_ = ruInfos[userNum_]->userScore.fetch_add(currentMobHp_ + damage_) + (currentMobHp_ + damage_);
 			std::cout << "몹 이미 죽음. 나머지 스코어 전송" << std::endl;
@@ -139,48 +139,14 @@ public:
 		}
 
 		score_ = ruInfos[userNum_]->userScore.fetch_add(damage_) + damage_;
-		
+
 		for (int i = 0; i < ruInfos.size(); i++) { // 나머지 유저들에게도 바뀐 몹 hp값 보내주기
 
-			OverlappedUDP* overlappedUDP = udpOverLappedManager->getOvLap();
+			memcpy(mobHpBuf, &currentMobHp_, sizeof(currentMobHp_));
 
-			if (overlappedUDP == nullptr) { // 오버랩 풀에 여분 없으면 새로 오버랩 생성
-				OverlappedUDP* overlappedUDP = new OverlappedUDP;
-				ZeroMemory(overlappedUDP, sizeof(OverlappedUDP));
-				overlappedUDP->wsaBuf.len = sizeof(currentMobHp_);
-				overlappedUDP->wsaBuf.buf = new char[sizeof(currentMobHp_)];
-				CopyMemory(overlappedUDP->wsaBuf.buf, &currentMobHp_, sizeof(currentMobHp_));
-				overlappedUDP->addrSize = sizeof(ruInfos[i]->userAddr);
-				overlappedUDP->userAddr = ruInfos[i]->userAddr;
-				overlappedUDP->taskType = TaskType::NEWSEND;
+			sendto(*udpSkt, mobHpBuf, sizeof(mobHpBuf), 0, (sockaddr*)&ruInfos[i]->userAddr, sizeof(ruInfos[i]->userAddr));
 
-				DWORD dwSendBytes = 0;
-				int result = WSASendTo(*udpSkt, &overlappedUDP->wsaBuf, 1, &dwSendBytes, 0, 
-				(SOCKADDR*)&ruInfos[i]->userAddr, sizeof(ruInfos[i]->userAddr), (LPWSAOVERLAPPED)overlappedUDP, NULL);
-
-				std::cout <<"현재 몹 HP : " << mobHp << std::endl;
-				if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING) {
-					std::cerr << "WSASendTo Fail : " << WSAGetLastError() << std::endl;
-				}
-			}
-
-			else {
-				overlappedUDP->wsaBuf.len = sizeof(currentMobHp_);
-				overlappedUDP->wsaBuf.buf = new char[sizeof(currentMobHp_)];
-				CopyMemory(overlappedUDP->wsaBuf.buf, &currentMobHp_, sizeof(currentMobHp_));
-				overlappedUDP->addrSize = sizeof(ruInfos[i]->userAddr);
-				overlappedUDP->userAddr = ruInfos[i]->userAddr;
-				overlappedUDP->taskType = TaskType::SEND;
-
-				DWORD dwSendBytes = 0;
-				int result = WSASendTo(*udpSkt, &overlappedUDP->wsaBuf, 1, &dwSendBytes, 0, 
-				(SOCKADDR*)&ruInfos[i]->userAddr, sizeof(ruInfos[i]->userAddr), (LPWSAOVERLAPPED)overlappedUDP, NULL);
-
-				std::cout << "현재 몹 HP : " << mobHp << std::endl;
-				if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING) {
-					std::cerr << "WSASendTo Fail : " << WSAGetLastError() << std::endl;
-				}
-			}
+			std::cout << "현재 몹 HP : " << mobHp << std::endl;
 		}
 
 		return { currentMobHp_, score_ };
@@ -197,6 +163,7 @@ private:
 
 	// 4 bytes
 	std::atomic<int> mobHp;
+	char mobHpBuf[sizeof(unsigned int)];
 
 	// 8 bytes
 	SOCKET* udpSkt;

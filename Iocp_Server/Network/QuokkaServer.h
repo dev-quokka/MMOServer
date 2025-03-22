@@ -37,11 +37,9 @@ public:
 
 private:
     bool CreateWorkThread();
-    bool CreateUDPWorkThread();
     bool CreateAccepterThread();
 
     void WorkThread(); // IOCP Complete Event Thread
-    void UDPWorkThread();
     void AccepterThread(); // Accept req Thread
 
     // 1 bytes

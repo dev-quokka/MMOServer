@@ -239,12 +239,6 @@ void QuokkaServer::ServerEnd() {
         }
     }
 
-    PostQueuedCompletionStatus(udpHandle, 0, 0, nullptr);
-
-    if (udpWorkThread.joinable()) {
-        udpWorkThread.join();
-    }
-
     ConnUser* connUser;
 
     while (WaittingQueue.pop(connUser)) { // 접속 대기큐 유저 객체 삭제
@@ -259,7 +253,6 @@ void QuokkaServer::ServerEnd() {
     delete matchingManager;
 
     CloseHandle(sIOCPHandle);
-    CloseHandle(udpHandle);
     closesocket(serverSkt);
     closesocket(udpSkt);
     WSACleanup();

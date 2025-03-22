@@ -18,9 +18,6 @@ const uint16_t INVENTORY_SIZE = 11; // 10개면 +1해서 11개로 해두기
 class User {
 public:
     ~User() {
-        WorkRun = false;
-        if (workThread.joinable()) workThread.join();
-        std::this_thread::sleep_for(std::chrono::seconds(2));
         closesocket(userSkt);
         WSACleanup();
     }
@@ -609,10 +606,6 @@ public:
         return true;
     }
 
-    bool UserItem(uint16_t pos_, uint16_t count_) { // Consumables, Materials Only
-
-    }
-
     void RaidStart() {
         RAID_MATCHING_REQUEST rmReq;
         rmReq.PacketId = (UINT16)PACKET_ID::RAID_MATCHING_REQUEST;
@@ -638,6 +631,11 @@ public:
         roomNum = rrReqPacket->roomNum; // If Max RoomNum Up to Short Range, Back to Number One
         myNum = rrReqPacket->yourNum;
         mobHp = rrReqPacket->mobHp;
+
+        if (!makeUDPSocket()) { // UDP 소켓 생성 실패했을때
+            std::cout << "Udp Socket Make Fail" << std::endl;
+            return;
+        }
 
         RAID_TEAMINFO_REQUEST rtReq;
         rtReq.PacketId = (UINT16)PACKET_ID::RAID_TEAMINFO_REQUEST;
@@ -715,6 +713,40 @@ public:
         timer = 0;
         roomNum = 0;
         myNum = 0;
+
+        if (syncRun) {
+            syncRun = false;
+            if (syncThread.joinable()) syncThread.join();
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            closesocket(udpSocket);
+            std::cout << "Sync Thread End" << std::endl;
+        }
+
+    }
+
+    bool CreateSyncThread() {
+        syncRun = true;
+        std::thread(User::SyncThread, this);
+        std::cout << "WorkThread Start" << std::endl;
+        return true;
+    }
+
+    void SyncThread() {
+        sockaddr_in serverAddr;
+        int serverAddrSize = sizeof(serverAddr);
+        std::cout << "Sync Thread Start" << std::endl;
+
+        while (syncRun)
+        {
+            int received = recvfrom(udpSocket, recvUDPBuffer, sizeof(recvUDPBuffer), 0,
+                (sockaddr*)&serverAddr, &serverAddrSize);
+
+            if (received == sizeof(unsigned int) && syncRun) {
+                unsigned int mobHp_ = *(unsigned int*)recvUDPBuffer;
+                mobHp.store(mobHp_);
+                std::cout << "Mob Hp : " << mobHp_ << std::endl;
+            }
+        }
     }
 
     bool GetRaidScore(uint16_t startNum_) { // 마지막 유저 스코어면 false 반환. 그 뒤 유저 없으니까 체크 x
@@ -782,10 +814,11 @@ public:
     }
 
 private:
-    bool WorkRun = false;
+    bool syncRun = false;
     std::atomic<uint16_t> level;
     std::atomic<unsigned int> exp;
     unsigned int raidScore;
+    char recvUDPBuffer[sizeof(unsigned int)];
 
     // Raid
     std::atomic<int> mobHp;
@@ -796,7 +829,7 @@ private:
     SOCKET sessionSkt;
     SOCKET userSkt;
     SOCKET udpSocket;
-    std::thread workThread;
+    std::thread syncThread;
 
     sockaddr_in udpAddr;
     std::string userId = "quokka";
