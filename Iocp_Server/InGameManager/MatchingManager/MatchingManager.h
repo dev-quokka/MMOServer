@@ -57,6 +57,11 @@ public:
 			timeCheckThread.join();
 		}
 
+		tickRateRun1 = false;
+		if (tickRateThread1.joinable()) {
+			tickRateThread1.join();
+		}
+
 		for (int i = 1; i <= USER_MAX_LEVEL / 3 + 1; i++) {
 			tbb::concurrent_hash_map<uint16_t, std::set<MatchingRoom*, MatchingRoomComp>>::accessor accessor;
 

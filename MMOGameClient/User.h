@@ -665,16 +665,21 @@ public:
 
         rEndTime = rsReqPacket->endTime;
 
-        CreateSyncThread();
-        CreateInGameThread();
         syncRun = true;
         inGameRun = true;
+        CreateSyncThread();
+        CreateInGameThread();
 
-        while (inGameRun && syncRun) { std::this_thread::sleep_for(std::chrono::seconds(1)); }
+        while (inGameRun && syncRun) { std::this_thread::sleep_for(std::chrono::milliseconds(100)); }
         std::this_thread::sleep_for(std::chrono::seconds(1));
 
         if (inGameThread.joinable()) inGameThread.join();
         std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::cout << "InGame Thread End" << std::endl;
+
+        if (syncThread.joinable()) syncThread.join();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::cout << "Sync Thread End" << std::endl;
     }
 
     bool CreateSyncThread() {
@@ -692,10 +697,8 @@ public:
     void SyncThread() {
         sockaddr_in serverAddr;
         int serverAddrSize = sizeof(serverAddr);
-        std::cout << "Sync Thread Start" << std::endl;
 
-        while (syncRun)
-        {
+        while (syncRun) {
             int received = recvfrom(udpSocket, recvUDPBuffer, sizeof(recvUDPBuffer), 0,
                 (sockaddr*)&serverAddr, &serverAddrSize);
 
@@ -705,6 +708,7 @@ public:
                 std::cout << "Mob Hp : " << mobHp_ << std::endl;
             }
         }
+
     }
 
     void InGameThread() {
@@ -755,15 +759,9 @@ public:
         roomNum = 0;
         myNum = 0;
 
-        if (syncRun) {
-            syncRun = false;
-            if (syncThread.joinable()) syncThread.join();
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            closesocket(udpSocket);
-            std::cout << "Sync Thread End" << std::endl;
-        }
-
         inGameRun = false;
+        syncRun = false;
+        closesocket(udpSocket);
     }
 
 
