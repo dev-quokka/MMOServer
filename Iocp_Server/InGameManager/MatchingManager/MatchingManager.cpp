@@ -16,7 +16,7 @@ void MatchingManager::Init(const uint16_t maxClientCount_, RedisManager* redisMa
 
     CreateMatchThread();
     CreateTimeCheckThread();
-    CreateTickRateThread1();
+    //CreateTickRateThread1();
 }
 
 bool MatchingManager::Insert(uint16_t userObjNum_, InGameUser* inGameUser_) {
@@ -33,30 +33,6 @@ bool MatchingManager::Insert(uint16_t userObjNum_, InGameUser* inGameUser_) {
 
     // Match Queue Full || Insert Fail
     return false;
-}
-
-bool MatchingManager::CreateTickRateThread1() {
-    tickRateRun1 = true;
-    tickRateThread1 = std::thread([this]() {TickRateThread1(); });
-    std::cout << "TickRateThread1 Start" << std::endl;
-    return true;
-}
-
-void MatchingManager::TickRateThread1() {
-
-    while (tickRateRun1) {
-        auto tickRate = std::chrono::milliseconds(1000 / TICK_RATE);
-        auto timeCheck = std::chrono::steady_clock::now() + tickRate;
-
-        for (int i = 1; i <= MAX_ROOM; i++) {
-
-        }
-
-        while (timeCheck > std::chrono::steady_clock::now()) { // 틱레이트 까지 대기
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-    }
-
 }
 
 bool MatchingManager::CancelMatching(uint16_t userObjNum_, InGameUser* inGameUser_) {
@@ -173,13 +149,12 @@ void MatchingManager::MatchingThread() {
                         }
                     }
                 }
-
             }
             else { // Not Exist Room Num
                 std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             }
         }
-        else {
+        else { // 뽑아둔 룸넘 있음
             for (int i = 1; i <= 6; i++) {
                 tbb::concurrent_hash_map<uint16_t, std::set<MatchingRoom*, MatchingRoomComp>>::accessor accessor1;
                 if (matchingMap.find(accessor1, i)) { // i번째 레벨 그룹 넘버 체크

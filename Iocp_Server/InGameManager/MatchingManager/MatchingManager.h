@@ -21,7 +21,6 @@
 constexpr int UDP_PORT = 50000;
 constexpr uint16_t USER_MAX_LEVEL = 15;
 constexpr uint16_t MAX_ROOM = 10;
-constexpr uint16_t TICK_RATE = 5; // 1초에 몇번씩 보낼건지
 
 class RedisManager;
 
@@ -89,8 +88,8 @@ public:
 	void TickRateThread1();
 
 	// Tick Rate Test 2 (lockfree_queue) 안전하지만 성능 저하 예상 (지속적인 pop, push)
-	bool CreateTickRateThread2();
-	void TickRateThread2();
+	//bool CreateTickRateThread2();
+	//void TickRateThread2();
 
 private:
 	// 1 bytes
@@ -112,9 +111,11 @@ private:
 
 	// 24 bytes
 	std::set<Room*, EndTimeComp> endRoomCheckSet;
+
 	// 80 bytes
 	std::mutex mDeleteRoom;
 	std::mutex mDeleteMatch;
+
 	// 136 bytes
 	boost::lockfree::queue<uint16_t> roomNumQueue{ 10 }; // MaxClient set
 	// 576 bytes
