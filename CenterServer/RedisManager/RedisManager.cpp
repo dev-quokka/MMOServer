@@ -60,7 +60,7 @@ void RedisManager::Disconnect(uint16_t connObjNum_) {
 void RedisManager::SetManager(ConnUsersManager* connUsersManager_, InGameUserManager* inGameUserManager_, RoomManager* roomManager_, MatchingManager* matchingManager_) {
     connUsersManager = connUsersManager_;
     inGameUserManager = inGameUserManager_;
-    roomManager = roomManager_; 
+    roomManager = roomManager_;
     matchingManager = matchingManager_;
 }
 
@@ -82,9 +82,9 @@ bool RedisManager::EquipmentEnhance(uint16_t currentEnhanceCount_) {
 }
 
 void RedisManager::RedisThread() {
-    DataPacket tempD(0,0);
+    DataPacket tempD(0, 0);
     ConnUser* TempConnUser = nullptr;
-    char tempData[1024] = {0};
+    char tempData[1024] = { 0 };
     while (redisRun) {
         if (procSktQueue.pop(tempD)) {
             std::memset(tempData, 0, sizeof(tempData));
@@ -100,7 +100,7 @@ void RedisManager::RedisThread() {
 
 void RedisManager::PushRedisPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_) {
     ConnUser* TempConnUser = connUsersManager->FindUser(connObjNum_);
-    TempConnUser->WriteRecvData(recvData_,size_); // Push Data in Circualr Buffer
+    TempConnUser->WriteRecvData(recvData_, size_); // Push Data in Circualr Buffer
     DataPacket tempD(size_, connObjNum_);
     procSktQueue.push(tempD);
 }
@@ -126,7 +126,7 @@ void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char*
 
             connUsersManager->FindUser(connObjNum_)->SetPk(pk);
             inGameUserManager->Set(connObjNum_, (std::string)userConn->userId, pk, std::stoul(userData["exp"]),
-            static_cast<uint16_t>(std::stoul(userData["level"])), std::stoul(userData["raidScore"]));
+                static_cast<uint16_t>(std::stoul(userData["level"])), std::stoul(userData["raidScore"]));
 
             ucReq.isSuccess = true;
             connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(USER_CONNECT_RESPONSE_PACKET), (char*)&ucReq);
@@ -154,7 +154,7 @@ void RedisManager::Logout(uint16_t connObjNum_, uint16_t packetSize_, char* pPac
         syncLogoutReqPacket.PacketId = (uint16_t)PACKET_ID::SYNCRONIZE_LOGOUT_REQUEST;
         syncLogoutReqPacket.PacketLength = sizeof(SYNCRONIZE_LOGOUT_REQUEST);
         syncLogoutReqPacket.userPk = tempUser->GetPk();
-        connUsersManager->FindUser(sessionServerObjNum)->PushSendMsg(sizeof(SYNCRONIZE_LOGOUT_REQUEST), (char*)&syncLogoutReqPacket);
+        connUsersManager->FindUser(GatewayServerObjNum)->PushSendMsg(sizeof(SYNCRONIZE_LOGOUT_REQUEST), (char*)&syncLogoutReqPacket);
         std::cout << "유저 로그아웃 싱크로 메시지 전송" << std::endl;
     }
 }
@@ -167,7 +167,7 @@ void RedisManager::UserDisConnect(uint16_t connObjNum_) { // Abnormal Disconnect
         syncLogoutReqPacket.PacketId = (uint16_t)PACKET_ID::SYNCRONIZE_LOGOUT_REQUEST;
         syncLogoutReqPacket.PacketLength = sizeof(SYNCRONIZE_LOGOUT_REQUEST);
         syncLogoutReqPacket.userPk = tempUser->GetPk();
-        connUsersManager->FindUser(sessionServerObjNum)->
+        connUsersManager->FindUser(GatewayServerObjNum)->
             PushSendMsg(sizeof(SYNCRONIZE_LOGOUT_REQUEST), (char*)&syncLogoutReqPacket);
         std::cout << "유저 디스커넥트 싱크로 메시지 전송" << std::endl;
     }
@@ -193,7 +193,7 @@ void RedisManager::ImSessionRequest(uint16_t connObjNum_, uint16_t packetSize_, 
 
         if (pk) {
             connUsersManager->FindUser(connObjNum_)->SetPk(static_cast<uint32_t>(std::stoul(*pk)));
-            sessionServerObjNum = connObjNum_;
+            GatewayServerObjNum = connObjNum_;
             imSessionResPacket.isSuccess = true;
             connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(IM_SESSION_RESPONSE), (char*)&imSessionResPacket);
             std::cout << "Session Server Connect Success : " << connObjNum_ << std::endl;
@@ -219,58 +219,58 @@ void RedisManager::ExpUp(uint16_t connObjNum_, uint16_t packetSize_, char* pPack
     auto expUpReqPacket = reinterpret_cast<EXP_UP_REQUEST*>(pPacket_);
     InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
-    std::string key = "userinfo:{" +  std::to_string(tempUser->GetPk()) + "}";
+    std::string key = "userinfo:{" + std::to_string(tempUser->GetPk()) + "}";
 
-        auto userExp = tempUser->ExpUp(mobExp[expUpReqPacket->mobNum]); // Increase Level Cnt , Current Exp
+    auto userExp = tempUser->ExpUp(mobExp[expUpReqPacket->mobNum]); // Increase Level Cnt , Current Exp
 
-        EXP_UP_RESPONSE expUpResPacket;
-        expUpResPacket.PacketId = (uint16_t)PACKET_ID::EXP_UP_RESPONSE;
-        expUpResPacket.PacketLength = sizeof(EXP_UP_RESPONSE);
+    EXP_UP_RESPONSE expUpResPacket;
+    expUpResPacket.PacketId = (uint16_t)PACKET_ID::EXP_UP_RESPONSE;
+    expUpResPacket.PacketLength = sizeof(EXP_UP_RESPONSE);
 
-        if (userExp.first!=0) { // Level Up
-            try {
-                auto pipe = redis->pipeline(std::to_string(tempUser->GetPk()));
+    if (userExp.first != 0) { // Level Up
+        try {
+            auto pipe = redis->pipeline(std::to_string(tempUser->GetPk()));
 
-                pipe.hset(key, "exp", std::to_string(userExp.second))
-                    .hincrby(key, "level", userExp.first);
+            pipe.hset(key, "exp", std::to_string(userExp.second))
+                .hincrby(key, "level", userExp.first);
 
-                pipe.exec();
+            pipe.exec();
 
+            expUpResPacket.increaseLevel = userExp.first;
+            expUpResPacket.currentExp = userExp.second;
+
+            connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(EXP_UP_RESPONSE), (char*)&expUpResPacket);
+        }
+        catch (const sw::redis::Error& e) {
+            expUpResPacket.increaseLevel = 0;
+            expUpResPacket.currentExp = 0;
+            connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(EXP_UP_RESPONSE), (char*)&expUpResPacket);
+            std::cerr << "Redis error: " << e.what() << std::endl;
+            return;
+        }
+    }
+
+    else { // Just Exp Up
+        try {
+            if (redis->hincrby(key, "exp", userExp.second)) { // Exp Up Success
                 expUpResPacket.increaseLevel = userExp.first;
                 expUpResPacket.currentExp = userExp.second;
-
                 connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(EXP_UP_RESPONSE), (char*)&expUpResPacket);
             }
-            catch (const sw::redis::Error& e) {
+            else { // Exp Up Fail
                 expUpResPacket.increaseLevel = 0;
                 expUpResPacket.currentExp = 0;
                 connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(EXP_UP_RESPONSE), (char*)&expUpResPacket);
-                std::cerr << "Redis error: " << e.what() << std::endl;
-                return;
             }
         }
-
-        else { // Just Exp Up
-            try {
-                if (redis->hincrby(key, "exp", userExp.second)) { // Exp Up Success
-                    expUpResPacket.increaseLevel = userExp.first;
-                    expUpResPacket.currentExp = userExp.second;
-                    connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(EXP_UP_RESPONSE), (char*)&expUpResPacket);
-                }
-                else { // Exp Up Fail
-                    expUpResPacket.increaseLevel = 0;
-                    expUpResPacket.currentExp = 0;
-                    connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(EXP_UP_RESPONSE), (char*)&expUpResPacket);
-                }
-            }
-            catch (const sw::redis::Error& e) {
-                expUpResPacket.increaseLevel = 0;
-                expUpResPacket.currentExp = 0;
-                connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(EXP_UP_RESPONSE), (char*)&expUpResPacket);
-                std::cerr << "Redis error: " << e.what() << std::endl;
-                return;
-            }
+        catch (const sw::redis::Error& e) {
+            expUpResPacket.increaseLevel = 0;
+            expUpResPacket.currentExp = 0;
+            connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(EXP_UP_RESPONSE), (char*)&expUpResPacket);
+            std::cerr << "Redis error: " << e.what() << std::endl;
+            return;
         }
+    }
 }
 
 
@@ -279,7 +279,7 @@ void RedisManager::ExpUp(uint16_t connObjNum_, uint16_t packetSize_, char* pPack
 void RedisManager::AddItem(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto addItemReqPacket = reinterpret_cast<ADD_ITEM_REQUEST*>(pPacket_);
     InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
-    
+
     ADD_ITEM_RESPONSE addItemResPacket;
     addItemResPacket.PacketId = (uint16_t)PACKET_ID::ADD_ITEM_RESPONSE;
     addItemResPacket.PacketLength = sizeof(ADD_ITEM_RESPONSE);
@@ -289,7 +289,7 @@ void RedisManager::AddItem(uint16_t connObjNum_, uint16_t packetSize_, char* pPa
 
     try { // AddItem Success (ItemCode:slotposition, count)
         redis->hset(inventory_slot, std::to_string(addItemReqPacket->itemPosition),
-        std::to_string(addItemReqPacket->itemCode) + ":" + std::to_string(addItemReqPacket->itemCount));
+            std::to_string(addItemReqPacket->itemCode) + ":" + std::to_string(addItemReqPacket->itemCount));
     }
     catch (const sw::redis::Error& e) {
         addItemResPacket.isSuccess = false;
@@ -299,7 +299,7 @@ void RedisManager::AddItem(uint16_t connObjNum_, uint16_t packetSize_, char* pPa
     }
 
     addItemResPacket.isSuccess = true;
-    connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(ADD_ITEM_RESPONSE),(char*)&addItemResPacket);
+    connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(ADD_ITEM_RESPONSE), (char*)&addItemResPacket);
 }
 
 void RedisManager::DeleteItem(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
@@ -324,7 +324,7 @@ void RedisManager::DeleteItem(uint16_t connObjNum_, uint16_t packetSize_, char* 
     }
 
     delItemResPacket.isSuccess = true;
-    connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(DEL_ITEM_RESPONSE),(char*)&delItemResPacket);
+    connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(DEL_ITEM_RESPONSE), (char*)&delItemResPacket);
 }
 
 void RedisManager::ModifyItem(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
@@ -356,30 +356,30 @@ void RedisManager::MoveItem(uint16_t connObjNum_, uint16_t packetSize_, char* pP
     auto movItemReqPacket = reinterpret_cast<MOV_ITEM_REQUEST*>(pPacket_);
     InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
-        std::string tag = "{" + std::to_string(tempUser->GetPk()) +"}";
-        std::string inventory_slot = itemType[movItemReqPacket->ItemType] + ":" + tag;
+    std::string tag = "{" + std::to_string(tempUser->GetPk()) + "}";
+    std::string inventory_slot = itemType[movItemReqPacket->ItemType] + ":" + tag;
 
-        MOV_ITEM_RESPONSE movItemResPacket;
-        movItemResPacket.PacketId = (uint16_t)PACKET_ID::MOV_ITEM_RESPONSE;
-        movItemResPacket.PacketLength = sizeof(MOV_ITEM_RESPONSE);
+    MOV_ITEM_RESPONSE movItemResPacket;
+    movItemResPacket.PacketId = (uint16_t)PACKET_ID::MOV_ITEM_RESPONSE;
+    movItemResPacket.PacketLength = sizeof(MOV_ITEM_RESPONSE);
 
-        try {
-            auto pipe = redis->pipeline(tag);
-            pipe.hset(inventory_slot, std::to_string(movItemReqPacket->dragItemPos), 
-                 std::to_string(movItemReqPacket->dragItemCode) + ":" + std::to_string(movItemReqPacket->dragItemCount))
-                .hset(inventory_slot, std::to_string(movItemReqPacket->targetItemPos), 
-                 std::to_string(movItemReqPacket->targetItemCode) + ":" + std::to_string(movItemReqPacket->targetItemCount));
-            pipe.exec();
-        }
-        catch (const sw::redis::Error& e) {
-            movItemResPacket.isSuccess = false;
-            connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOV_ITEM_RESPONSE), (char*)&movItemResPacket);
-            std::cerr << "Redis error: " << e.what() << std::endl;
-            return;
-        }
-
-        movItemResPacket.isSuccess = true;
+    try {
+        auto pipe = redis->pipeline(tag);
+        pipe.hset(inventory_slot, std::to_string(movItemReqPacket->dragItemPos),
+            std::to_string(movItemReqPacket->dragItemCode) + ":" + std::to_string(movItemReqPacket->dragItemCount))
+            .hset(inventory_slot, std::to_string(movItemReqPacket->targetItemPos),
+                std::to_string(movItemReqPacket->targetItemCode) + ":" + std::to_string(movItemReqPacket->targetItemCount));
+        pipe.exec();
+    }
+    catch (const sw::redis::Error& e) {
+        movItemResPacket.isSuccess = false;
         connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOV_ITEM_RESPONSE), (char*)&movItemResPacket);
+        std::cerr << "Redis error: " << e.what() << std::endl;
+        return;
+    }
+
+    movItemResPacket.isSuccess = true;
+    connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOV_ITEM_RESPONSE), (char*)&movItemResPacket);
 }
 
 
@@ -393,21 +393,21 @@ void RedisManager::AddEquipment(uint16_t connObjNum_, uint16_t packetSize_, char
     addEquipResPacket.PacketId = (uint16_t)PACKET_ID::ADD_EQUIPMENT_RESPONSE;
     addEquipResPacket.PacketLength = sizeof(ADD_EQUIPMENT_RESPONSE);
 
-        std::string tag = "{" + std::to_string(tempUser->GetPk()) + "}";
-        std::string inventory_slot = itemType[0] + ":" + tag;
+    std::string tag = "{" + std::to_string(tempUser->GetPk()) + "}";
+    std::string inventory_slot = itemType[0] + ":" + tag;
 
-        try {
-            redis->hset(inventory_slot, std::to_string(addEquipReqPacket->itemPosition), 
+    try {
+        redis->hset(inventory_slot, std::to_string(addEquipReqPacket->itemPosition),
             std::to_string(addEquipReqPacket->itemCode) + ":" + std::to_string(addEquipReqPacket->Enhancement));
-        }
-        catch (const sw::redis::Error& e) {
-            addEquipResPacket.isSuccess = false;
-            connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(ADD_EQUIPMENT_RESPONSE), (char*)&addEquipResPacket);
-            std::cerr << "Redis error: " << e.what() << std::endl;
-            return;
-        }
+    }
+    catch (const sw::redis::Error& e) {
+        addEquipResPacket.isSuccess = false;
+        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(ADD_EQUIPMENT_RESPONSE), (char*)&addEquipResPacket);
+        std::cerr << "Redis error: " << e.what() << std::endl;
+        return;
+    }
 
-        addEquipResPacket.isSuccess = true;
+    addEquipResPacket.isSuccess = true;
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(ADD_EQUIPMENT_RESPONSE), (char*)&addEquipResPacket);
 }
 
@@ -462,7 +462,7 @@ void RedisManager::EnhanceEquipment(uint16_t connObjNum_, uint16_t packetSize_, 
                     std::cout << tempUser->GetId() << " 유저 " << enhanceProbabilities[s] << "% 확률 강화 시도" << std::endl;
 
                     if (EquipmentEnhance(s)) { // Enhance Success
-                        redis->hset(inventory_slot, std::to_string(enhEquipReqPacket->itemPosition), 
+                        redis->hset(inventory_slot, std::to_string(enhEquipReqPacket->itemPosition),
                             first + ":" + std::to_string(s + 1)); // 강화 성공
                         enhEquipResPacket.isSuccess = true;
                         enhEquipResPacket.Enhancement = s + 1;
@@ -510,10 +510,10 @@ void RedisManager::MoveEquipment(uint16_t connObjNum_, uint16_t packetSize_, cha
 
     try {
         auto pipe = redis->pipeline(tag);
-        pipe.hset(inventory_slot, std::to_string(movItemReqPacket->dragItemPos), 
-        std::to_string(movItemReqPacket->dragItemCode) + ":" + std::to_string(movItemReqPacket->dragItemEnhancement))
-        .hset(inventory_slot, std::to_string(movItemReqPacket->targetItemPos), 
-        std::to_string(movItemReqPacket->targetItemCode) + ":" + std::to_string(movItemReqPacket->targetItemEnhancement));
+        pipe.hset(inventory_slot, std::to_string(movItemReqPacket->dragItemPos),
+            std::to_string(movItemReqPacket->dragItemCode) + ":" + std::to_string(movItemReqPacket->dragItemEnhancement))
+            .hset(inventory_slot, std::to_string(movItemReqPacket->targetItemPos),
+                std::to_string(movItemReqPacket->targetItemCode) + ":" + std::to_string(movItemReqPacket->targetItemEnhancement));
         pipe.exec();
     }
     catch (const sw::redis::Error& e) {
@@ -530,7 +530,7 @@ void RedisManager::MoveEquipment(uint16_t connObjNum_, uint16_t packetSize_, cha
 
 //  ---------------------------- RAID  ----------------------------
 
-void RedisManager::MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) { 
+void RedisManager::MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
     RAID_MATCHING_RESPONSE raidMatchResPacket;
@@ -622,7 +622,7 @@ void RedisManager::RaidHit(uint16_t connObjNum_, uint16_t packetSize_, char* pPa
             catch (const sw::redis::Error& e) {
                 std::cerr << "Redis error: " << e.what() << std::endl;
                 for (int i = 0; i < room->GetRoomUserCnt(); i++) {
-                    std::cout << room->GetUser(i)->GetId() <<" 유저 점수 : " << room->GetScore(i) << std::endl;
+                    std::cout << room->GetUser(i)->GetId() << " 유저 점수 : " << room->GetScore(i) << std::endl;
                 }
                 std::cout << "동기화 실패" << std::endl;
                 matchingManager->DeleteMob(room); // 방 종료 처리
@@ -642,7 +642,7 @@ void RedisManager::RaidHit(uint16_t connObjNum_, uint16_t packetSize_, char* pPa
     }
 
     if (hit.second != 0) { // Score이 0이 아니면 웹 서버에 동기화 메시지 전송 
-        connUsersManager->FindUser(sessionServerObjNum)->PushSendMsg(sizeof(RAID_HIT_RESPONSE), (char*)&raidHitResPacket);
+        connUsersManager->FindUser(GatewayServerObjNum)->PushSendMsg(sizeof(RAID_HIT_RESPONSE), (char*)&raidHitResPacket);
     }
 }
 
@@ -657,7 +657,7 @@ void RedisManager::GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* 
     std::vector<std::pair<std::string, double>> scores;
     try {
 
-        redis->zrevrange("ranking", delEquipReqPacket->startRank, 
+        redis->zrevrange("ranking", delEquipReqPacket->startRank,
             delEquipReqPacket->startRank + RANKING_USER_COUNT, std::back_inserter(scores));
 
         char* tempC = new char[MAX_SCORE_SIZE + 1];

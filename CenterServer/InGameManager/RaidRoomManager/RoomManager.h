@@ -20,6 +20,7 @@ public:
 			delete iter.second;
 		}
 	}
+
 	bool Init();
 	void CreateTickRateThread();
 	void TickRateThread();

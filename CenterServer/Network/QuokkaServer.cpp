@@ -232,7 +232,6 @@ void QuokkaServer::ServerEnd() {
             workThreads[i].join();
         }
     }
-
     for (int i = 0; i < acceptThreads.size(); i++) { // Accept 쓰레드 종료
         if (acceptThreads[i].joinable()) {
             acceptThreads[i].join();
@@ -251,7 +250,6 @@ void QuokkaServer::ServerEnd() {
     delete inGameUserManager;
     delete roomManager;
     delete matchingManager;
-
     CloseHandle(sIOCPHandle);
     closesocket(serverSkt);
     closesocket(udpSkt);

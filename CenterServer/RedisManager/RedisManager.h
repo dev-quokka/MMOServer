@@ -38,7 +38,6 @@ public:
 private:
     bool CreateRedisThread(const uint16_t RedisThreadCnt_);
     bool EquipmentEnhance(uint16_t currentEnhanceCount_);
-
     void RedisRun(const uint16_t RedisThreadCnt_);
     void RedisThread();
 
@@ -72,12 +71,30 @@ private:
 
     void GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
+    typedef void(RedisManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
 
-    // 1 bytes
-    bool redisRun = false;
+    // 5000 bytes
+    thread_local static std::mt19937 gen;
+
+    // 242 bytes
+    sw::redis::ConnectionOptions connection_options;
+
+    // 136 bytes (병목현상 발생하면 lock_guard,mutex 사용 또는 lockfree::queue의 크기를 늘리는 방법으로 전환)
+    boost::lockfree::queue<DataPacket> procSktQueue{ 512 };
+
+    // 80 bytes
+    std::unordered_map<uint16_t, RECV_PACKET_FUNCTION> packetIDTable;
+
+    // 32 bytes
+    std::vector<std::thread> redisThreads;
+    std::vector<uint16_t> enhanceProbabilities = { 100,90,80,70,60,50,40,30,20,10 };
+    std::vector<unsigned int> mobExp = { 0,1,2,3,4,5,6,7,8,9,10 };
+    std::vector<std::string> itemType = { "equipment", "consumables", "materials" };
+
+    // 16 bytes
+    std::thread redisThread;
 
     // 8 bytes
-    uint16_t sessionServerObjNum = 0;
     std::unique_ptr<sw::redis::RedisCluster> redis;
     std::uniform_int_distribution<int> dist;
 
@@ -86,26 +103,12 @@ private:
     RoomManager* roomManager;
     MatchingManager* matchingManager;
 
-    // 16 bytes
-    std::thread redisThread;
+    // 2 bytes
+    uint16_t GatewayServerObjNum = 0;
+    uint16_t MatchingServerObjNum = 0;
+    uint16_t RaidGameServerObjNum = 0;
 
-    // 32 bytes
-    typedef void(RedisManager::*RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
-    std::vector<std::thread> redisThreads;
-    std::vector<uint16_t> enhanceProbabilities = {100,90,80,70,60,50,40,30,20,10};
-    std::vector<unsigned int> mobExp = { 0,1,2,3,4,5,6,7,8,9,10 };
-    std::vector<std::string> itemType = {"equipment", "consumables", "materials" };
-
-    // 80 bytes
-    std::unordered_map<uint16_t, RECV_PACKET_FUNCTION> packetIDTable;
-
-    // 136 bytes (병목현상 발생하면 lock_guard,mutex 사용 또는 lockfree::queue의 크기를 늘리는 방법으로 전환)
-    boost::lockfree::queue<DataPacket> procSktQueue{1024};
-
-    // 242 bytes
-    sw::redis::ConnectionOptions connection_options;
-
-    // 5000 bytes
-    thread_local static std::mt19937 gen;
+    // 1 bytes
+    bool redisRun = false;
 };
 

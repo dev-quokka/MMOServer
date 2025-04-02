@@ -84,8 +84,8 @@ public:
 	void DeleteMob(Room* room_);
 
 	// Tick Rate Test 1 (vector) 방이 적을때는 2번보다 성능 좋을것으로 예상
-	bool CreateTickRateThread1();
-	void TickRateThread1();
+	//bool CreateTickRateThread1();
+	//void TickRateThread1();
 
 	// Tick Rate Test 2 (lockfree_queue) 안전하지만 성능 저하 예상 (지속적인 pop, push)
 	//bool CreateTickRateThread2();

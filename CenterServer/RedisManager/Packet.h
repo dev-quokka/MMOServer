@@ -238,6 +238,20 @@ struct RAID_RANKING_RESPONSE : PACKET_HEADER {
 	char reqScore[MAX_SCORE_SIZE + 1];
 };
 
+
+//  ---------------------------- Matching Server  ----------------------------
+
+struct RAID_MATCHING_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
+	uint16_t userPk;
+};
+
+struct RAID_MATCHING_RESPONSE_TO_CENTER_SERVER : PACKET_HEADER {
+	uint16_t roomNum;
+	uint16_t userNum1;
+	uint16_t userNum2;
+};
+
+
 enum class PACKET_ID : uint16_t {
 	//SYSTEM
 	USER_CONNECT_REQUEST = 1, // 유저는 2번으로 요청 

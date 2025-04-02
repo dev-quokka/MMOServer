@@ -16,7 +16,6 @@ void MatchingManager::Init(const uint16_t maxClientCount_, RedisManager* redisMa
 
     CreateMatchThread();
     CreateTimeCheckThread();
-    //CreateTickRateThread1();
 }
 
 bool MatchingManager::Insert(uint16_t userObjNum_, InGameUser* inGameUser_) {
@@ -54,7 +53,6 @@ bool MatchingManager::CancelMatching(uint16_t userObjNum_, InGameUser* inGameUse
 
     return false;
 }
-
 
 bool MatchingManager::CreateMatchThread() {
     matchRun = true;
