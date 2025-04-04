@@ -3,8 +3,8 @@
 #pragma comment(lib,"mswsock.lib") //AcceptEx를 사용하기 위한 것
 
 #define SERVER_IP "127.0.0.1"
-#define SERVER_PORT 9090
-#define PACKET_SIZE 1024
+#define CENTER_SERVER_PORT 9090
+#define PACKET_SIZE 512
 
 #include <jwt-cpp/jwt.h>
 #include <winsock2.h>
@@ -22,7 +22,7 @@
 class ServerProcessor {
 public:
     ~ServerProcessor() {
-     PostQueuedCompletionStatus(IOCPHandle, 0, 0, nullptr);
+        PostQueuedCompletionStatus(IOCPHandle, 0, 0, nullptr);
 
         if (serverProcThread.joinable()) {
             serverProcThread.join();
@@ -34,7 +34,7 @@ public:
         std::cout << "Server Proc Thread End" << std::endl;
     }
 
-	bool init(int16_t threadCnt_, std::shared_ptr<sw::redis::RedisCluster> redis_, MySQLManager* mysqlManager_) {
+    bool init(int16_t threadCnt_, std::shared_ptr<sw::redis::RedisCluster> redis_, MySQLManager* mysqlManager_) {
         WSADATA wsadata;
         int check = 0;
         threadCnt = threadCnt_;
@@ -67,14 +67,14 @@ public:
         SOCKADDR_IN addr;
         ZeroMemory(&addr, sizeof(addr));
         addr.sin_family = AF_INET;
-        addr.sin_port = htons(SERVER_PORT);
+        addr.sin_port = htons(CENTER_SERVER_PORT);
         inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr.s_addr);
 
-        std::cout << "Connect To Game Server" << std::endl;
+        std::cout << "Connect To Center Server" << std::endl;
 
         connect(serverIOSkt, (SOCKADDR*)&addr, sizeof(addr));
 
-        std::cout << "Connect Game Server Success" << std::endl;
+        std::cout << "Connect Center Server Success" << std::endl;
 
         redis = redis_;
 
@@ -85,8 +85,8 @@ public:
         Token = jwt::create()
             .set_issuer("session_server")
             .set_subject("ServerConnect")
-            .set_expires_at(std::chrono::system_clock::now() + 
-             std::chrono::seconds{ 1200 })
+            .set_expires_at(std::chrono::system_clock::now() +
+                std::chrono::seconds{ 1200 })
             .sign(jwt::algorithm::hs256{ JWT_SECRET });
 
         std::string tag = "{sessionserver}";
@@ -99,18 +99,17 @@ public:
 
         auto value = redis->hget(key, Token);
 
-		strncpy_s(iwReq.Token, Token.c_str(), 256);
+        strncpy_s(iwReq.Token, Token.c_str(), 256);
 
         send(serverIOSkt, (char*)&iwReq, sizeof(iwReq), 0);
         recv(serverIOSkt, recvBuf, PACKET_SIZE, 0);
-    
+
         std::cout << "Success to Check Token in Server" << std::endl;
 
         auto iwRes = reinterpret_cast<IM_SESSION_RESPONSE*>(recvBuf);
 
         if (!iwRes->isSuccess) {
             std::cout << "Fail to Check Token in Server" << std::endl;
-
             return false;
         }
 
@@ -127,14 +126,14 @@ public:
         std::cout << "Game Server Connect" << std::endl;
 
         return true;
-	}
+    }
 
     bool ConnUserRecv() {
         DWORD dwFlag = 0;
         DWORD dwRecvBytes = 0;
 
         ZeroMemory(tempOvLap, sizeof(OverlappedTCP));
-		memset(recvBuf, 0, PACKET_SIZE);   
+        memset(recvBuf, 0, PACKET_SIZE);
 
         tempOvLap->wsaBuf.len = MAX_SOCK;
         tempOvLap->wsaBuf.buf = recvBuf;
@@ -155,7 +154,7 @@ public:
 
     void CreateServerProcThread(uint16_t threadCnt_) {
         serverProcRun = true;
-        serverProcThread = std::thread([this]() {WorkRun();});
+        serverProcThread = std::thread([this]() {WorkRun(); });
     }
 
     void WorkRun() {
@@ -181,7 +180,7 @@ public:
             auto overlappedTCP = (OverlappedTCP*)lpOverlapped;
             int a = overlappedTCP->a;
 
-            if (a==1) {
+            if (a == 1) {
 
                 auto k = reinterpret_cast<PACKET_HEADER*>(overlappedTCP->wsaBuf.buf);
 
@@ -217,10 +216,8 @@ public:
                     }
 
                 }
-               ConnUserRecv();
-
+                ConnUserRecv();
             }
-
         }
     }
 
@@ -235,7 +232,7 @@ private:
 
     OverlappedTCP* tempOvLap;
 
-    std::thread serverProcThread; 
+    std::thread serverProcThread;
 
     std::shared_ptr<sw::redis::RedisCluster> redis;
 

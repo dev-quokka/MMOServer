@@ -85,6 +85,7 @@ void RedisManager::RedisThread() {
     DataPacket tempD(0, 0);
     ConnUser* TempConnUser = nullptr;
     char tempData[1024] = { 0 };
+
     while (redisRun) {
         if (procSktQueue.pop(tempD)) {
             std::memset(tempData, 0, sizeof(tempData));

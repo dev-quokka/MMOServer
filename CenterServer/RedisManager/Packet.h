@@ -241,16 +241,22 @@ struct RAID_RANKING_RESPONSE : PACKET_HEADER {
 
 //  ---------------------------- Matching Server  ----------------------------
 
-struct RAID_MATCHING_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
+struct MATCHING_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
+	uint16_t userPk;
+	uint16_t userGroupNum;
+};
+
+// 매칭 insert 성공하면 메시지 따로 전송 X
+
+struct MATCHING_FAIL_RESPONSE : PACKET_HEADER { // MATCHING SERVER TO CENTER SERVER
 	uint16_t userPk;
 };
 
-struct RAID_MATCHING_RESPONSE_TO_CENTER_SERVER : PACKET_HEADER {
+struct MATCHING_SUCCESS_RESPONSE : PACKET_HEADER {
 	uint16_t roomNum;
 	uint16_t userNum1;
 	uint16_t userNum2;
 };
-
 
 enum class PACKET_ID : uint16_t {
 	//SYSTEM

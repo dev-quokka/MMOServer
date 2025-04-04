@@ -13,8 +13,8 @@
 class ConnUser {
 public:
 
-	ConnUser(uint32_t bufferSize_, uint16_t connObjNum_, HANDLE sIOCPHandle_, OverLappedManager* overLappedManager_) 
-		: connObjNum(connObjNum_), sIOCPHandle(sIOCPHandle_), overLappedManager(overLappedManager_){
+	ConnUser(uint32_t bufferSize_, uint16_t connObjNum_, HANDLE sIOCPHandle_, OverLappedManager* overLappedManager_)
+		: connObjNum(connObjNum_), sIOCPHandle(sIOCPHandle_), overLappedManager(overLappedManager_) {
 		userSkt = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_IP, NULL, 0, WSA_FLAG_OVERLAPPED);
 
 		if (userSkt == INVALID_SOCKET) {
@@ -35,7 +35,7 @@ public:
 		closesocket(userSkt);
 	}
 
-public :
+public:
 	bool IsConn() { // check connection status
 		return isConn;
 	}
@@ -57,7 +57,7 @@ public :
 	}
 
 	bool WriteRecvData(const char* data_, uint32_t size_) {
-		return circularBuffer->Write(data_,size_);
+		return circularBuffer->Write(data_, size_);
 	}
 
 	PacketInfo ReadRecvData(char* readData_, uint32_t size_) { // readData_는 값을 불러오기 위한 빈 값
@@ -108,7 +108,7 @@ public :
 		DWORD bytes = 0;
 		DWORD flags = 0;
 
-		if (AcceptEx(ServerSkt_, userSkt, acceptBuf,0,sizeof(SOCKADDR_IN)+16, sizeof(SOCKADDR_IN) + 16,&bytes,(LPWSAOVERLAPPED)&acceptOvlap)==0) {
+		if (AcceptEx(ServerSkt_, userSkt, acceptBuf, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, &bytes, (LPWSAOVERLAPPED)&acceptOvlap) == 0) {
 			if (WSAGetLastError() != WSA_IO_PENDING) {
 				std::cout << "AcceptEx Error : " << GetLastError() << std::endl;
 				return false;
@@ -139,9 +139,9 @@ public :
 		DWORD dwFlag = 0;
 		DWORD dwRecvBytes = 0;
 
-		int tempR = WSARecv(userSkt,&(tempOvLap->wsaBuf),1,&dwRecvBytes, &dwFlag,(LPWSAOVERLAPPED)tempOvLap,NULL);
+		int tempR = WSARecv(userSkt, &(tempOvLap->wsaBuf), 1, &dwRecvBytes, &dwFlag, (LPWSAOVERLAPPED)tempOvLap, NULL);
 
-		if(tempR == SOCKET_ERROR && (WSAGetLastError() != ERROR_IO_PENDING))
+		if (tempR == SOCKET_ERROR && (WSAGetLastError() != ERROR_IO_PENDING))
 		{
 			std::cout << userSkt << " WSARecv() Fail : " << WSAGetLastError() << std::endl;
 			return false;
@@ -205,7 +205,6 @@ private:
 				(LPWSAOVERLAPPED)overlappedTCP,
 				NULL);
 		}
-
 	}
 
 	// 1 bytes
@@ -233,8 +232,8 @@ private:
 	std::unique_ptr<CircularBuffer> circularBuffer;
 
 	// 136 bytes 
-	boost::lockfree::queue<OverlappedTCP*> sendQueue{10};
+	boost::lockfree::queue<OverlappedTCP*> sendQueue{ 10 };
 
 	char recvBuf[1024] = { 0 };
-	char readData[1024] = {0};
+	char readData[1024] = { 0 };
 };
