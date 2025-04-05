@@ -5,11 +5,40 @@
 #include <ws2tcpip.h>
 #include <mswsock.h>
 #include <cstdint>
+#include <unordered_map>
 
 const uint32_t MAX_RECV_SIZE = 1024; // Set Max RECV Buf
 const uint32_t MAX_CIRCLE_SIZE = 8096;
 
 const short MAX_RETRY_COUNT = 3;
+
+std::string JWT_SECRET = "Cute_Quokka";
+
+//  ---------------------------- SERVER INFO  ----------------------------
+
+enum class ServerType : uint16_t
+{
+	// Server Type (1~)
+	GatewayServer = 1,
+	MatchingServer = 2,
+
+	// Channel Server (11~)
+	ChannelServer01 = 11,
+	ChannelServer02 = 12,
+
+	// Game Server (31~)
+	RaidGameServer01 = 31,
+};
+
+struct ServerAddress {
+	std::string ip;
+	uint16_t port;
+};
+
+std::unordered_map<ServerType, ServerAddress> ServerAddressMap;
+
+
+//  ---------------------------- SYSTEM  ----------------------------
 
 enum class TaskType {
 	ACCEPT,
