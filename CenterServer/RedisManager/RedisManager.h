@@ -1,5 +1,6 @@
 #pragma once
 
+#include <jwt-cpp/jwt.h>
 #include <winsock2.h>
 #include <windef.h>
 #include <cstdint>
@@ -66,7 +67,7 @@ private:
     // RAID
     void MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 매치 대기열 삽입
     void MatchFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 레이드 매칭 실패시 전달 받는 패킷
-    void MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Center Server to Matching Server
+    void MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Center Server to Matching Server
     void MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Matching Server to Center Server
 
 

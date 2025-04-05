@@ -21,15 +21,12 @@ struct RaidUserInfo {
 
 class Room {
 public:
-	Room(SOCKET* udpSkt_, UdpOverLappedManager* udpOverLappedManager_) {
+	Room() {
 		RaidUserInfo* ruInfo1 = new RaidUserInfo;
 		ruInfos.emplace_back(ruInfo1);
 
 		RaidUserInfo* ruInfo2 = new RaidUserInfo;
 		ruInfos.emplace_back(ruInfo2);
-
-		udpSkt = udpSkt_;
-		udpOverLappedManager = udpOverLappedManager_;
 	}
 	~Room() {
 		for (int i = 0; i < ruInfos.size(); i++) {
@@ -123,54 +120,14 @@ public:
 		else if (userNum == 0) return ruInfos[1]->userScore;
 	}
 
-	std::pair<unsigned int, unsigned int> Hit(uint16_t userNum_, unsigned int damage_) { // current mobhp, score
-		if (mobHp <= 0 || finishCheck.load()) {
-			return { 0,0 };
-		}
-
-		unsigned int score_;
-		unsigned int currentMobHp_;
-
-		if ((currentMobHp_ = mobHp.fetch_sub(damage_) - damage_) <= 0) { // Hit
-			finishCheck.store(true);
-			score_ = ruInfos[userNum_]->userScore.fetch_add(currentMobHp_ + damage_) + (currentMobHp_ + damage_);
-			std::cout << "몹 이미 죽음. 나머지 스코어 전송" << std::endl;
-			return { 0, score_ };
-		}
-
-		score_ = ruInfos[userNum_]->userScore.fetch_add(damage_) + damage_;
-
-		for (int i = 0; i < ruInfos.size(); i++) { // 나머지 유저들에게도 바뀐 몹 hp값 보내주기
-
-			memcpy(mobHpBuf, &currentMobHp_, sizeof(currentMobHp_));
-
-			sendto(*udpSkt, mobHpBuf, sizeof(mobHpBuf), 0, (sockaddr*)&ruInfos[i]->userAddr, sizeof(ruInfos[i]->userAddr));
-
-			std::cout << "현재 몹 HP : " << mobHp << std::endl;
-		}
-
-		return { currentMobHp_, score_ };
-	}
-
 private:
-	// 1 bytes
-	bool timeOver = false;
-	std::atomic<bool> finishCheck = false;
-	std::atomic<uint16_t> startCheck = 0;
+	// 32 bytes
+	std::vector<RaidUserInfo*> ruInfos;
 
 	// 2 bytes
 	uint16_t roomNum;
 
-	// 4 bytes
-	std::atomic<int> mobHp;
-	char mobHpBuf[sizeof(unsigned int)];
-
-	// 8 bytes
-	SOCKET* udpSkt;
-	MatchingManager* matchingManager;
-	UdpOverLappedManager* udpOverLappedManager;
-	std::chrono::time_point<std::chrono::steady_clock> endTime = std::chrono::steady_clock::now() + std::chrono::minutes(2); // 생성 되자마자 삭제 방지
-
-	// 32 bytes
-	std::vector<RaidUserInfo*> ruInfos;
+	// 1 bytes
+	bool timeOver = false;
+	std::atomic<uint16_t> startCheck = 0;
 };

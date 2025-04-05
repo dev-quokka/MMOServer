@@ -188,11 +188,12 @@ struct RAID_MATCHING_RESPONSE : PACKET_HEADER {
 
 struct RAID_READY_REQUEST : PACKET_HEADER {
 	std::string ip;
-	uint16_t roomNum;
 	uint16_t port;
+	uint16_t udpPort;
+	uint16_t roomNum;
 };
 
-struct RAID_TEAMINFO_REQUEST : PACKET_HEADER { // User To Server
+struct RAID_TEAMINFO_REQUEST : PACKET_HEADER {
 	bool imReady;
 	uint16_t roomNum;
 	uint16_t myNum;
@@ -205,7 +206,9 @@ struct RAID_TEAMINFO_RESPONSE : PACKET_HEADER {
 };
 
 struct RAID_START_REQUEST : PACKET_HEADER {
-	std::chrono::time_point<std::chrono::steady_clock> endTime;
+	std::string ip;
+	uint16_t port;
+	uint16_t roomNum;
 };
 
 struct RAID_HIT_REQUEST : PACKET_HEADER {
@@ -270,11 +273,10 @@ enum class MATCHING_ID : uint16_t {
 	MATCHING_RESPONSE = 12,
 	MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER = 13,
 	RAID_START_FAIL_REQUEST_TO_MATCHING_SERVER = 14
-
 };
 
 enum class PACKET_ID : uint16_t {
-	//SYSTEM
+	// SYSTEM (1~)
 	USER_CONNECT_REQUEST = 1, // 유저는 2번으로 요청 
 	USER_CONNECT_RESPONSE = 2,
 	USER_LOGOUT_REQUEST = 3, // 유저는 3번으로 요청 
