@@ -65,10 +65,15 @@ private:
 
     // RAID
     void MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 매치 대기열 삽입
+    void MatchFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 레이드 매칭 실패시 전달 받는 패킷
+    void MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Center Server to Matching Server
+    void MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Matching Server to Center Server
+
+
+
+
     void RaidReqTeamInfo(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 서로 팀 정보 요청 (상대 대기 확인)
-
     void RaidHit(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-
     void GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
     typedef void(RedisManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);

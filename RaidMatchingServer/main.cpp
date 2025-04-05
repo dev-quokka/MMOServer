@@ -22,7 +22,7 @@ int main() {
         std::cout << "Redis 에러 발생: " << err.what() << std::endl;
     }
 
-    MatchingManager matchingManager;
+	MatchingManager matchingManager;
 
-    return 0;
+	return 0;
 }

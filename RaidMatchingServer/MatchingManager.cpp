@@ -161,30 +161,30 @@ void MatchingManager::SendComplete() {
 //}
 
 bool MatchingManager::CreatePacketThread() {
-    packetRun = true;
-    packetThread = std::thread([this]() {PacketThread(); });
-    std::cout << "PacketThread Start" << std::endl;
-    return true;
+	packetRun = true;
+	packetThread = std::thread([this]() {PacketThread(); });
+	std::cout << "PacketThread Start" << std::endl;
+	return true;
 }
 
 void MatchingManager::PacketThread() {
     MatchingRoom* tempRoom;
     tbb::concurrent_hash_map<uint16_t, std::set<MatchingRoom*, MatchingRoomComp>>::accessor accessor;
 
-    while (packetRun) {
-        char* recvData = nullptr;
-        if (procQueue.pop(recvData)) { // Packet Exist
-            auto k = reinterpret_cast<MATCHING_REQUEST_TO_MATCHING_SERVER*>(recvData);
+	while (packetRun) {
+		char* recvData = nullptr;
+		if (procQueue.pop(recvData)) { // Packet Exist
+            auto k = reinterpret_cast<MATCHING_REQUEST*>(recvData);
 
-            if (!Insert(k->userPk, k->userGroupNum)) {
+            if (!Insert(k->userObjNum, k->userGroupNum)) {
                 // 중앙 서버로 매칭 실패 메시지 전달
 
             }
-        }
-        else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        }
-    }
+		}
+		else {
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		}
+	}
 }
 
 bool MatchingManager::Insert(uint16_t userPk_, uint16_t userGroupNum_) {
@@ -261,13 +261,12 @@ void MatchingManager::WorkThread() {
         if (overlappedEx->taskType == TaskType::RECV) {
             procQueue.push(overlappedEx->wsaBuf.buf); // Push Packet
             RecvData();
-
         }
         else if (overlappedEx->taskType == TaskType::NEWRECV) {
-            procQueue.push(overlappedEx->wsaBuf.buf); // Push Packet
-            RecvData();
             delete[] overlappedEx->wsaBuf.buf;
             delete overlappedEx;
+            procQueue.push(overlappedEx->wsaBuf.buf); // Push Packet
+            RecvData();
         }
         else if (overlappedEx->taskType == TaskType::SEND) {
             overlappedManager->returnOvLap(overlappedEx);
@@ -305,16 +304,16 @@ void MatchingManager::MatchingThread() {
                                 accessor1->second.erase(accessor1->second.begin());
 
                                 { // 두명 유저 방 만들어서 넣어주기
-                                    MATCHING_SUCCESS_RESPONSE rMatchingResPacket;
+                                    MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER rMatchingResPacket;
 
                                     // Send to User1 With User2 Info
-                                    rMatchingResPacket.PacketId = (uint16_t)MATCHING_ID::MATCHING_SUCCESS_RESPONSE;
-                                    rMatchingResPacket.PacketLength = sizeof(MATCHING_SUCCESS_RESPONSE);
+                                    rMatchingResPacket.PacketId = (uint16_t)MATCHING_ID::MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER;
+                                    rMatchingResPacket.PacketLength = sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER);
                                     rMatchingResPacket.roomNum = tempRoomNum;
-                                    rMatchingResPacket.userNum1 = tempMatching1->userObjNum;
-                                    rMatchingResPacket.userNum2 = tempMatching2->userObjNum;
+									rMatchingResPacket.userObjNum1 = tempMatching1->userObjNum;
+									rMatchingResPacket.userObjNum2 = tempMatching2->userObjNum;
 
-                                    PushSendMsg(sizeof(MATCHING_SUCCESS_RESPONSE), (char*)&rMatchingResPacket);
+									PushSendMsg(sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER), (char*)&rMatchingResPacket);
                                 }
 
                                 delete tempMatching1;
@@ -352,16 +351,16 @@ void MatchingManager::MatchingThread() {
                             accessor1->second.erase(accessor1->second.begin());
 
                             { // 두명 유저 방 만들어서 넣어주기
-                                MATCHING_SUCCESS_RESPONSE rMatchingResPacket;
+                                MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER rMatchingResPacket;
 
                                 // Send to User1 With User2 Info
-                                rMatchingResPacket.PacketId = (uint16_t)MATCHING_ID::MATCHING_SUCCESS_RESPONSE;
-                                rMatchingResPacket.PacketLength = sizeof(MATCHING_SUCCESS_RESPONSE);
+                                rMatchingResPacket.PacketId = (uint16_t)MATCHING_ID::MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER;
+                                rMatchingResPacket.PacketLength = sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER);
                                 rMatchingResPacket.roomNum = tempRoomNum;
-                                rMatchingResPacket.userNum1 = tempMatching1->userObjNum;
-                                rMatchingResPacket.userNum2 = tempMatching2->userObjNum;
+                                rMatchingResPacket.userObjNum1 = tempMatching1->userObjNum;
+                                rMatchingResPacket.userObjNum2 = tempMatching2->userObjNum;
 
-                                PushSendMsg(sizeof(MATCHING_SUCCESS_RESPONSE), (char*)&rMatchingResPacket);
+                                PushSendMsg(sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER), (char*)&rMatchingResPacket);
                             }
 
                             delete tempMatching1;

@@ -534,16 +534,33 @@ void RedisManager::MoveEquipment(uint16_t connObjNum_, uint16_t packetSize_, cha
 void RedisManager::MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
-    RAID_MATCHING_RESPONSE raidMatchResPacket;
-    raidMatchResPacket.PacketId = (uint16_t)PACKET_ID::RAID_MATCHING_RESPONSE;
-    raidMatchResPacket.PacketLength = sizeof(RAID_MATCHING_RESPONSE);
+    MATCHING_REQUEST matchReqPacket;
+    matchReqPacket.PacketId = (uint16_t)MATCHING_ID::MATCHING_REQUEST;
+    matchReqPacket.PacketLength = sizeof(MATCHING_REQUEST);
+    matchReqPacket.userObjNum = connObjNum_;
+    matchReqPacket.userGroupNum = tempUser->GetLevel() / 3 + 1; // 설정해둔 그룹 번호 만들어서 전달
 
-    if (matchingManager->Insert(connObjNum_, tempUser)) { // Insert Into Mathcing Queue Success
-        raidMatchResPacket.insertSuccess = true;
-    }
-    else raidMatchResPacket.insertSuccess = false; // Matching Queue Full
+    connUsersManager->FindUser(MatchingServerObjNum)->PushSendMsg(sizeof(MATCHING_REQUEST), (char*)&matchReqPacket);
+}
 
-    connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(RAID_MATCHING_RESPONSE), (char*)&raidMatchResPacket);
+void RedisManager::MatchFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    auto matchResPacket = reinterpret_cast<MATCHING_RESPONSE*>(pPacket_);
+
+    RAID_MATCHING_RESPONSE matchResToUserPacket;
+    matchResToUserPacket.PacketId = (uint16_t)PACKET_ID::RAID_MATCHING_RESPONSE;
+    matchResToUserPacket.PacketLength = sizeof(RAID_MATCHING_RESPONSE);
+    matchResToUserPacket.insertSuccess = matchResPacket->isSuccess;
+
+    connUsersManager->FindUser(matchResPacket->userObjNum)->PushSendMsg(sizeof(MATCHING_REQUEST), (char*)&matchResToUserPacket);
+}
+
+void RedisManager::MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    auto matchSuccessReqPacket = reinterpret_cast<MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER*>(pPacket_);
+
+}
+
+void RedisManager::MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+
 }
 
 void RedisManager::RaidReqTeamInfo(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {

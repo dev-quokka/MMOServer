@@ -82,7 +82,7 @@ private:
 	tbb::concurrent_hash_map<uint16_t, std::set<MatchingRoom*, MatchingRoomComp>> matchingMap; // {Level/3 + 1 (0~2 = 1, 3~5 = 2 ...), UserSkt}
 
 	// 512 bytes
-	char recvBuf[PACKET_SIZE];
+	char recvBuf[PACKET_SIZE] = {0};
 
 	// 136 bytes
 	boost::lockfree::queue<char*> procQueue{ 10 };
