@@ -83,7 +83,8 @@
 <br>
 
 - #### Raid End (Mob HP 0)
-![Raid mob dead drawio](https://github.com/user-attachments/assets/75b87074-1368-4c1e-9e1f-5430e699937f)
+![Raid mob dead drawio](https://github.com/user-attachments/assets/20b7c6db-6fc4-4d8e-a8cb-eabe75cf01da)
+
 
 
 <br>
