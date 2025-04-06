@@ -65,11 +65,11 @@
 - #### Raid Matching
 ![Raid Start drawio](https://github.com/user-attachments/assets/f69bc830-a053-4202-9862-11bdd400a353)
 
+<br>
 
-<!--
 - #### Raid Start
-![Raid Start drawio](https://github.com/user-attachments/assets/c6b74c45-9f12-4ffe-bfbb-c6615d92d8e0)
--->
+![Raid Game Start drawio](https://github.com/user-attachments/assets/b5ec0ebd-1eec-4303-9732-90ae7eb61fbe)
+
 
 <br>
 
