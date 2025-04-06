@@ -68,7 +68,8 @@
 <br>
 
 - #### Raid Start
-![Raid Game Start drawio](https://github.com/user-attachments/assets/b5ec0ebd-1eec-4303-9732-90ae7eb61fbe)
+![Raid Game Start drawio](https://github.com/user-attachments/assets/3e01f9e7-8278-41f5-a659-54a641577285)
+
 
 
 <br>
