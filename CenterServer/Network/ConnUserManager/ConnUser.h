@@ -207,33 +207,34 @@ private:
 		}
 	}
 
-	// 1 bytes
-	bool isConn = false;
-	std::atomic<uint16_t> sendQueueSize{ 0 };
+	// 1024 bytes
+	char recvBuf[1024] = { 0 };
+	char readData[1024] = { 0 };
 
-	// 2 bytes
-	uint16_t connObjNum;
+	// 136 bytes 
+	boost::lockfree::queue<OverlappedTCP*> sendQueue{ 10 };
 
-	// 4 bytes
-	uint32_t userPk;
+	// 120 bytes
+	std::unique_ptr<CircularBuffer> circularBuffer;
+
+	// 64 bytes
+	char acceptBuf[64] = { 0 };
+
+	// 56 bytes
+	OverlappedTCP acceptOvlap;
 
 	// 8 bytes
 	SOCKET userSkt;
 	HANDLE sIOCPHandle;
 	OverLappedManager* overLappedManager;
 
-	// 56 bytes
-	OverlappedTCP acceptOvlap;
+	// 4 bytes
+	uint32_t userPk;
 
-	// 64 bytes
-	char acceptBuf[64] = { 0 };
+	// 2 bytes
+	uint16_t connObjNum;
 
-	// 120 bytes
-	std::unique_ptr<CircularBuffer> circularBuffer;
-
-	// 136 bytes 
-	boost::lockfree::queue<OverlappedTCP*> sendQueue{ 10 };
-
-	char recvBuf[1024] = { 0 };
-	char readData[1024] = { 0 };
+	// 1 bytes
+	bool isConn = false;
+	std::atomic<uint16_t> sendQueueSize{ 0 };
 };

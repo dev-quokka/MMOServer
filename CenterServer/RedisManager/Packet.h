@@ -73,10 +73,11 @@ struct SYNCRONIZE_LOGOUT_REQUEST : PACKET_HEADER {
 };
 
 struct MOVE_SERVER_REQUEST : PACKET_HEADER {
-	uint16_t serverNum;
+	std::string channelName;
 };
 
-struct MOVE_SERVER_REQUEST : PACKET_HEADER {
+struct MOVE_SERVER_RESPONSE : PACKET_HEADER {
+	std::string token;
 	std::string ip;
 	uint16_t port;
 };

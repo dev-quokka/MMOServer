@@ -214,7 +214,43 @@ void RedisManager::ImSessionRequest(uint16_t connObjNum_, uint16_t packetSize_, 
 }
 
 void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) { // 채널 서버 이동 요청
+    auto MoveCHReqPacket = reinterpret_cast<MOVE_SERVER_REQUEST*>(pPacket_);
+    MOVE_SERVER_RESPONSE moveCHResPacket;
 
+    if (MoveCHReqPacket->channelName == "CH_01") {
+        moveCHResPacket.PacketId = (uint16_t)PACKET_ID::MOVE_SERVER_RESPONSE;
+        moveCHResPacket.PacketLength = sizeof(MOVE_SERVER_RESPONSE);
+        moveCHResPacket.ip = ServerAddressMap[ServerType::ChannelServer01].ip;
+        moveCHResPacket.port = ServerAddressMap[ServerType::ChannelServer01].port;
+    }
+    else if (MoveCHReqPacket->channelName == "CH_02") {
+        moveCHResPacket.PacketId = (uint16_t)PACKET_ID::MOVE_SERVER_RESPONSE;
+        moveCHResPacket.PacketLength = sizeof(MOVE_SERVER_RESPONSE);
+        moveCHResPacket.ip = ServerAddressMap[ServerType::ChannelServer02].ip;
+        moveCHResPacket.port = ServerAddressMap[ServerType::ChannelServer02].port;
+    }
+
+    // 채널 이동간 보안을 위한 JWT Token 생성
+    std::string token = jwt::create()
+        .set_issuer("Center_Server")
+        .set_subject("Move_Server")
+        .set_payload_claim("user_id", jwt::claim(inGameUserManager->GetInGameUserByObjNum(connObjNum_)->GetId()))
+        .set_expires_at(std::chrono::system_clock::now() +
+            std::chrono::seconds{ 300 })
+        .sign(jwt::algorithm::hs256{ JWT_SECRET });
+
+    std::string tag = "{" + std::to_string(static_cast<uint16_t>(ServerType::ChannelServer01)) + "}";
+    std::string key = "jwtcheck:" + tag;
+
+    auto pipe = redis->pipeline(tag);
+
+    pipe.hset(key, token, std::to_string(inGameUserManager->GetInGameUserByObjNum(connObjNum_)->GetPk())) // 레디스 클러스터에 해당 Token을 key로 유저 PK 저장
+        .expire(key, 300);
+
+    pipe.exec();
+
+    moveCHResPacket.token = token;
+    connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_SERVER_RESPONSE), (char*)&moveCHResPacket); // 유저에게 이동할 채널 정보와 JWT Token 전달
 }
 
 
@@ -570,7 +606,7 @@ void RedisManager::MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char
     raidReadyReqPacket.ip = ServerAddressMap[ServerType::RaidGameServer01].ip;
     raidReadyReqPacket.port = ServerAddressMap[ServerType::RaidGameServer01].port;
 
-    { // 매칭된 유저들에게 선택된 게임 서버의 ip, port와 해당 서버에 접속하기 위한 jwt 토큰 전달 (유저가 많아지면 vector 이용 고려)
+    { // 매칭된 유저들에게 선택된 게임 서버의 ip, port와 채널 이동 간 보안을 위한 JWT Token 생성 (유저가 많아지면 vector 이용 고려)
         std::string token1 = jwt::create()
             .set_issuer("Center_Server")
             .set_subject("Connect_GameServer")
@@ -586,7 +622,7 @@ void RedisManager::MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char
         auto pipe = redis->pipeline(tag);
 
         pipe.hset(key, token1, std::to_string(matchSuccessReqPacket->userObjNum1))
-            .expire(key, 300); // set ttl 1 hour
+            .expire(key, 300);
 
         connUsersManager->FindUser(matchSuccessReqPacket->userObjNum1)->PushSendMsg(sizeof(MATCHING_REQUEST), (char*)&raidReadyReqPacket);
 
@@ -600,7 +636,7 @@ void RedisManager::MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char
             .sign(jwt::algorithm::hs256{ JWT_SECRET });
 
         pipe.hset(key, token2, std::to_string(matchSuccessReqPacket->userObjNum2))
-            .expire(key, 15); // set ttl 1 hour
+            .expire(key, 150);
 
         connUsersManager->FindUser(matchSuccessReqPacket->userObjNum2)->PushSendMsg(sizeof(MATCHING_REQUEST), (char*)&raidReadyReqPacket);
 
