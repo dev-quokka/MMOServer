@@ -61,7 +61,8 @@
 <br>
 
 - #### Move Channel
-![Move Channel drawio](https://github.com/user-attachments/assets/1099b9eb-6561-4860-8365-b6ebaac191c9)
+![Move Channel drawio](https://github.com/user-attachments/assets/50118682-ae6c-483a-8ffa-d444a9b1351f)
+
 
 
 <br>
