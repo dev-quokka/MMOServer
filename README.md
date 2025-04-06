@@ -58,7 +58,10 @@
 - #### User Connect
 ![Game Server Connect drawio](https://github.com/user-attachments/assets/0f726d5d-8282-4270-b0d4-b0ed3d378e5b)
 
+<br>
 
+- #### Move Channel
+![Move Channel drawio](https://github.com/user-attachments/assets/654bd712-3da0-4b72-98f4-eb9391bcacfc)
 
 
 <br>
