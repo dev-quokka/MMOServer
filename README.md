@@ -61,7 +61,7 @@
 <br>
 
 - #### Move Channel
-![Move Channel drawio](https://github.com/user-attachments/assets/654bd712-3da0-4b72-98f4-eb9391bcacfc)
+![Move Channel drawio](https://github.com/user-attachments/assets/c11ffb0a-b6c1-4e05-bf41-ccdf58776276)
 
 
 <br>
@@ -73,8 +73,6 @@
 
 - #### Raid Start
 ![Raid Game Start drawio](https://github.com/user-attachments/assets/6a371c20-4ef5-4c1b-beaf-baa65cbcfd7c)
-
-
 
 
 <br>
