@@ -7,8 +7,6 @@
 #include "UdpOverLappedManager.h"
 #include "ConnUsersManager.h"
 #include "InGameUserManager.h"
-#include "RoomManager.h"
-#include "MatchingManager.h"
 #include "RedisManager.h"
 
 #include <winsock2.h>
@@ -31,6 +29,7 @@ class QuokkaServer {
 public:
     QuokkaServer(uint16_t maxClientCount_) : maxClientCount(maxClientCount_), AcceptQueue(maxClientCount_), WaittingQueue(maxClientCount_) {}
 
+    void SetServerAddressMap();
     bool init(const uint16_t MaxThreadCnt_, int port_);
     bool StartWork();
     void ServerEnd();
@@ -59,13 +58,11 @@ private:
     SOCKET serverSkt = INVALID_SOCKET;
     HANDLE sIOCPHandle = INVALID_HANDLE_VALUE;
     SOCKET udpSkt = INVALID_SOCKET;
-
+ 
     OverLappedManager* overLappedManager;
     UdpOverLappedManager* udpOverLappedManager;
     ConnUsersManager* connUsersManager;
     InGameUserManager* inGameUserManager;
-    RoomManager* roomManager;
-    MatchingManager* matchingManager;
     RedisManager* redisManager;
 
     std::thread udpWorkThread;

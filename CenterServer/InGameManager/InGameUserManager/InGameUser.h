@@ -7,7 +7,7 @@
 
 class InGameUser {
 public:
-	InGameUser(std::vector<uint16_t>& expLimit_) : expLimit(expLimit_) {}
+	InGameUser(std::vector<uint16_t> &expLimit_) : expLimit(expLimit_) {}
 
 	uint16_t GetLevel() {
 		return userLevel;
