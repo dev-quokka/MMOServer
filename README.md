@@ -60,7 +60,7 @@
 <br>
 
 - #### Move Server
-![Move Channel drawio](https://github.com/user-attachments/assets/7dc1e730-1824-469a-ae85-3e91a71f6da6)
+![Move Channel drawio](https://github.com/user-attachments/assets/ab0ea345-f916-4371-a4da-82483e784ca8)
 
 
 
