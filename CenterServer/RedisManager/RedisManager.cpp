@@ -213,6 +213,10 @@ void RedisManager::ImSessionRequest(uint16_t connObjNum_, uint16_t packetSize_, 
     }
 }
 
+void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) { // 채널 서버 이동 요청
+
+}
+
 
 //  ---------------------------- USER_STATUS  ----------------------------
 
@@ -571,7 +575,7 @@ void RedisManager::MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char
             .set_issuer("Center_Server")
             .set_subject("Connect_GameServer")
             .set_payload_claim("user_id", jwt::claim(std::to_string(matchSuccessReqPacket->userObjNum1)))  // 유저 고유번호
-            .set_payload_claim("room_id", jwt::claim(std::to_string(tempRoomNum)))  // 방 번호 (공통
+            .set_payload_claim("room_id", jwt::claim(std::to_string(tempRoomNum)))  // 방 번호
             .set_expires_at(std::chrono::system_clock::now() +
                 std::chrono::seconds{ 300 })
             .sign(jwt::algorithm::hs256{ JWT_SECRET });
@@ -590,7 +594,7 @@ void RedisManager::MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char
             .set_issuer("Center_Server")
             .set_subject("Connect_GameServer")
             .set_payload_claim("user_id", jwt::claim(std::to_string(matchSuccessReqPacket->userObjNum2)))  // 유저 고유번호
-            .set_payload_claim("room_id", jwt::claim(std::to_string(tempRoomNum)))  // 방 번호 (공통
+            .set_payload_claim("room_id", jwt::claim(std::to_string(tempRoomNum)))  // 방 번호
             .set_expires_at(std::chrono::system_clock::now() +
                 std::chrono::seconds{ 300 })
             .sign(jwt::algorithm::hs256{ JWT_SECRET });

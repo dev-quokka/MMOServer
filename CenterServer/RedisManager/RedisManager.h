@@ -48,6 +48,7 @@ private:
     void UserDisConnect(uint16_t connObjNum_); // Abnormal Disconnect (Set Long Time TTL)
     void ServerEnd(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void ImSessionRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Session Server Socket Check
+    void MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
     // USER STATUS
     void ExpUp(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);

@@ -62,8 +62,9 @@ public:
 
 		std::string query_s = "UPDATE USERS left join Ranking r on USERS.name = r.name SET USERS.name = '" +
 			userData["userId"] + "', USERS.exp = " + userData["exp"] +
-			", USERS.level = " + userData["level"] +
-			", USERS.last_login = current_timestamp, r.score =" + userData["raidScore"] +
+			", USERS.level = " + userData["level"] + ", USERS.last_login = current_timestamp" +
+			", USERS.server = " + userData["server"] + ", USERS.channel = " + userData["channel"] +
+			",r.score = " + userData["raidScore"] +
 			" WHERE USERS.id = " + std::to_string(userPk_);
 
 		const char* Query = query_s.c_str();
@@ -224,7 +225,7 @@ public:
 
 	std::pair<uint32_t, USERINFO> GetUserInfoById(std::string userId_) {
 		std::string query_s =
-			"SELECT u.id, u.level, u.exp, u.last_login, r.score From Users u "
+			"SELECT u.id, u.level, u.exp, u.last_login, u.server, u.channel, r.score From Users u "
 			"left join Ranking r on u.name = r.name WHERE u.name = '" + userId_ + "'";
 
 		const char* Query = query_s.c_str();
@@ -251,7 +252,9 @@ public:
 					.hset(key, "exp", Row[2])
 					.hset(key, "userId", userId_)
 					.hset(key, "lastlogin", Row[3])
-					.hset(key, "raidScore", Row[4])
+					.hset(key, "server", Row[4])
+					.hset(key, "channel", Row[5])
+					.hset(key, "raidScore", Row[6])
 					.hset(key, "status", "Online")
 					.expire(key, 3600);
 

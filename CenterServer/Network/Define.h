@@ -14,6 +14,13 @@ const short MAX_RETRY_COUNT = 3;
 
 std::string JWT_SECRET = "Cute_Quokka";
 
+// ---------------------------- MYSQL  ----------------------------
+//CenterServer = 1
+//ChannelServer01 = 10~, 1~
+//ChannelServer02 = 20~, 2~
+
+
+
 //  ---------------------------- SERVER INFO  ----------------------------
 
 enum class ServerType : uint16_t

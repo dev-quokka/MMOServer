@@ -72,6 +72,16 @@ struct SYNCRONIZE_LOGOUT_REQUEST : PACKET_HEADER {
 	uint16_t userPk;
 };
 
+struct MOVE_SERVER_REQUEST : PACKET_HEADER {
+	uint16_t serverNum;
+};
+
+struct MOVE_SERVER_REQUEST : PACKET_HEADER {
+	std::string ip;
+	uint16_t port;
+};
+
+
 //  ---------------------------- USER STATUS  ----------------------------
 
 struct EXP_UP_REQUEST : PACKET_HEADER {
@@ -284,6 +294,8 @@ enum class PACKET_ID : uint16_t {
 	IM_SESSION_RESPONSE = 5,
 	USER_FULL_REQUEST = 6, // SERVER TO USER
 	WAITTING_NUMBER_REQUSET = 7, // SERVER TO USER
+	MOVE_SERVER_REQUEST = 8,
+	MOVE_SERVER_RESPONSE = 9,
 
 	// USER STATUS (21~)
 	EXP_UP_REQUEST = 21,  // 유저는 4번으로 요청 
