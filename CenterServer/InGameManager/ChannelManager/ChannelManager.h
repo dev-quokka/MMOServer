@@ -6,9 +6,9 @@
 #include <thread>
 #include <sw/redis++/redis++.h>
 
-#include "Room.h"
+struct ChannelUser {
 
-class InGameUser;
+};
 
 class ChannelManager {
 public:
@@ -18,5 +18,6 @@ public:
 
 private:
 	// 80 bytes
-	std::unordered_map<uint16_t, Room*> channelMap;
+	std::unordered_map<ServerType, std::vector<uint16_t>> channelMap; // key : 서버명, value: 각 채널의 인원 수를 저장하는 vector
+
 };
