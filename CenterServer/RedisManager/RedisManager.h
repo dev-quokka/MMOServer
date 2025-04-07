@@ -44,7 +44,8 @@ private:
     void UserDisConnect(uint16_t connObjNum_); // Abnormal Disconnect (Set Long Time TTL)
     void ServerEnd(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void ImSessionRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Session Server Socket Check
-    void MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 서버당 유저 수 요청 (유저가 서버 이동 화면으로 오면 전송)
+    void MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 채널 서버 이동 요청
 
     // USER STATUS
     void ExpUp(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
@@ -64,8 +65,8 @@ private:
     // RAID
     void MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 매치 대기열 삽입
     void MatchFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 레이드 매칭 실패시 전달 받는 패킷
-	void MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Center Server to Matching Server
-	void MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Matching Server to Center Server
+    void MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Center Server to Matching Server
+    void MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Matching Server to Center Server
     void GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
     typedef void(RedisManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);

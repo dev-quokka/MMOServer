@@ -11,6 +11,7 @@ void RedisManager::init(const uint16_t RedisThreadCnt_, const uint16_t maxClient
     packetIDTable[(uint16_t)PACKET_ID::USER_CONNECT_REQUEST] = &RedisManager::UserConnect;
     packetIDTable[(uint16_t)PACKET_ID::USER_LOGOUT_REQUEST] = &RedisManager::Logout;
     packetIDTable[(uint16_t)PACKET_ID::IM_SESSION_REQUEST] = &RedisManager::ImSessionRequest;
+    packetIDTable[(uint16_t)PACKET_ID::SERVER_USER_COUNTS_REQUEST] = &RedisManager::SendServerUserCounts;
     packetIDTable[(uint16_t)PACKET_ID::MOVE_SERVER_REQUEST] = &RedisManager::MoveServer;
 
     // USER STATUS
@@ -211,7 +212,31 @@ void RedisManager::ImSessionRequest(uint16_t connObjNum_, uint16_t packetSize_, 
     }
 }
 
-void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) { // 채널 서버 이동 요청
+void RedisManager::SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    SERVER_USER_COUNTS_RESPONSE serverUserCountsResPacket;
+    serverUserCountsResPacket.PacketId = (uint16_t)PACKET_ID::SERVER_USER_COUNTS_RESPONSE;
+    serverUserCountsResPacket.PacketLength = sizeof(SERVER_USER_COUNTS_RESPONSE);
+    std::vector<std::atomic<uint16_t>> tempV = channelManager->getChannelVector();
+
+    char* tempC = new char[MAX_SERVER_USERS + 1];
+    char* tc = tempC;
+    uint16_t cnt = tempV.size();
+
+    for (int i = 1; i <= cnt; i++) {
+        uint16_t userCount = tempV[i].load();
+        memcpy(tc, (char*)&userCount, sizeof(uint16_t));
+        tc += sizeof(uint16_t);
+    }
+
+    serverUserCountsResPacket.serverCount = cnt;
+    std::memcpy(serverUserCountsResPacket.serverUserCnt, tempC, MAX_SERVER_USERS + 1);
+
+    connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(RAID_RANKING_RESPONSE), (char*)&serverUserCountsResPacket);
+
+    delete[] tempC;
+}
+
+void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto MoveCHReqPacket = reinterpret_cast<MOVE_SERVER_REQUEST*>(pPacket_);
     MOVE_SERVER_RESPONSE moveCHResPacket;
     std::string tag;

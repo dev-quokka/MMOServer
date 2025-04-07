@@ -1,7 +1,7 @@
 #include "ChannelManager.h"
 
 bool ChannelManager::init() {
-	channelVector.resize(6);
+	channelVector.resize(7); // Ã¤³Î¼ö + 1
 	for (auto& c : channelVector) c.store(0);
 	return true;
 }

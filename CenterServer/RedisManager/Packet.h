@@ -10,6 +10,7 @@
 const uint16_t RANKING_USER_COUNT = 3; // 몇명씩 유저 랭킹 정보 가져올건지
 
 const int MAX_USER_ID_LEN = 32;
+const int MAX_SERVER_USERS = 128; // 서버 유저 수 전달 패킷
 const int MAX_JWT_TOKEN_LEN = 256;
 const int MAX_SCORE_SIZE = 512;
 
@@ -72,6 +73,15 @@ struct SYNCRONIZE_LOGOUT_REQUEST : PACKET_HEADER {
 	uint16_t userPk;
 };
 
+struct SERVER_USER_COUNTS_REQUEST : PACKET_HEADER {
+
+};
+
+struct SERVER_USER_COUNTS_RESPONSE : PACKET_HEADER {
+	char serverUserCnt[MAX_SERVER_USERS + 1];
+	uint16_t serverCount;
+};
+
 struct MOVE_SERVER_REQUEST : PACKET_HEADER {
 	std::string channelName;
 };
@@ -81,7 +91,6 @@ struct MOVE_SERVER_RESPONSE : PACKET_HEADER {
 	std::string ip;
 	uint16_t port;
 };
-
 
 //  ---------------------------- USER STATUS  ----------------------------
 
@@ -295,8 +304,10 @@ enum class PACKET_ID : uint16_t {
 	IM_SESSION_RESPONSE = 5,
 	USER_FULL_REQUEST = 6, // SERVER TO USER
 	WAITTING_NUMBER_REQUSET = 7, // SERVER TO USER
-	MOVE_SERVER_REQUEST = 8,
-	MOVE_SERVER_RESPONSE = 9,
+	SERVER_USER_COUNTS_REQUEST = 8,
+	SERVER_USER_COUNTS_RESPONSE = 9,
+	MOVE_SERVER_REQUEST = 10,
+	MOVE_SERVER_RESPONSE = 11,
 
 	// USER STATUS (21~)
 	EXP_UP_REQUEST = 21,  // 유저는 4번으로 요청 
