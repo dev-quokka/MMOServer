@@ -5,6 +5,7 @@
 #include <ws2tcpip.h>
 #include <mswsock.h>
 #include <cstdint>
+#include <string>
 #include <unordered_map>
 
 const uint32_t MAX_RECV_SIZE = 1024; // Set Max RECV Buf
@@ -23,18 +24,32 @@ std::string JWT_SECRET = "Cute_Quokka";
 
 //  ---------------------------- SERVER INFO  ----------------------------
 
-enum class ServerType : uint16_t
-{
+enum class ServerType : uint16_t { // 중앙 서버만 사용하는 번호
 	// Server Type (1~)
 	GatewayServer = 1,
 	MatchingServer = 2,
 
 	// Channel Server (11~)
-	ChannelServer01 = 11,
-	ChannelServer02 = 12,
+	ChannelServer11 = 11,
+	ChannelServer12 = 12,
+	ChannelServer13 = 13,
 
-	// Game Server (31~)
+	ChannelServer21 = 21,
+	ChannelServer22 = 22,
+	ChannelServer23 = 23,
+
+	// Game Server (51~)
 	RaidGameServer01 = 31,
+};
+
+enum class ChannelType : uint16_t {
+	CH_11 = 1, // 1-1서버
+	CH_12 = 2, // 1-2서버
+	CH_13 = 3, // 1-3서버
+
+	CH_21 = 4, // 2-1서버
+	CH_22 = 5, // 2-2서버
+	CH_23 = 6, // 2-3서버
 };
 
 struct ServerAddress {
