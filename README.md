@@ -32,7 +32,7 @@
 
 ### ㅇCenter Server - User Connection Management & Server Migration with JWT Issuance
    - 유저 게임 접속 관리 및 인증 처리
-   - 채널 서버별 유저 수 상태 관리 및 전
+   - 채널 서버별 유저 수 상태 관리 및 전달
    - 레이드 매칭 요청 수신 및 매칭 완료 후 게임 서버 주소 전달
    - 서버 이동 시 JWT 토큰 생성 및 발급을 통한 보안 강화
 
