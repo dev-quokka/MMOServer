@@ -32,9 +32,9 @@
 <br> 
 
 ### ㅇCenter Server - User Connection Management & Server Migration with JWT Issuance
-   - 유저 접속을 관리하고 인증 처리
+   - 유저 게임 접속을 관리하고 인증 처리
    - 각 채널 서버의 유저 수를 실시간으로 관리
-   - 유저의 레이드 매칭 시작 요청을 수신하여 매칭 서버로 전달하고, 매칭 완료 후 매칭된 유저들에게 게임 서버 주소를 전송
+   - 레이드 매칭 요청을 수신하여 매칭 서버로 전달하고, 매칭 완료 후 게임 서버 주소를 유저에게 전송
    - 유저가 다른 서버로 이동할 때, 보안 인증을 위해 JWT 토큰을 생성 및 발급
 
 <br> 
@@ -44,9 +44,9 @@
 <br> 
 
 ### ㅇGateway Server - User Authentication & Connection Game Server For Syncronization
-   - JWT 토큰을 활용한 유저 인증 보안 강화
    - 유저의 게임 시작 요청시, MySQL에서 유저 정보 및 인벤토리 데이터를 Redis Cluster로 load 
    - 유저 로그아웃시, Redis Cluster에 업데이트된 데이터를 MySQL에 동기화 (Batch Update)
+   - JWT 토큰을 활용한 유저 인증 보안 강화
 
 <br> 
 
