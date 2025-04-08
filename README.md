@@ -82,6 +82,10 @@
 <br>  
 
 ## [Flow Chart]
+- #### MMO Server
+  ![MMO SERVER Flow Chart 2 drawio](https://github.com/user-attachments/assets/6d613537-d460-410a-bf5c-fb401fb5eb41)
+
+<br>
 
 - #### User Connect
 ![Game Server Connect drawio](https://github.com/user-attachments/assets/0f726d5d-8282-4270-b0d4-b0ed3d378e5b)
@@ -90,8 +94,6 @@
 
 - #### Move Server
 ![Move Channel drawio](https://github.com/user-attachments/assets/ab0ea345-f916-4371-a4da-82483e784ca8)
-
-
 
 
 <br>
