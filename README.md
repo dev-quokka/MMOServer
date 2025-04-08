@@ -27,35 +27,44 @@
   #### 4. 유저 시스템
     - Gateway Server에서 생성된 JWT 토큰 검증을 통해 접속 요청 유저를 이중 확인하여 보안성 강화
     - 경험치 증가, 레벨업 알고리즘 구현
-    - 레벨별 요구 경험치량 설정
 
 <br> 
 
 ### ㅇCenter Server - User Connection Management & Server Migration with JWT Issuance
-   - 유저 게임 접속을 관리하고 인증 처리
-   - 각 채널 서버의 유저 수를 실시간으로 관리
-   - 레이드 매칭 요청을 수신하여 매칭 서버로 전달하고, 매칭 완료 후 게임 서버 주소를 유저에게 전송
-   - 유저가 다른 서버로 이동할 때, 보안 인증을 위해 JWT 토큰을 생성 및 발급
+   - 유저 게임 접속 관리 및 인증 처리
+   - 채널 서버별 유저 수 상태 관리 및 전
+   - 레이드 매칭 요청 수신 및 매칭 완료 후 게임 서버 주소 전달
+   - 서버 이동 시 JWT 토큰 생성 및 발급을 통한 보안 강화
 
 <br> 
 
 ### ㅇChannel Server - Monster Hunting, Inventory Management, and Equipment Enhancement System
-   - 
+   - 몬스터 사냥을 통한 경험치 획득 및 레벨업
+   - 인벤토리 내 아이템 획득, 삭제, 이동 관리
+   - 장비 강화 시스템 제공
+   - 레이드 랭킹 조회
+
 <br> 
 
 ### ㅇGateway Server - User Authentication & Connection Game Server For Syncronization
-   - 유저의 게임 시작 요청시, MySQL에서 유저 정보 및 인벤토리 데이터를 Redis Cluster로 load 
-   - 유저 로그아웃시, Redis Cluster에 업데이트된 데이터를 MySQL에 동기화 (Batch Update)
+   - 유저 게임 시작 시 MySQL → Redis Cluster 데이터 로드
+   - 유저 로그아웃 시 Redis Cluster → MySQL 데이터 일괄 동기화 (Batch Update)
    - JWT 토큰을 활용한 유저 인증 보안 강화
 
 <br> 
 
 ### ㅇㅇMatching - User Group Matching & Room Assignment for Game Initialization
-   - 
+   - 유저 그룹 단위 매칭 수행
+   - 매칭 성공 시 중앙 서버 및 게임 서버로 방 번호 전달
+   - 레이드 종료 후 방 번호 재등록
+
 <br> 
 
 ### ㅇGame Server - Room Data Generation & User Synchronization for Gameplay
-   - 
+   - 매칭 서버로부터 방 번호 및 유저 정보 수신 후 게임 방 생성 (Mob HP, Timeout Duration)
+   - 틱 레이트 기반 게임 상태 실시간 동기화
+   - 레이드 진행 상태 및 종료 조건 관리 (Mob HP 0 or Time Out)
+     
 <br> 
 
 ### ㅇClient
