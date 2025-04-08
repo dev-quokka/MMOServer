@@ -4,7 +4,7 @@
 
 ## [소개]
 
-### ㅇMMO Server (Redis Cluster) 
+### ㅇMMO Server
  
   #### 1. 네트워크 최적화
     - Circular Buffer를 활용하여 메모리 사용 최적화
