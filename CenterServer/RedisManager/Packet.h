@@ -43,8 +43,8 @@ struct RANKING {
 //  ---------------------------- SYSTEM  ----------------------------
 
 struct USER_CONNECT_REQUEST_PACKET : PACKET_HEADER {
-	char userId[MAX_USER_ID_LEN + 1];
 	char userToken[MAX_JWT_TOKEN_LEN + 1]; // userToken For User Check
+	char userId[MAX_USER_ID_LEN + 1];
 };
 
 struct USER_CONNECT_RESPONSE_PACKET : PACKET_HEADER {

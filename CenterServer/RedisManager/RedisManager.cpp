@@ -34,6 +34,7 @@ void RedisManager::init(const uint16_t RedisThreadCnt_, const uint16_t maxClient
     packetIDTable[(uint16_t)PACKET_ID::RAID_RANKING_REQUEST] = &RedisManager::GetRanking;
 
     RedisRun(RedisThreadCnt_);
+    channelServersManager = new ChannelServersManager;
 }
 
 void RedisManager::RedisRun(const uint16_t RedisThreadCnt_) { // Connect Redis Server
@@ -47,7 +48,6 @@ void RedisManager::RedisRun(const uint16_t RedisThreadCnt_) { // Connect Redis S
         std::cout << "Redis Cluster Connect Success !" << std::endl;
 
         CreateRedisThread(RedisThreadCnt_);
-        channelManager = new ChannelManager;
     }
     catch (const  sw::redis::Error& err) {
         std::cout << "Redis Connect Error : " << err.what() << std::endl;
@@ -211,7 +211,7 @@ void RedisManager::SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSiz
     SERVER_USER_COUNTS_RESPONSE serverUserCountsResPacket;
     serverUserCountsResPacket.PacketId = (uint16_t)PACKET_ID::SERVER_USER_COUNTS_RESPONSE;
     serverUserCountsResPacket.PacketLength = sizeof(SERVER_USER_COUNTS_RESPONSE);
-    std::vector<std::atomic<uint16_t>> tempV = channelManager->getChannelVector();
+    std::vector<std::atomic<uint16_t>> tempV = channelServersManager->getChannelVector();
 
     char* tempC = new char[MAX_SERVER_USERS + 1];
     char* tc = tempC;
@@ -243,7 +243,7 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
         moveCHResPacket.port = ServerAddressMap[ServerType::ChannelServer11].port;
 
         tag = "{" + std::to_string(static_cast<uint16_t>(ServerType::ChannelServer11)) + "}";
-        channelManager->EnterChannelServer(static_cast<uint16_t>(ChannelType::CH_11)); // 인원수 미리 한명 증가 (실패시 감소 처리)
+        channelServersManager->EnterChannelServer(static_cast<uint16_t>(ChannelType::CH_11)); // 인원수 미리 한명 증가 (실패시 감소 처리)
     }
     else if (MoveCHReqPacket->channelName == "CH_21") {
         moveCHResPacket.PacketId = (uint16_t)PACKET_ID::MOVE_SERVER_RESPONSE;
@@ -252,7 +252,7 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
         moveCHResPacket.port = ServerAddressMap[ServerType::ChannelServer21].port;
 
         tag = "{" + std::to_string(static_cast<uint16_t>(ServerType::ChannelServer21)) + "}";
-        channelManager->EnterChannelServer(static_cast<uint16_t>(ChannelType::CH_21));
+        channelServersManager->EnterChannelServer(static_cast<uint16_t>(ChannelType::CH_21));
     }
 
     // 채널 이동간 보안을 위한 JWT Token 생성

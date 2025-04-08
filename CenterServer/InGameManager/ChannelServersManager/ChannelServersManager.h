@@ -7,7 +7,7 @@
 
 #include "Define.h"
 
-class ChannelManager {
+class ChannelServersManager{
 public:
 	bool init();
 	void EnterChannelServer(uint16_t channelNum_); // 유저 해당 서버 입장

@@ -12,7 +12,7 @@
 #include "Packet.h"
 #include "InGameUser.h"
 #include "InGameUserManager.h"
-#include "ChannelManager.h"
+#include "ChannelServersManager.h"
 #include "ConnUsersManager.h"
 
 class RedisManager {
@@ -97,7 +97,7 @@ private:
 
     ConnUsersManager* connUsersManager;
     InGameUserManager* inGameUserManager;
-    ChannelManager* channelManager;
+    ChannelServersManager* channelServersManager;
 
     // 2 bytes
     uint16_t GatewayServerObjNum = 0;
