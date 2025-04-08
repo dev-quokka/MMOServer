@@ -79,7 +79,7 @@ public:
         redis = redis_;
 
         IM_SESSION_REQUEST iwReq;
-        iwReq.PacketId = (UINT16)PACKET_ID::IM_SESSION_REQUEST;
+        iwReq.PacketId = (UINT16)SESSION_ID::IM_SESSION_REQUEST;
         iwReq.PacketLength = sizeof(IM_SESSION_REQUEST);
 
         Token = jwt::create()
@@ -184,7 +184,7 @@ public:
 
                 auto k = reinterpret_cast<PACKET_HEADER*>(overlappedTCP->wsaBuf.buf);
 
-                if (k->PacketId == (uint16_t)PACKET_ID::SYNCRONIZE_LOGOUT_REQUEST) {
+                if (k->PacketId == (uint16_t)SESSION_ID::SYNCRONIZE_LOGOUT_REQUEST) {
                     auto pakcet = reinterpret_cast<SYNCRONIZE_LOGOUT_REQUEST*>(overlappedTCP->wsaBuf.buf);
 
                     if (mysqlManager->SyncUserInfo(pakcet->userPk)) {

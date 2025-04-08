@@ -15,7 +15,7 @@ public:
         closesocket(userSkt);
     }
 
-    bool init (HANDLE u_IOCPHandle) {
+    bool init(HANDLE u_IOCPHandle) {
 
         userSkt = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_IP, NULL, 0, WSA_FLAG_OVERLAPPED);
 
@@ -265,7 +265,7 @@ public:
 
 private:
     uint32_t tempPk;
-	SOCKET userSkt;
+    SOCKET userSkt;
 
     OverlappedTCP aceeptOvLap;
     OverlappedTCP* sendOvLap;

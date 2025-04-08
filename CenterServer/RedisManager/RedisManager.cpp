@@ -10,7 +10,7 @@ void RedisManager::init(const uint16_t RedisThreadCnt_, const uint16_t maxClient
     //SYSTEM
     packetIDTable[(uint16_t)PACKET_ID::USER_CONNECT_REQUEST] = &RedisManager::UserConnect;
     packetIDTable[(uint16_t)PACKET_ID::USER_LOGOUT_REQUEST] = &RedisManager::Logout;
-    packetIDTable[(uint16_t)PACKET_ID::IM_SESSION_REQUEST] = &RedisManager::ImSessionRequest;
+    packetIDTable[(uint16_t)SESSION_ID::IM_SESSION_REQUEST] = &RedisManager::ImSessionRequest;
     packetIDTable[(uint16_t)PACKET_ID::SERVER_USER_COUNTS_REQUEST] = &RedisManager::SendServerUserCounts;
     packetIDTable[(uint16_t)PACKET_ID::MOVE_SERVER_REQUEST] = &RedisManager::MoveServer;
 
@@ -151,7 +151,7 @@ void RedisManager::Logout(uint16_t connObjNum_, uint16_t packetSize_, char* pPac
 
     {  // Send User PK to the Session Server for Synchronization with MySQL
         SYNCRONIZE_LOGOUT_REQUEST syncLogoutReqPacket;
-        syncLogoutReqPacket.PacketId = (uint16_t)PACKET_ID::SYNCRONIZE_LOGOUT_REQUEST;
+        syncLogoutReqPacket.PacketId = (uint16_t)SESSION_ID::SYNCRONIZE_LOGOUT_REQUEST;
         syncLogoutReqPacket.PacketLength = sizeof(SYNCRONIZE_LOGOUT_REQUEST);
         syncLogoutReqPacket.userPk = tempUser->GetPk();
         connUsersManager->FindUser(GatewayServerObjNum)->PushSendMsg(sizeof(SYNCRONIZE_LOGOUT_REQUEST), (char*)&syncLogoutReqPacket);
@@ -164,7 +164,7 @@ void RedisManager::UserDisConnect(uint16_t connObjNum_) { // Abnormal Disconnect
 
     {  // Send User PK to the Session Server for Synchronization with MySQL
         SYNCRONIZE_LOGOUT_REQUEST syncLogoutReqPacket;
-        syncLogoutReqPacket.PacketId = (uint16_t)PACKET_ID::SYNCRONIZE_LOGOUT_REQUEST;
+        syncLogoutReqPacket.PacketId = (uint16_t)SESSION_ID::SYNCRONIZE_LOGOUT_REQUEST;
         syncLogoutReqPacket.PacketLength = sizeof(SYNCRONIZE_LOGOUT_REQUEST);
         syncLogoutReqPacket.userPk = tempUser->GetPk();
         connUsersManager->FindUser(GatewayServerObjNum)->
@@ -173,17 +173,12 @@ void RedisManager::UserDisConnect(uint16_t connObjNum_) { // Abnormal Disconnect
     }
 }
 
-void RedisManager::ServerEnd(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
-    // Process Remain Packet
-
-}
-
 void RedisManager::ImSessionRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto userConn = reinterpret_cast<IM_SESSION_REQUEST*>(pPacket_);
     std::cout << "Session Server Connect Request :" << connObjNum_ << std::endl;
 
     IM_SESSION_RESPONSE imSessionResPacket;
-    imSessionResPacket.PacketId = (uint16_t)PACKET_ID::IM_SESSION_RESPONSE;
+    imSessionResPacket.PacketId = (uint16_t)SESSION_ID::IM_SESSION_RESPONSE;
     imSessionResPacket.PacketLength = sizeof(IM_SESSION_RESPONSE);
 
     std::string str(userConn->Token);

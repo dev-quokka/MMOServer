@@ -40,7 +40,7 @@ public:
         std::cout << "userProcThread End" << std::endl;
     }
 
-	bool init(uint16_t threadCnt_, std::shared_ptr<sw::redis::RedisCluster> redis_, MySQLManager* mysqlManager_) {
+    bool init(uint16_t threadCnt_, std::shared_ptr<sw::redis::RedisCluster> redis_, MySQLManager* mysqlManager_) {
         WSADATA wsadata;
         int check = 0;
         threadCnt = threadCnt_;
@@ -98,11 +98,11 @@ public:
         mysqlManager = mysqlManager_;
 
         CreateUserProcThread();
-        
+
         user->PostAccept(userIOSkt, u_IOCPHandle);
 
         return true;
-	}
+    }
 
     void CreateUserProcThread() {
         userProcRun = true;
@@ -141,13 +141,13 @@ public:
                 continue;
             }
 
-            if (a==0) {
+            if (a == 0) {
                 tempUser->UserRecv();
             }
-            else if (a==1) {
+            else if (a == 1) {
                 auto k = reinterpret_cast<PACKET_HEADER*>(overlappedTCP->wsaBuf.buf);
-                
-                if (k->PacketId == (uint16_t)SESSIONPACKET_ID::USER_GAMESTART_REQUEST) {
+
+                if (k->PacketId == (uint16_t)SESSION_ID::USER_GAMESTART_REQUEST) {
                     auto ugReq = reinterpret_cast<USER_GAMESTART_REQUEST*>(overlappedTCP->wsaBuf.buf);
                     GameStart(tempUser, ugReq);
                     delete[] overlappedTCP->wsaBuf.buf;
@@ -155,7 +155,7 @@ public:
                     tempUser->UserRecv();
                 }
 
-                else if (k->PacketId == (uint16_t)SESSIONPACKET_ID::USERINFO_REQUEST) { // GetUserInfo
+                else if (k->PacketId == (uint16_t)SESSION_ID::USERINFO_REQUEST) { // GetUserInfo
                     auto ugReq = reinterpret_cast<USERINFO_REQUEST*>(overlappedTCP->wsaBuf.buf);
                     GetUserInfo(tempUser, ugReq);
                     delete[] overlappedTCP->wsaBuf.buf;
@@ -163,21 +163,21 @@ public:
                     tempUser->UserRecv();
                 }
 
-                else if (k->PacketId == (uint16_t)SESSIONPACKET_ID::EQUIPMENT_REQUEST) { // GetEquipment
+                else if (k->PacketId == (uint16_t)SESSION_ID::EQUIPMENT_REQUEST) { // GetEquipment
                     GetEquipment(tempUser);
                     delete[] overlappedTCP->wsaBuf.buf;
                     delete overlappedTCP;
                     tempUser->UserRecv();
                 }
 
-                else if (k->PacketId == (uint16_t)SESSIONPACKET_ID::CONSUMABLES_REQUEST) { // GetConsumables
+                else if (k->PacketId == (uint16_t)SESSION_ID::CONSUMABLES_REQUEST) { // GetConsumables
                     GetConsumables(tempUser);
                     delete[] overlappedTCP->wsaBuf.buf;
                     delete overlappedTCP;
                     tempUser->UserRecv();
                 }
 
-                else if (k->PacketId == (uint16_t)SESSIONPACKET_ID::MATERIALS_REQUEST) { // GetMaterials
+                else if (k->PacketId == (uint16_t)SESSION_ID::MATERIALS_REQUEST) { // GetMaterials
                     GetMaterials(tempUser);
                     delete[] overlappedTCP->wsaBuf.buf;
                     delete overlappedTCP;
@@ -187,7 +187,7 @@ public:
                 //overLapPool.push(overlappedTCP); // Push OverLappedTcp
                 //sendQueueSize.fetch_add(1);
             }
-            else if (a==2) {
+            else if (a == 2) {
                 delete[] overlappedTCP->wsaBuf.buf;
                 delete overlappedTCP;
             }
@@ -202,7 +202,7 @@ public:
     }
 
     void GetUserInfo(User* tempUser, USERINFO_REQUEST* uiReq) { // 레디스 클러스터에 뒤에 {}를 ID로 하면 ID는 한번씩 유저가 바꾸니까 변하지 않는 PK로 설정.
-        std::pair<uint32_t,USERINFO> userInfoPk = mysqlManager->GetUserInfoById(uiReq->userId);
+        std::pair<uint32_t, USERINFO> userInfoPk = mysqlManager->GetUserInfoById(uiReq->userId);
 
         if (userInfoPk.first == 0) { // 0번 pk를 받으면 실패
             std::cout << "GetUserInfo Fail" << std::endl;
@@ -213,7 +213,7 @@ public:
 
         tempUser->SetPk(userInfoPk.first);
         USERINFO_RESPONSE uiRes;
-        uiRes.PacketId = (UINT16)SESSIONPACKET_ID::USERINFO_RESPONSE;
+        uiRes.PacketId = (UINT16)SESSION_ID::USERINFO_RESPONSE;
         uiRes.PacketLength = sizeof(USERINFO_RESPONSE);
         uiRes.UserInfo = userInfoPk.second;
         tempUser->SendUserInfo(uiRes);
@@ -224,7 +224,7 @@ public:
 
         std::pair<uint16_t, char*> eq = mysqlManager->GetUserEquipByPk(std::to_string(tempUser->GetPk()));
 
-        if (eq.first==100) { // 100을 받으면 인벤토리 Get 실패
+        if (eq.first == 100) { // 100을 받으면 인벤토리 Get 실패
             std::cout << "GetUserEquip Fail" << std::endl;
             tempUser->Reset(u_IOCPHandle);
             tempUser->PostAccept(userIOSkt, u_IOCPHandle);
@@ -232,7 +232,7 @@ public:
         }
 
         EQUIPMENT_RESPONSE eqSend;
-        eqSend.PacketId = (UINT16)SESSIONPACKET_ID::EQUIPMENT_RESPONSE;
+        eqSend.PacketId = (UINT16)SESSION_ID::EQUIPMENT_RESPONSE;
         eqSend.PacketLength = sizeof(EQUIPMENT_RESPONSE);
         eqSend.eqCount = eq.first;
         std::memcpy(eqSend.Equipments, eq.second, MAX_INVEN_SIZE + 1);
@@ -253,7 +253,7 @@ public:
         }
 
         CONSUMABLES_RESPONSE csSend;
-        csSend.PacketId = (UINT16)SESSIONPACKET_ID::CONSUMABLES_RESPONSE;
+        csSend.PacketId = (UINT16)SESSION_ID::CONSUMABLES_RESPONSE;
         csSend.PacketLength = sizeof(CONSUMABLES_RESPONSE);
         csSend.csCount = es.first;
         std::memcpy(csSend.Consumables, es.second, MAX_INVEN_SIZE + 1);
@@ -263,7 +263,7 @@ public:
     }
 
     void GetMaterials(User* tempUser) {
-         
+
         std::pair<uint16_t, char*> em = mysqlManager->GetUserMaterialsByPk(std::to_string(tempUser->GetPk()));
 
         if (em.first == 100) {
@@ -274,7 +274,7 @@ public:
         }
 
         MATERIALS_RESPONSE mtSend;
-        mtSend.PacketId = (UINT16)SESSIONPACKET_ID::MATERIALS_RESPONSE;
+        mtSend.PacketId = (UINT16)SESSION_ID::MATERIALS_RESPONSE;
         mtSend.PacketLength = sizeof(MATERIALS_RESPONSE);
         mtSend.mtCount = em.first;
         std::memcpy(mtSend.Materials, em.second, MAX_INVEN_SIZE + 1);
@@ -288,8 +288,8 @@ public:
         std::string token = jwt::create()
             .set_issuer("session_server")
             .set_subject("Login_check")
-            .set_expires_at(std::chrono::system_clock::now() + 
-             std::chrono::seconds{ 600 })
+            .set_expires_at(std::chrono::system_clock::now() +
+                std::chrono::seconds{ 600 })
             .sign(jwt::algorithm::hs256{ JWT_SECRET });
 
         std::string tag = "{" + std::string(ugReq->userId) + "}";
@@ -300,10 +300,10 @@ public:
             .expire(key, 15); // set ttl 1 hour
         pipe.exec();
 
-		USER_GAMESTART_RESPONSE ugRes; 
-		ugRes.PacketId = (UINT16)SESSIONPACKET_ID::USER_GAMESTART_RESPONSE;
-		ugRes.PacketLength = sizeof(USER_GAMESTART_RESPONSE);
-		strncpy_s(ugRes.Token, token.c_str(), 256);
+        USER_GAMESTART_RESPONSE ugRes;
+        ugRes.PacketId = (UINT16)SESSION_ID::USER_GAMESTART_RESPONSE;
+        ugRes.PacketLength = sizeof(USER_GAMESTART_RESPONSE);
+        strncpy_s(ugRes.Token, token.c_str(), 256);
         tempUser->SendGameStart(ugRes);
     }
 
@@ -313,7 +313,7 @@ private:
 
     uint16_t threadCnt = 0;
 
-	SOCKET userIOSkt;
+    SOCKET userIOSkt;
     SOCKET userSkt;
     HANDLE u_IOCPHandle;
 

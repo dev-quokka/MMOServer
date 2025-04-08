@@ -42,7 +42,6 @@ private:
     void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // User Connect
     void Logout(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Normal Disconnect (Set Short Time TTL)
     void UserDisConnect(uint16_t connObjNum_); // Abnormal Disconnect (Set Long Time TTL)
-    void ServerEnd(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void ImSessionRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Session Server Socket Check
     void SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 서버당 유저 수 요청 (유저가 서버 이동 화면으로 오면 전송)
     void MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 채널 서버 이동 요청
