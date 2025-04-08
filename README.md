@@ -8,7 +8,7 @@
  
   #### 1. 네트워크 최적화
     - Circular Buffer를 활용하여 메모리 사용 최적화
-    - 동적 할당 최소화를 위한 설계 적용
+    - 동적 할당 최소화를 위한 객체 풀 설계 적용
     - 대량 데이터 송수신 시 vector 대신 char*형 활용으로 성능 최적화
     - atomic, boost::lockfree_queue, tbb::concurrent_hash_map 등을 활용하여 mutex 사용 최소화
     - Redis 통신 시 try-catch 문 적용으로 예외 처리 강화
