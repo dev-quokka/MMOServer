@@ -53,7 +53,7 @@
 
 <br> 
 
-### ㅇㅇMatching - User Group Matching & Room Assignment for Game Initialization
+### ㅇㅇMatching Server - User Group Matching & Room Assignment for Game Initialization
    - 레벨 그룹 단위 매칭 수행
    - 매칭 성공 시 중앙 서버 및 게임 서버로 방 번호 전달
    - 레이드 종료 후 방 번호 재등록
