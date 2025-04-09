@@ -14,6 +14,8 @@ const int MAX_SERVER_USERS = 128; // 서버 유저 수 전달 패킷
 const int MAX_JWT_TOKEN_LEN = 256;
 const int MAX_SCORE_SIZE = 512;
 
+const int CHANNEL_NUM = 1;
+
 struct DataPacket {
 	uint32_t dataSize;
 	uint16_t connObjNum;
@@ -44,7 +46,7 @@ struct RANKING {
 //  ---------------------------- CENTER SERVER  ----------------------------
 
 struct IM_CHANNEL_REQUEST : PACKET_HEADER {
-	char Token[MAX_JWT_TOKEN_LEN + 1];
+	uint16_t channelServerNum;
 };
 
 struct IM_CHANNEL_RESPONSE : PACKET_HEADER {
@@ -52,11 +54,11 @@ struct IM_CHANNEL_RESPONSE : PACKET_HEADER {
 };
 
 struct USER_DISCONNECT_REQUEST_PACKET : PACKET_HEADER {
-	uint16_t userPk;
+
 };
 
 struct MOVE_CENTER_SERVER_REQUEST : PACKET_HEADER {
-	uint16_t userPk;
+
 };
 
 struct MOVE_CENTER_SERVER_RESPONSE : PACKET_HEADER {
@@ -66,17 +68,17 @@ struct MOVE_CENTER_SERVER_RESPONSE : PACKET_HEADER {
 
 //  ---------------------------- CHANNEL SERVER  ----------------------------
 
-struct USER_CONNECT_REQUEST_PACKET : PACKET_HEADER {
+struct USER_CONNECT_CHANNEL_REQUEST_PACKET : PACKET_HEADER {
 	char userToken[MAX_JWT_TOKEN_LEN + 1]; // userToken For User Check
 	char userId[MAX_USER_ID_LEN + 1];
 };
 
-struct USER_CONNECT_RESPONSE_PACKET : PACKET_HEADER {
+struct USER_CONNECT_CHANNEL_RESPONSE_PACKET : PACKET_HEADER {
 	bool isSuccess;
 };
 
 struct MOVE_CHANNEL_REQUEST : PACKET_HEADER {
-	char channelName[MAX_USER_ID_LEN + 1];
+	uint16_t channelNum;
 };
 
 struct MOVE_CHANNEL_RESPONSE : PACKET_HEADER { // 해당 채널 접속 가능한지 체크
@@ -187,28 +189,17 @@ struct MOV_EQUIPMENT_RESPONSE : PACKET_HEADER {
 };
 
 
-//  ---------------------------- RAID  ----------------------------
-
-struct RAID_RANKING_REQUEST : PACKET_HEADER {
-	uint16_t startRank;
-};
-
-struct RAID_RANKING_RESPONSE : PACKET_HEADER {
-	char reqScore[MAX_SCORE_SIZE + 1];
-	uint16_t rkCount;
-};
-
 enum class CHANNEL_ID : uint16_t {
 	// CENTER SERVER (1~)
-	IM_CHANNEL1_REQUEST = 1,
-	IM_CHANNEL1_RESPONSE = 2,
+	IM_CHANNEL_REQUEST = 1,
+	IM_CHANNEL_RESPONSE = 2,
 	USER_DISCONNECT_REQUEST = 3,
 	MOVE_CENTER_SERVER_REQUEST = 4,
 	MOVE_CENTER_SERVER_RESPONSE = 5,
 
 	// CHANNEL SERVER (11~)
-	USER_CONNECT_REQUEST = 11,
-	USER_CONNECT_RESPONSE = 12,
+	USER_CONNECT_CHANNEL_REQUEST = 11,
+	USER_CONNECT_CHANNEL_RESPONSE = 12,
 	MOVE_CHANNEL_REQUEST = 13,
 	MOVE_CHANNEL_RESPONSE = 14,
 
@@ -237,8 +228,4 @@ enum class CHANNEL_ID : uint16_t {
 	ENH_EQUIPMENT_RESPONSE = 38,
 	MOV_EQUIPMENT_REQUEST = 39,
 	MOV_EQUIPMENT_RESPONSE = 40,
-
-	// RAID (55~)
-	RAID_RANKING_REQUEST = 55,
-	RAID_RANKING_RESPONSE = 56,
 };

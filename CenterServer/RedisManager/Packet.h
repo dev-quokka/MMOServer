@@ -9,6 +9,7 @@
 
 const uint16_t RANKING_USER_COUNT = 3; // 몇명씩 유저 랭킹 정보 가져올건지
 
+const int MAX_IP_LEN = 32;
 const int MAX_USER_ID_LEN = 32;
 const int MAX_SERVER_USERS = 128; // 서버 유저 수 전달 패킷
 const int MAX_JWT_TOKEN_LEN = 256;
@@ -63,6 +64,14 @@ struct IM_SESSION_RESPONSE : PACKET_HEADER {
 	bool isSuccess;
 };
 
+struct IM_CHANNEL_REQUEST : PACKET_HEADER {
+	uint16_t channelServerNum;
+};
+
+struct IM_CHANNEL_RESPONSE : PACKET_HEADER {
+	bool isSuccess;
+};
+
 struct SYNCRONIZE_LEVEL_REQUEST : PACKET_HEADER {
 	uint16_t level;
 	uint16_t userPk;
@@ -83,116 +92,13 @@ struct SERVER_USER_COUNTS_RESPONSE : PACKET_HEADER {
 };
 
 struct MOVE_SERVER_REQUEST : PACKET_HEADER {
-	std::string channelName;
+	uint16_t serverNum;
 };
 
 struct MOVE_SERVER_RESPONSE : PACKET_HEADER {
-	std::string token;
-	std::string ip;
+	char serverToken[MAX_JWT_TOKEN_LEN + 1]; // Token For Server Connection
+	char ip[MAX_IP_LEN + 1];
 	uint16_t port;
-};
-
-//  ---------------------------- USER STATUS  ----------------------------
-
-struct EXP_UP_REQUEST : PACKET_HEADER {
-	short mobNum; // Number of Mob
-};
-
-struct EXP_UP_RESPONSE : PACKET_HEADER {
-	uint16_t increaseLevel;
-	unsigned int currentExp;
-};
-
-//  ---------------------------- INVENTORY  ----------------------------
-
-struct ADD_ITEM_REQUEST : PACKET_HEADER {
-	uint16_t itemType; // (Max 3)
-	uint16_t itemPosition; // (Max 50)
-	uint16_t itemCount; // (Max 99)
-	uint16_t itemCode; // (Max 5000)
-};
-
-struct ADD_ITEM_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
-};
-
-struct DEL_ITEM_REQUEST : PACKET_HEADER {
-	uint16_t itemType; // (Max 3)
-	uint16_t itemPosition; // (Max 50)
-};
-
-struct DEL_ITEM_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
-};
-
-struct MOD_ITEM_REQUEST : PACKET_HEADER {
-	uint16_t itemType; // (Max 3)
-	uint16_t itemPosition; // (Max 50)
-	int8_t itemCount; // (Max 99)
-	uint16_t itemCode; // (Max 5000)
-};
-
-struct MOD_ITEM_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
-};
-
-struct MOV_ITEM_REQUEST : PACKET_HEADER {
-	uint16_t ItemType; // (Max 3)
-
-	uint16_t dragItemPos; // (Max 10)
-	uint16_t dragItemCode;
-	uint16_t dragItemCount; // (Max 99)
-
-	uint16_t targetItemPos; // (Max 10)
-	uint16_t targetItemCode;
-	uint16_t targetItemCount; // (Max 99)
-};
-
-struct MOV_ITEM_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
-};
-
-//  ---------------------------- INVENTORY:EQUIPMENT  ----------------------------
-
-struct ADD_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t itemPosition; // (Max 50)
-	uint16_t Enhancement; // (Max 20)
-	uint16_t itemCode; // (Max 5000)
-};
-
-struct ADD_EQUIPMENT_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
-};
-
-struct DEL_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t itemPosition; // (Max 50)
-};
-
-struct DEL_EQUIPMENT_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
-};
-
-struct ENH_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t itemPosition; // (Max 50)
-};
-
-struct ENH_EQUIPMENT_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
-	uint16_t Enhancement = 0;
-};
-
-struct MOV_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t dragItemPos; // (Max 10)
-	uint16_t dragItemCode;
-	uint16_t dragItemEnhancement;
-
-	uint16_t targetItemPos; // (Max 10)
-	uint16_t targetItemCode;
-	uint16_t targetItemEnhancement;
-};
-
-struct MOV_EQUIPMENT_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
 };
 
 
@@ -207,7 +113,8 @@ struct RAID_MATCHING_RESPONSE : PACKET_HEADER {
 };
 
 struct RAID_READY_REQUEST : PACKET_HEADER {
-	std::string ip;
+	char serverToken[MAX_JWT_TOKEN_LEN + 1]; // Token For Server Connection
+	char ip[MAX_IP_LEN + 1];
 	uint16_t port;
 	uint16_t udpPort;
 	uint16_t roomNum;
@@ -225,12 +132,12 @@ struct RAID_RANKING_RESPONSE : PACKET_HEADER {
 
 //  ---------------------------- Matching Server  ----------------------------
 
-struct MATCHING_REQUEST : PACKET_HEADER {
+struct MATCHING_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
 	uint16_t userObjNum;
 	uint16_t userGroupNum;
 };
 
-struct MATCHING_RESPONSE : PACKET_HEADER {
+struct MATCHING_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
 	uint16_t userObjNum;
 	bool isSuccess;
 };
@@ -273,9 +180,11 @@ enum class SESSION_ID : uint16_t {
 
 enum class CHANNEL_ID : uint16_t {
 	// SYSTEM (1~)
-	IM_CHANNEL1_REQUEST = 1,
-	IM_CHANNEL1_RESPONSE = 2,
-
+	IM_CHANNEL_REQUEST = 1,
+	IM_CHANNEL_RESPONSE = 2,
+	USER_DISCONNECT_REQUEST = 3,
+	MOVE_CENTER_SERVER_REQUEST = 4,
+	MOVE_CENTER_SERVER_RESPONSE = 5,
 
 	// USER STATUS (21~)
 	EXP_UP_REQUEST = 21,
@@ -302,11 +211,6 @@ enum class CHANNEL_ID : uint16_t {
 	ENH_EQUIPMENT_RESPONSE = 38,
 	MOV_EQUIPMENT_REQUEST = 39,
 	MOV_EQUIPMENT_RESPONSE = 40,
-
-
-	// RAID (55~)
-	RAID_RANKING_REQUEST = 55,
-	RAID_RANKING_RESPONSE = 56,
 };
 
 enum class MATCHING_ID : uint16_t {
@@ -315,8 +219,8 @@ enum class MATCHING_ID : uint16_t {
 	IM_MATCHING_RESPONSE = 2,
 
 	//RAID(11~)
-	MATCHING_REQUEST = 11,
-	MATCHING_RESPONSE = 12,
+	MATCHING_REQUEST_TO_MATCHING_SERVER = 11,
+	MATCHING_RESPONSE_FROM_MATCHING_SERVER = 12,
 	MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER = 13,
 	RAID_START_FAIL_REQUEST_TO_MATCHING_SERVER = 14
 };
@@ -332,32 +236,6 @@ enum class PACKET_ID : uint16_t {
 	SERVER_USER_COUNTS_RESPONSE = 9,
 	MOVE_SERVER_REQUEST = 10,
 	MOVE_SERVER_RESPONSE = 11,
-
-	// USER STATUS (21~)
-	EXP_UP_REQUEST = 21,
-	EXP_UP_RESPONSE = 22,
-	LEVEL_UP_REQUEST = 23,
-	LEVEL_UP_RESPONSE = 24,
-
-	// INVENTORY (25~)
-	ADD_ITEM_REQUEST = 25,
-	ADD_ITEM_RESPONSE = 26,
-	DEL_ITEM_REQUEST = 27,
-	DEL_ITEM_RESPONSE = 28,
-	MOD_ITEM_REQUEST = 29,
-	MOD_ITEM_RESPONSE = 30,
-	MOV_ITEM_REQUEST = 31,
-	MOV_ITEM_RESPONSE = 32,
-
-	// INVENTORY::EQUIPMENT 
-	ADD_EQUIPMENT_REQUEST = 33,
-	ADD_EQUIPMENT_RESPONSE = 34,
-	DEL_EQUIPMENT_REQUEST = 35,
-	DEL_EQUIPMENT_RESPONSE = 36,
-	ENH_EQUIPMENT_REQUEST = 37,
-	ENH_EQUIPMENT_RESPONSE = 38,
-	MOV_EQUIPMENT_REQUEST = 39,
-	MOV_EQUIPMENT_RESPONSE = 40,
 
 	// RAID (45~)
 	RAID_MATCHING_REQUEST = 45,

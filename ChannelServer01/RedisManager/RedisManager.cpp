@@ -9,7 +9,6 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
 
     //SYSTEM
     packetIDTable[(uint16_t)CHANNEL_ID::USER_CONNECT_REQUEST] = &RedisManager::UserConnect;
-    packetIDTable[(uint16_t)CHANNEL_ID::USER_DISCONNECT_REQUEST] = &RedisManager::UserDisConnect;
 
     // USER STATUS
     packetIDTable[(UINT16)CHANNEL_ID::EXP_UP_REQUEST] = &RedisManager::ExpUp;
@@ -25,9 +24,6 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
     packetIDTable[(uint16_t)CHANNEL_ID::DEL_EQUIPMENT_REQUEST] = &RedisManager::DeleteEquipment;
     packetIDTable[(uint16_t)CHANNEL_ID::ENH_EQUIPMENT_REQUEST] = &RedisManager::EnhanceEquipment;
     packetIDTable[(uint16_t)CHANNEL_ID::MOV_EQUIPMENT_REQUEST] = &RedisManager::MoveEquipment;
-
-    //RAID
-    packetIDTable[(uint16_t)CHANNEL_ID::RAID_RANKING_REQUEST] = &RedisManager::GetRanking;
 
     RedisRun(RedisThreadCnt_);
     channelManager = new ChannelManager;
@@ -148,9 +144,8 @@ void RedisManager::UserDisConnect(uint16_t connObjNum_) {
     USER_DISCONNECT_REQUEST_PACKET userDisconnReqPacket;
     userDisconnReqPacket.PacketId = (uint16_t)CHANNEL_ID::USER_DISCONNECT_REQUEST;
     userDisconnReqPacket.PacketLength = sizeof(USER_DISCONNECT_REQUEST_PACKET);
-    userDisconnReqPacket.userPk = tempUser->GetPk();
+
     connUsersManager->FindUser(centerServerObjNum)->PushSendMsg(sizeof(USER_DISCONNECT_REQUEST_PACKET), (char*)&userDisconnReqPacket);
-    std::cout << "User PK:" << tempUser->GetPk() << " Disconnect" << std::endl;
 }
 
 void RedisManager::MoveCenterServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
@@ -228,7 +223,6 @@ void RedisManager::ExpUp(uint16_t connObjNum_, uint16_t packetSize_, char* pPack
             return;
         }
     }
-
     else { // Just Exp Up
         try {
             if (redis->hincrby(key, "exp", userExp.second)) { // Exp Up Success

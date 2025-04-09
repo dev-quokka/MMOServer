@@ -3,8 +3,8 @@
 void QuokkaServer::SetServerAddressMap() {
     ServerAddressMap[ServerType::GatewayServer] = { "127.0.0.1", 9091 };
     ServerAddressMap[ServerType::MatchingServer] = { "127.0.0.1", 9092 };
-    ServerAddressMap[ServerType::ChannelServer11] = { "127.0.0.1", 9211 };
-    ServerAddressMap[ServerType::ChannelServer21] = { "127.0.0.1", 9221 };
+    ServerAddressMap[ServerType::ChannelServer01] = { "127.0.0.1", 9211 };
+    ServerAddressMap[ServerType::ChannelServer02] = { "127.0.0.1", 9221 };
     ServerAddressMap[ServerType::RaidGameServer01] = { "127.0.0.1", 9501 };
 }
 

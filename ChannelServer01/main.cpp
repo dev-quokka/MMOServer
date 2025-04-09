@@ -5,9 +5,13 @@ const uint16_t PORT = 9211;
 const uint16_t maxThreadCount = 1;
 
 int main() {
-	ChannelServer1 channelServer1;
-	channelServer1.init(maxThreadCount, PORT);
-	channelServer1.StartWork();
+    ChannelServer1 channelServer1;
+
+    if (!channelServer1.init(maxThreadCount, PORT)) {
+        return 0;
+    }
+
+    channelServer1.StartWork();
 
     std::cout << "=== CHANNEL SERVER 1 START ===" << std::endl;
     std::cout << "=== If You Want Exit, Write CHANNEL1 ===" << std::endl;
@@ -19,7 +23,6 @@ int main() {
     }
 
     channelServer1.ServerEnd();
-    return 0;
 
-	return 0;
+    return 0;
 }

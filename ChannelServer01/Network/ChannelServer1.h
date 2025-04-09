@@ -15,6 +15,7 @@
 #include <boost/lockfree/queue.hpp>
 #include <tbb/concurrent_hash_map.h>
 
+#include "Packet.h"
 #include "Define.h"
 #include "ConnUser.h"
 

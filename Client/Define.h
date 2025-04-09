@@ -14,14 +14,14 @@ enum class TaskType {
 	UDP_SEND
 };
 
-struct OverlappedUDP {
-	// 4 bytes
-	int addrSize = sizeof(sockaddr_in);
-	TaskType taskType; // RECV, SEND
+enum class ChannelServerType : uint16_t {
+	CH_01 = 1, // 1서버
+	CH_02 = 2, // 2서버
+};
 
-	// 16 bytes
-	WSABUF wsaBuf; // UDP Buffer
-	sockaddr_in userAddr;  // Client Ip && Port Info
+enum class ChannelType : uint16_t {
+	CH_011 = 1, // 1서버 1 채널
+	CH_012 = 2, // 1서버 2 채널
+	CH_013 = 3, // 1서버 3 채널
 
-	WSAOVERLAPPED wsaOverlapped;
 };

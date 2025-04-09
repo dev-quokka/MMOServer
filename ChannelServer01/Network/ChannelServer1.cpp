@@ -46,6 +46,35 @@ bool ChannelServer1::init(const uint16_t MaxThreadCnt_, int port_) {
         return false;
     }
 
+    SOCKADDR_IN addr;
+    ZeroMemory(&addr, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(CENTER_SERVER_PORT);
+    inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr.s_addr);
+
+    std::cout << "Connect To Center Server" << std::endl;
+
+    connect(serverSkt, (SOCKADDR*)&addr, sizeof(addr));
+
+    std::cout << "Connect Center Server Success" << std::endl;
+
+    IM_CHANNEL_REQUEST imChReq;
+    imChReq.PacketId = (uint16_t)CHANNEL_ID::IM_CHANNEL_REQUEST;
+    imChReq.PacketLength = sizeof(IM_CHANNEL_REQUEST);
+    imChReq.channelServerNum = CHANNEL_NUM; // 각 채널 서버 번호 전달
+
+    char recvBuf[64];
+
+    send(serverSkt, (char*)&imChReq, sizeof(imChReq), 0);
+    recv(serverSkt, recvBuf, 64, 0);
+
+    auto imChRes = reinterpret_cast<IM_CHANNEL_RESPONSE*>(recvBuf);
+
+    if (!imChRes->isSuccess) {
+        std::cout << "Center Server Connection Fail" << std::endl;
+        return false;
+    }
+
     overLappedManager = new OverLappedManager;
     overLappedManager->init();
 

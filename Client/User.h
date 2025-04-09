@@ -28,7 +28,7 @@ public:
 
         sessionSkt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (sessionSkt == INVALID_SOCKET) {
-            std::cout << "Server Socket Make Fail" << std::endl;
+            std::cout << "Session Socket Make Fail" << std::endl;
             return false;
         }
 
@@ -139,11 +139,6 @@ public:
             ptr3 += sizeof(MATERIALS);
         }
 
-        //if (mt.empty()) {
-        //    std::cout << "Get MATERIALS Fail" << std::endl;
-        //    return false;
-        //}
-
         std::cout << "Get MATERIALS Success" << std::endl;
 
         USER_GAMESTART_REQUEST ugReq;
@@ -175,6 +170,10 @@ public:
         if (k != 1) exit(0);
 
         userSkt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (userSkt == INVALID_SOCKET) {
+            std::cout << "Server Socket Make Fail" << std::endl;
+            return false;
+        }
 
         ZeroMemory(&addr, sizeof(addr));
         addr.sin_family = AF_INET;
@@ -203,9 +202,99 @@ public:
 
         if (ucResPacket->isSuccess == false) return false;
 
-        std::cout << "Connect Success In Game Server" << std::endl;
+        gameServerSkt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (gameServerSkt == INVALID_SOCKET) {
+            std::cout << "Game Server Socket Make Fail" << std::endl;
+            return false;
+        }
 
+        channelSkt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (channelSkt == INVALID_SOCKET) {
+            std::cout << "Channel Server Socket Make Fail" << std::endl;
+            return false;
+        }
+
+        std::cout << "Connect Success In Game Server" << std::endl;
         std::cout << userId << " 게임 접속 성공 !" << std::endl;
+    }
+
+    bool MoveServer() {
+        SERVER_USER_COUNTS_REQUEST serverUserCountsReq;
+        serverUserCountsReq.PacketId = (UINT16)PACKET_ID::SERVER_USER_COUNTS_REQUEST;
+        serverUserCountsReq.PacketLength = sizeof(SERVER_USER_COUNTS_REQUEST);
+
+        send(userSkt, (char*)&serverUserCountsReq, sizeof(serverUserCountsReq), 0);
+        recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+
+        auto ucResPacket = reinterpret_cast<SERVER_USER_COUNTS_RESPONSE*>(recvBuffer);
+        char* ptr = recvBuffer + sizeof(PACKET_HEADER) + sizeof(uint16_t);
+
+        uint16_t tempC = 0;
+
+        for (int i = 0; i < ucResPacket->serverCount; i++) {
+            memcpy((char*)&tempC, ptr, sizeof(uint16_t));
+            std::cout << i + 1 << " 서버 유저 수 : " << tempC << std::endl;
+            ptr += sizeof(uint16_t);
+        }
+
+        std::cout << "이동할 서버를 선택해주세요" << std::endl;
+        std::cin >> tempC;
+
+        MOVE_SERVER_REQUEST movesServerReq;
+        movesServerReq.PacketId = (UINT16)PACKET_ID::MOVE_SERVER_REQUEST;
+        movesServerReq.PacketLength = sizeof(MOVE_SERVER_REQUEST);
+
+        if (tempC == 1) {
+            movesServerReq.serverNum = static_cast<uint16_t>(ChannelServerType::CH_01);
+        }
+        else if (tempC == 2) {
+            movesServerReq.serverNum = static_cast<uint16_t>(ChannelServerType::CH_02);
+        }
+
+        send(userSkt, (char*)&movesServerReq, sizeof(movesServerReq), 0);
+        recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+
+        auto msResPacket = reinterpret_cast<MOVE_SERVER_RESPONSE*>(recvBuffer);
+
+        if (msResPacket->port == 0) { // 서버 이동 실패
+            std::cout << "현재 해당 서버로 이동할 수 없습니다. 다른 서버를 이용해주세요" << std::endl;
+            return false;
+        }
+
+        std::string Token = msResPacket->serverToken;
+
+        SOCKADDR_IN addr;
+        ZeroMemory(&addr, sizeof(addr));
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(msResPacket->port);
+        inet_pton(AF_INET, msResPacket->ip, &addr.sin_addr.s_addr);
+
+        if (connect(sessionSkt, (SOCKADDR*)&addr, sizeof(addr))) {
+            std::cout << "현재 해당 서버로 이동할 수 없습니다. 다른 서버를 이용해주세요" << std::endl;
+            return false;
+        }
+
+        USER_CONNECT_CHANNEL_REQUEST_PACKET uccReq;
+        uccReq.PacketId = (UINT16)CHANNEL_ID::USER_CONNECT_CHANNEL_REQUEST;
+        uccReq.PacketLength = sizeof(USER_CONNECT_CHANNEL_REQUEST_PACKET);
+        strncpy_s(uccReq.userId, userId.c_str(), MAX_USER_ID_LEN);
+        strncpy_s(uccReq.userToken, Token.c_str(), MAX_JWT_TOKEN_LEN);
+
+        std::cout << "Connect Requset To Channel Server.." << std::endl;
+
+        send(userSkt, (char*)&uccReq, sizeof(uccReq), 0);
+        recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+
+        auto uccResPacket = reinterpret_cast<USER_CONNECT_CHANNEL_RESPONSE_PACKET*>(recvBuffer);
+
+        if (uccResPacket->isSuccess == false) {
+            std::cout << "현재 해당 서버로 이동할 수 없습니다. 다른 서버를 이용해주세요" << std::endl;
+            return false;
+        }
+
+        // 토큰까지 체크 완료 (서버 연결 성공)
+        currentServer = tempC;
+        return true;
     }
 
     bool makeUDPSocket() {
@@ -236,7 +325,7 @@ public:
 
     void AddExpFromMob(uint16_t mobNum_) {
         EXP_UP_REQUEST euReq;
-        euReq.PacketId = (UINT16)PACKET_ID::EXP_UP_REQUEST;
+        euReq.PacketId = (UINT16)CHANNEL_ID::EXP_UP_REQUEST;
         euReq.PacketLength = sizeof(EXP_UP_REQUEST);
         euReq.mobNum = mobNum_;
 
@@ -295,7 +384,7 @@ public:
     bool MoveItem(uint16_t invenNum_, uint16_t currentpos_, uint16_t movepos_) {
         if (invenNum_ == 1) { // 장비
             MOV_EQUIPMENT_REQUEST miReq;
-            miReq.PacketId = (UINT16)PACKET_ID::MOV_EQUIPMENT_REQUEST;
+            miReq.PacketId = (UINT16)CHANNEL_ID::MOV_EQUIPMENT_REQUEST;
             miReq.PacketLength = sizeof(MOV_EQUIPMENT_REQUEST);
 
             EQUIPMENT currentE = eq[currentpos_];
@@ -325,7 +414,7 @@ public:
         }
         else { // 소비 or 재료
             MOV_ITEM_REQUEST miReq;
-            miReq.PacketId = (UINT16)PACKET_ID::MOV_ITEM_REQUEST;
+            miReq.PacketId = (UINT16)CHANNEL_ID::MOV_ITEM_REQUEST;
             miReq.PacketLength = sizeof(MOV_ITEM_REQUEST);
 
             if (invenNum_ == 2) { // 소비
@@ -387,7 +476,7 @@ public:
 
     bool AddEquipment(uint16_t itemCode_, uint16_t enhancement_) {
         ADD_EQUIPMENT_REQUEST aeReq;
-        aeReq.PacketId = (UINT16)PACKET_ID::ADD_EQUIPMENT_REQUEST;
+        aeReq.PacketId = (UINT16)CHANNEL_ID::ADD_EQUIPMENT_REQUEST;
         aeReq.PacketLength = sizeof(ADD_EQUIPMENT_REQUEST);
 
         uint16_t addPosition = INVENTORY_SIZE + 1;
@@ -427,7 +516,7 @@ public:
 
     bool AddItem(uint16_t invenNum_, uint16_t itemCode_, uint16_t count_) {
         ADD_ITEM_REQUEST aiReq;
-        aiReq.PacketId = (UINT16)PACKET_ID::ADD_ITEM_REQUEST;
+        aiReq.PacketId = (UINT16)CHANNEL_ID::ADD_ITEM_REQUEST;
         aiReq.PacketLength = sizeof(ADD_ITEM_REQUEST);
 
         if (invenNum_ == 2) { // 소비
@@ -528,13 +617,13 @@ public:
 
     bool DeleteItem(uint16_t invenNum_, uint16_t pos_) {
         DEL_ITEM_REQUEST delReq;
-        delReq.PacketId = (UINT16)PACKET_ID::DEL_ITEM_REQUEST;
+        delReq.PacketId = (UINT16)CHANNEL_ID::DEL_ITEM_REQUEST;
         delReq.PacketLength = sizeof(DEL_ITEM_REQUEST);
         delReq.itemPosition = pos_;
 
         if (invenNum_ == 1) {
             DEL_EQUIPMENT_REQUEST delEReq;
-            delEReq.PacketId = (UINT16)PACKET_ID::DEL_EQUIPMENT_REQUEST;
+            delEReq.PacketId = (UINT16)CHANNEL_ID::DEL_EQUIPMENT_REQUEST;
             delEReq.PacketLength = sizeof(DEL_EQUIPMENT_REQUEST);
             delEReq.itemPosition = pos_;
 
@@ -584,7 +673,7 @@ public:
 
     bool EnhanceEquip(uint16_t pos_) { // Equipment Only
         ENH_EQUIPMENT_REQUEST enhReq;
-        enhReq.PacketId = (UINT16)PACKET_ID::ENH_EQUIPMENT_REQUEST;
+        enhReq.PacketId = (UINT16)CHANNEL_ID::ENH_EQUIPMENT_REQUEST;
         enhReq.PacketLength = sizeof(ENH_EQUIPMENT_REQUEST);
         enhReq.itemPosition = pos_;
 
@@ -695,20 +784,23 @@ public:
     }
 
     void SyncThread() {
-        sockaddr_in serverAddr;
-        int serverAddrSize = sizeof(serverAddr);
+        sockaddr_in serverAddr = {};
 
         while (syncRun) {
+            int serverAddrSize = sizeof(serverAddr);
             int received = recvfrom(udpSocket, recvUDPBuffer, sizeof(recvUDPBuffer), 0,
                 (sockaddr*)&serverAddr, &serverAddrSize);
-
+            if (received == SOCKET_ERROR)
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+            std::cout << "데이터 들어옴" << std::endl;
             if (received == sizeof(unsigned int) && syncRun) {
                 unsigned int mobHp_ = *(unsigned int*)recvUDPBuffer;
                 mobHp.store(mobHp_);
                 std::cout << "Mob Hp : " << mobHp_ << std::endl;
             }
         }
-
     }
 
     void InGameThread() {
@@ -764,8 +856,6 @@ public:
         closesocket(udpSocket);
     }
 
-
-
     bool GetRaidScore(uint16_t startNum_) { // 마지막 유저 스코어면 false 반환. 그 뒤 유저 없으니까 체크 x
         int rank;
         if (startNum_ == 0) {
@@ -819,17 +909,6 @@ public:
         return true;
     }
 
-    void End() {
-        char recvBuffer[PACKET_SIZE];
-        memset(recvBuffer, 0, PACKET_SIZE);
-
-        USER_LOGOUT_REQUEST_PACKET ulReq;
-        ulReq.PacketId = (UINT16)PACKET_ID::USER_LOGOUT_REQUEST;
-        ulReq.PacketLength = sizeof(USER_LOGOUT_REQUEST_PACKET);
-
-        send(userSkt, (char*)&ulReq, sizeof(ulReq), 0);
-    }
-
 private:
     std::atomic<bool> syncRun = false;
     std::atomic<bool> inGameRun = false;
@@ -843,9 +922,13 @@ private:
     uint16_t timer;
     uint16_t roomNum;
     uint16_t myNum;
+    uint16_t currentServer = 0;
+    uint16_t currentChannel = 0;
 
-    SOCKET sessionSkt;
     SOCKET userSkt;
+    SOCKET sessionSkt;
+    SOCKET gameServerSkt;
+    SOCKET channelSkt;
     SOCKET udpSocket;
 
     std::chrono::time_point<std::chrono::steady_clock> rEndTime;

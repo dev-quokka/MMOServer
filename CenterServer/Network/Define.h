@@ -23,13 +23,12 @@ std::string JWT_SECRET = "Cute_Quokka";
 //ChannelServer02 = 20~, 2~
 
 
-
 //  ---------------------------- SERVER INFO  ----------------------------
 
 enum class ServerType : uint16_t { // 중앙 서버만 사용하는 번호
 	// Channel Server (11~)
-	ChannelServer01 = 01,
-	ChannelServer02 = 02,
+	ChannelServer01 = 1,
+	ChannelServer02 = 2,
 
 	// Game Server (51~)
 	RaidGameServer01 = 51,
