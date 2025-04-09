@@ -1,5 +1,8 @@
 #pragma once
 
+#define SERVER_IP "127.0.0.1"
+#define CENTER_SERVER_PORT 9090
+
 #include "Define.h"
 #include "CircularBuffer.h"
 #include "Packet.h"
@@ -12,7 +15,6 @@
 
 class ConnUser {
 public:
-
 	ConnUser(uint32_t bufferSize_, uint16_t connObjNum_, HANDLE sIOCPHandle_, OverLappedManager* overLappedManager_)
 		: connObjNum(connObjNum_), sIOCPHandle(sIOCPHandle_), overLappedManager(overLappedManager_) {
 		userSkt = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_IP, NULL, 0, WSA_FLAG_OVERLAPPED);
@@ -38,6 +40,29 @@ public:
 public:
 	bool IsConn() { // check connection status
 		return isConn;
+	}
+
+	void CenterConnect() {
+		SOCKADDR_IN addr;
+		ZeroMemory(&addr, sizeof(addr));
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(CENTER_SERVER_PORT);
+		inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr.s_addr);
+
+		std::cout << "Connect To Center Server" << std::endl;
+
+		connect(userSkt, (SOCKADDR*)&addr, sizeof(addr));
+
+		std::cout << "Connect Center Server Success" << std::endl;
+
+		ConnUserRecv();
+
+		IM_CHANNEL_REQUEST imChReq;
+		imChReq.PacketId = (uint16_t)CHANNEL_ID::IM_CHANNEL_REQUEST;
+		imChReq.PacketLength = sizeof(IM_CHANNEL_REQUEST);
+		imChReq.channelServerNum = CHANNEL_NUM; // 각 채널 서버 번호 전달
+
+		PushSendMsg(sizeof(IM_CHANNEL_REQUEST), (char*)&imChReq);
 	}
 
 	SOCKET GetSocket() {

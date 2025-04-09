@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 
 #include <jwt-cpp/jwt.h>
 #include <winsock2.h>
@@ -39,10 +40,10 @@ private:
     void RedisThread();
 
     //SYSTEM
-    void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 해당 서버로 유저 접속 요청 From Center Server
-    void UserDisConnect(uint16_t connObjNum_); // Abnormal Disconnect
-
-    void MoveCenterServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 서버 이동 채널로 이동 요청 to Center Server
+    void ImChannelRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Channel Server Socket Check
+	void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 해당 서버로 유저 접속 요청 From Center Server
+    void UserDisConnect(uint16_t connObjNum_); // Send Message To Center Server
+    void SendChannelUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 채널당 유저 수 요청 (유저가 채널 이동 화면으로 오면 전송)
     void MoveChannel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 채널 서버 이동 요청
 
     // USER STATUS
@@ -59,10 +60,6 @@ private:
     void DeleteEquipment(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void EnhanceEquipment(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MoveEquipment(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-
-    // RAID
-    void MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 중앙 서버로 유저 레이드 매칭 시작 요청
-    void GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 레이드 랭킹 정보 확인
 
     typedef void(RedisManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
 

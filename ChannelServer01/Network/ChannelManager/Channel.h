@@ -11,6 +11,7 @@ public:
 		connectedUsers[userObjNum_] = user_;
 		userCount.fetch_add(1);
 	}
+
 	void RemoveUser(uint16_t userObjNum_) {
 		auto it = connectedUsers.find(userObjNum_);
 
@@ -21,8 +22,8 @@ public:
 
 	}
 
-	uint16_t GetUserCount() const {
-		return userCount.load();
+	uint16_t GetUserCount() const { 
+		return userCount.load(); 
 	}
 
 private:

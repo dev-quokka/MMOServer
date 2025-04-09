@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 
 #include <jwt-cpp/jwt.h>
 #include <winsock2.h>
@@ -47,11 +48,14 @@ private:
     void SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 서버당 유저 수 요청 (유저가 서버 이동 화면으로 오면 전송)
     void MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 채널 서버 이동 요청
 
+    //CHANNEL
+    void ChannelDisConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+
     // RAID
     void MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 매치 대기열 삽입
     void MatchFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 레이드 매칭 실패시 전달 받는 패킷
-    void MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Center Server to Matching Server
-    void MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Matching Server to Center Server
+	void MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Center Server to Matching Server
+	void MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Matching Server to Center Server
     void GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
     typedef void(RedisManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
@@ -67,6 +71,10 @@ private:
 
     // 80 bytes
     std::unordered_map<uint16_t, RECV_PACKET_FUNCTION> packetIDTable;
+    std::unordered_map<ServerType, ServerAddress> ServerAddressMap;
+
+    // 40 bytes
+    std::string JWT_SECRET = "Cute_Quokka";
 
     // 32 bytes
     std::vector<uint16_t> channelServerObjNums;
@@ -75,7 +83,7 @@ private:
     std::vector<uint16_t> enhanceProbabilities = { 100,90,80,70,60,50,40,30,20,10 };
     std::vector<unsigned int> mobExp = { 0,1,2,3,4,5,6,7,8,9,10 };
     std::vector<std::string> itemType = { "equipment", "consumables", "materials" };
-
+    
     // 16 bytes
     std::unique_ptr<sw::redis::RedisCluster> redis;
     std::thread redisThread;

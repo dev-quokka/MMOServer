@@ -13,8 +13,6 @@ const uint32_t MAX_CIRCLE_SIZE = 8096;
 
 const short MAX_RETRY_COUNT = 3;
 
-std::string JWT_SECRET = "Cute_Quokka";
-
 // ---------------------------- MYSQL  ----------------------------
 // 유저의 현재 접속 중인와 서버, 채널 번호
 
@@ -47,9 +45,6 @@ struct ServerAddress {
 	std::string ip;
 	uint16_t port;
 };
-
-std::unordered_map<ServerType, ServerAddress> ServerAddressMap;
-
 
 //  ---------------------------- SYSTEM  ----------------------------
 

@@ -18,7 +18,6 @@ enum class ChannelType : uint16_t {
 
 };
 
-
 //  ---------------------------- SYSTEM  ----------------------------
 
 enum class TaskType {

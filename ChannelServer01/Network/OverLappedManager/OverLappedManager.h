@@ -9,18 +9,18 @@ constexpr uint16_t OVERLAPPED_TCP_QUEUE_SIZE = 10;
 class OverLappedManager {
 public:
 	~OverLappedManager() {
-		OverlappedTCP* overlappedTCP;
-		while (ovLapPool.pop(overlappedTCP)) {
-			delete[] overlappedTCP->wsaBuf.buf;
-			delete overlappedTCP;
+		OverlappedEx* overlappedEx;
+		while (ovLapPool.pop(overlappedEx)) {
+			delete[] overlappedEx->wsaBuf.buf;
+			delete overlappedEx;
 		}
 	}
 
 	void init();
-	OverlappedTCP* getOvLap();
-	void returnOvLap(OverlappedTCP* overlappedTCP_);
+	OverlappedEx* getOvLap();
+	void returnOvLap(OverlappedEx* overlappedTCP_);
 
 private:
-	boost::lockfree::queue<OverlappedTCP*> ovLapPool{ OVERLAPPED_TCP_QUEUE_SIZE };
+	boost::lockfree::queue<OverlappedEx*> ovLapPool{ OVERLAPPED_TCP_QUEUE_SIZE };
 };
 

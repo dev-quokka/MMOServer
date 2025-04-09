@@ -88,7 +88,7 @@ struct SERVER_USER_COUNTS_REQUEST : PACKET_HEADER {
 
 struct SERVER_USER_COUNTS_RESPONSE : PACKET_HEADER {
 	char serverUserCnt[MAX_SERVER_USERS + 1];
-	uint16_t serverCount;
+	uint16_t serverCount; 
 };
 
 struct MOVE_SERVER_REQUEST : PACKET_HEADER {
@@ -130,7 +130,14 @@ struct RAID_RANKING_RESPONSE : PACKET_HEADER {
 };
 
 
-//  ---------------------------- Matching Server  ----------------------------
+//  ---------------------------- CHANNEL SERVER  ----------------------------
+
+struct USER_DISCONNECT_REQUEST : PACKET_HEADER {
+	uint16_t channelServerNum;
+};
+
+
+//  ---------------------------- MATCHING SERVER  ----------------------------
 
 struct MATCHING_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
 	uint16_t userObjNum;
@@ -216,7 +223,7 @@ enum class CHANNEL_ID : uint16_t {
 enum class MATCHING_ID : uint16_t {
 	//SYSTEM
 	IM_MATCHING_REQUEST = 1,
-	IM_MATCHING_RESPONSE = 2,
+	IM_MATCHING_RESPONSE = 2, 
 
 	//RAID(11~)
 	MATCHING_REQUEST_TO_MATCHING_SERVER = 11,
@@ -229,8 +236,8 @@ enum class PACKET_ID : uint16_t {
 	// SYSTEM (1~)
 	USER_CONNECT_REQUEST = 1,
 	USER_CONNECT_RESPONSE = 2,
-	USER_LOGOUT_REQUEST = 3,
-	USER_FULL_REQUEST = 6,
+	USER_LOGOUT_REQUEST = 3, 
+	USER_FULL_REQUEST = 6, 
 	WAITTING_NUMBER_REQUSET = 7,
 	SERVER_USER_COUNTS_REQUEST = 8,
 	SERVER_USER_COUNTS_RESPONSE = 9,
@@ -238,9 +245,9 @@ enum class PACKET_ID : uint16_t {
 	MOVE_SERVER_RESPONSE = 11,
 
 	// RAID (45~)
-	RAID_MATCHING_REQUEST = 45,
+	RAID_MATCHING_REQUEST = 45, 
 	RAID_MATCHING_RESPONSE = 46,
 	RAID_READY_REQUEST = 47,
-	RAID_RANKING_REQUEST = 55,
+	RAID_RANKING_REQUEST = 55, 
 	RAID_RANKING_RESPONSE = 56,
 };
