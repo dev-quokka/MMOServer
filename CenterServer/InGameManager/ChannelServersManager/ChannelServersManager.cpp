@@ -16,6 +16,6 @@ void ChannelServersManager::LeaveChannelServer(uint16_t channelNum_) {
 	channels[channelNum_].fetch_sub(1);
 }
 
-std::vector<std::atomic<uint16_t>> ChannelServersManager::getChannels() {
+std::vector<std::atomic<uint16_t>> ChannelServersManager::GetChannels() {
 	return channels;
 }

@@ -11,6 +11,13 @@
 const uint32_t MAX_RECV_SIZE = 1024; // Set Max RECV Buf
 const uint32_t MAX_CIRCLE_SIZE = 8096;
 
+enum class ChannelType : uint16_t {
+	CH_011 = 1, // 1서버 1 채널
+	CH_012 = 2, // 1서버 2 채널
+	CH_013 = 3, // 1서버 3 채널
+
+};
+
 
 //  ---------------------------- SYSTEM  ----------------------------
 

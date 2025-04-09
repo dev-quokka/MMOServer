@@ -2,7 +2,7 @@
 
 thread_local std::mt19937 RedisManager::gen(std::random_device{}());
 
-void RedisManager::init(const uint16_t RedisThreadCnt_, const uint16_t maxClientCount_, HANDLE sIOCPHandle_) {
+void RedisManager::init(const uint16_t RedisThreadCnt_) {
 
     // ---------- SET PACKET PROCESS ---------- 
     packetIDTable = std::unordered_map<uint16_t, RECV_PACKET_FUNCTION>();
@@ -164,7 +164,32 @@ void RedisManager::MoveCenterServer(uint16_t connObjNum_, uint16_t packetSize_, 
 
 void RedisManager::MoveChannel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto expUpReqPacket = reinterpret_cast<MOVE_CHANNEL_REQUEST*>(pPacket_);
+    auto tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
+    MOVE_CHANNEL_RESPONSE moveChRes;
+    moveChRes.PacketId = (uint16_t)CHANNEL_ID::MOVE_CHANNEL_RESPONSE;
+    moveChRes.PacketLength = sizeof(MOVE_CHANNEL_RESPONSE);
+
+    if (expUpReqPacket->channelName == "CH011") { // 유저가 요청한 채널 입장 가능 여부 체크
+        if (channelManager->InsertChannel(1, connObjNum_, tempUser)) {
+            moveChRes.isSuccess = true;
+        }
+        moveChRes.isSuccess = false;
+    }
+    else if (expUpReqPacket->channelName == "CH012") {
+        if (channelManager->InsertChannel(2, connObjNum_, tempUser)) {
+            moveChRes.isSuccess = true;
+        }
+        moveChRes.isSuccess = false;
+    }
+    else if (expUpReqPacket->channelName == "CH013") {
+        if (channelManager->InsertChannel(3, connObjNum_, tempUser)) {
+            moveChRes.isSuccess = true;
+        }
+        moveChRes.isSuccess = false;
+    }
+
+    connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_CHANNEL_RESPONSE), (char*)&moveChRes);
 }
 
 //  ---------------------------- USER_STATUS  ----------------------------

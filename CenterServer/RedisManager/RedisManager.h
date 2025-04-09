@@ -27,7 +27,7 @@ public:
         }
     }
 
-    void init(const uint16_t RedisThreadCnt_, const uint16_t maxClientCount_, const HANDLE sIOCPHandle_);
+    void init(const uint16_t RedisThreadCnt_);
     void SetManager(ConnUsersManager* connUsersManager_, InGameUserManager* inGameUserManager_);
     void PushRedisPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_); // Push Redis Packet
     void Disconnect(uint16_t connObjNum_);

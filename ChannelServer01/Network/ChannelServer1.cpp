@@ -65,19 +65,19 @@ bool ChannelServer1::StartWork() {
         return false;
     }
 
-    connUsersManager = new ConnUsersManager(maxClientCount);
+    connUsersManager = new ConnUsersManager(MAX_USERS_OBJECT);
     inGameUserManager = new InGameUserManager;
     redisManager = new RedisManager;
 
-    for (int i = 0; i < MAX_CHANNEL1_USER_COUNT; i++) { // Make ConnUsers Queue
+    for (int i = 0; i < MAX_USERS_OBJECT; i++) { // Make ConnUsers Queue
         ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE, i, sIOCPHandle, overLappedManager);
 
         AcceptQueue.push(connUser); // Push ConnUser
         connUsersManager->InsertUser(i, connUser); // Init ConnUsers
     }
 
-    redisManager->init(MaxThreadCnt, maxClientCount, sIOCPHandle);// Run MySQL && Run Redis Threads (The number of Clsuter Master Nodes + 1)
-    inGameUserManager->Init(maxClientCount);
+    redisManager->init(MaxThreadCnt);// Run MySQL && Run Redis Threads (The number of Clsuter Master Nodes + 1)
+    inGameUserManager->Init(MAX_USERS_OBJECT);
     redisManager->SetManager(connUsersManager, inGameUserManager);
 
     return true;
@@ -133,7 +133,6 @@ void ChannelServer1::WorkThread() {
             redisManager->Disconnect(connObjNum);
             inGameUserManager->Reset(connObjNum);
             connUser->Reset(); // Reset 
-            UserCnt.fetch_sub(1); // UserCnt -1
             AcceptQueue.push(connUser);
             continue;
         }

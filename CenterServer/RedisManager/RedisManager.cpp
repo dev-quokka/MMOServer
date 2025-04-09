@@ -2,7 +2,7 @@
 
 thread_local std::mt19937 RedisManager::gen(std::random_device{}());
 
-void RedisManager::init(const uint16_t RedisThreadCnt_, const uint16_t maxClientCount_, HANDLE sIOCPHandle_) {
+void RedisManager::init(const uint16_t RedisThreadCnt_) {
 
     // ---------- SET PACKET PROCESS ---------- 
     packetIDTable = std::unordered_map<uint16_t, RECV_PACKET_FUNCTION>();
@@ -211,7 +211,7 @@ void RedisManager::SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSiz
     SERVER_USER_COUNTS_RESPONSE serverUserCountsResPacket;
     serverUserCountsResPacket.PacketId = (uint16_t)PACKET_ID::SERVER_USER_COUNTS_RESPONSE;
     serverUserCountsResPacket.PacketLength = sizeof(SERVER_USER_COUNTS_RESPONSE);
-    std::vector<std::atomic<uint16_t>> tempV = channelServersManager->getChannelVector();
+    std::vector<std::atomic<uint16_t>> tempV = channelServersManager->GetChannels();
 
     char* tempC = new char[MAX_SERVER_USERS + 1];
     char* tc = tempC;
@@ -239,20 +239,20 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
     if (MoveCHReqPacket->channelName == "CH_11") {
         moveCHResPacket.PacketId = (uint16_t)PACKET_ID::MOVE_SERVER_RESPONSE;
         moveCHResPacket.PacketLength = sizeof(MOVE_SERVER_RESPONSE);
-        moveCHResPacket.ip = ServerAddressMap[ServerType::ChannelServer11].ip;
-        moveCHResPacket.port = ServerAddressMap[ServerType::ChannelServer11].port;
+        moveCHResPacket.ip = ServerAddressMap[ServerType::ChannelServer01].ip;
+        moveCHResPacket.port = ServerAddressMap[ServerType::ChannelServer01].port;
 
-        tag = "{" + std::to_string(static_cast<uint16_t>(ServerType::ChannelServer11)) + "}";
-        channelServersManager->EnterChannelServer(static_cast<uint16_t>(ChannelType::CH_11)); // 인원수 미리 한명 증가 (실패시 감소 처리)
+        tag = "{" + std::to_string(static_cast<uint16_t>(ServerType::ChannelServer01)) + "}";
+        channelServersManager->EnterChannelServer(static_cast<uint16_t>(ChannelServerType::CH_01)); // 인원수 미리 한명 증가 (실패시 감소 처리)
     }
     else if (MoveCHReqPacket->channelName == "CH_21") {
         moveCHResPacket.PacketId = (uint16_t)PACKET_ID::MOVE_SERVER_RESPONSE;
         moveCHResPacket.PacketLength = sizeof(MOVE_SERVER_RESPONSE);
-        moveCHResPacket.ip = ServerAddressMap[ServerType::ChannelServer21].ip;
-        moveCHResPacket.port = ServerAddressMap[ServerType::ChannelServer21].port;
+        moveCHResPacket.ip = ServerAddressMap[ServerType::ChannelServer02].ip;
+        moveCHResPacket.port = ServerAddressMap[ServerType::ChannelServer02].port;
 
-        tag = "{" + std::to_string(static_cast<uint16_t>(ServerType::ChannelServer21)) + "}";
-        channelServersManager->EnterChannelServer(static_cast<uint16_t>(ChannelType::CH_21));
+        tag = "{" + std::to_string(static_cast<uint16_t>(ServerType::ChannelServer02)) + "}";
+        channelServersManager->EnterChannelServer(static_cast<uint16_t>(ChannelServerType::CH_02));
     }
 
     // 채널 이동간 보안을 위한 JWT Token 생성

@@ -11,8 +11,13 @@ bool ChannelManager::init() {
 	return true;
 }
 
-void ChannelManager::InsertChannel(uint16_t channelNum, uint16_t userObjNum_, InGameUser* user_) {
+bool ChannelManager::InsertChannel(uint16_t channelNum, uint16_t userObjNum_, InGameUser* user_) {
+	if (channels[channelNum]->GetUserCount() > MAX_CHANNEL_USERS) { // 해당 채널 유저 수 가득 차서 접속 불가능
+		return false;
+	}
+
 	channels[channelNum]->InsertUser(userObjNum_, user_);
+	return true;
 }
 
 void ChannelManager::LeaveChannel(uint16_t channelNum, uint16_t userObjNum_) {

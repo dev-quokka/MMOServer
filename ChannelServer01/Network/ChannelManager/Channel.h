@@ -21,8 +21,8 @@ public:
 
 	}
 
-	uint16_t getUserCount() const { 
-		return userCount.load(); 
+	uint16_t GetUserCount() const {
+		return userCount.load();
 	}
 
 private:
