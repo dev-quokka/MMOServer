@@ -233,11 +233,11 @@ public:
 
         for (int i = 0; i < ucResPacket->serverCount; i++) {
             memcpy((char*)&tempC, ptr, sizeof(uint16_t));
-            std::cout << i + 1 << " 서버 유저 수 : " << tempC << std::endl;
+            std::cout << i + 1 << "서버 유저 수 : " << tempC << std::endl;
             ptr += sizeof(uint16_t);
         }
 
-        std::cout << "이동할 서버를 선택해주세요" << std::endl;
+        std::cout << "이동할 서버를 선택해주세요 : ";
         std::cin >> tempC;
 
         MOVE_SERVER_REQUEST movesServerReq;
@@ -295,6 +295,84 @@ public:
         // 토큰까지 체크 완료 (서버 연결 성공)
         currentServer = tempC;
         return true;
+    }
+
+    uint16_t SelectChannel(bool countCheck_) {
+
+        if (countCheck_ == true) { // 채널 유저 이미 체크 했으면 받아온 채널 별 수 벡터 그대로 이용하기
+            uint16_t tempC = 0;
+            for (int i = 1; i < tempChannelUserCounts.size(); i++) {
+                std::cout << i << "채널 유저 수 : " << tempChannelUserCounts[i] << std::endl;
+            }
+            std::cout << "이동할 채널을 선택해주세요 (뒤로가려면 10번을 눌러주세요) : ";
+            std::cin >> tempC;
+
+            if (tempC == 10) return 10;
+
+            MOVE_CHANNEL_REQUEST mcReq;
+            mcReq.PacketId = (UINT16)CHANNEL_ID::MOVE_CHANNEL_REQUEST;
+            mcReq.PacketLength = sizeof(MOVE_CHANNEL_REQUEST);
+            mcReq.channelNum = tempC;
+
+            send(userSkt, (char*)&mcReq, sizeof(mcReq), 0);
+            recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+
+            auto mcResPacket = reinterpret_cast<MOVE_CHANNEL_RESPONSE*>(recvBuffer);
+
+            if (!mcResPacket->isSuccess) {
+                std::cout << "현재 해당 채널로 이동할 수 없습니다. 다른 채널을 이용해주세요" << std::endl;
+                return 0;
+            }
+
+            currentChannel = tempC;
+            return 1;
+        }
+
+        CHANNEL_USER_COUNTS_REQUEST chUserCountsReq;
+        chUserCountsReq.PacketId = (UINT16)CHANNEL_ID::CHANNEL_USER_COUNTS_REQUEST;
+        chUserCountsReq.PacketLength = sizeof(CHANNEL_USER_COUNTS_REQUEST);
+
+        send(userSkt, (char*)&chUserCountsReq, sizeof(chUserCountsReq), 0);
+        recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+
+        auto cucResPacket = reinterpret_cast<CHANNEL_USER_COUNTS_RESPONSE*>(recvBuffer);
+        char* ptr = recvBuffer + sizeof(PACKET_HEADER) + sizeof(uint16_t);
+
+        uint16_t tempC = 0;
+        std::vector<uint16_t> tempV;
+        tempV.resize(cucResPacket->serverCount, 0);
+
+        for (int i = 0; i < cucResPacket->serverCount; i++) {
+            memcpy((char*)&tempC, ptr, sizeof(uint16_t));
+            std::cout << i + 1 << "채널 유저 수 : " << tempC << std::endl;
+            tempV[i + 1] = tempC;
+            ptr += sizeof(uint16_t);
+        }
+
+        tempChannelUserCounts = std::move(tempV);
+
+        std::cout << "이동할 채널을 선택해주세요 (뒤로가려면 10번을 눌러주세요) : ";
+        std::cin >> tempC;
+
+        if (tempC == 10) return 10;
+
+        MOVE_CHANNEL_REQUEST mcReq;
+        mcReq.PacketId = (UINT16)CHANNEL_ID::MOVE_CHANNEL_REQUEST;
+        mcReq.PacketLength = sizeof(MOVE_CHANNEL_REQUEST);
+        mcReq.channelNum = tempC;
+
+        send(userSkt, (char*)&mcReq, sizeof(mcReq), 0);
+        recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+
+        auto mcResPacket = reinterpret_cast<MOVE_CHANNEL_RESPONSE*>(recvBuffer);
+
+        if (!mcResPacket->isSuccess) {
+            std::cout << "현재 해당 채널로 이동할 수 없습니다. 다른 채널을 이용해주세요" << std::endl;
+            return 0;
+        }
+
+        currentChannel = tempC;
+        return 1;
     }
 
     bool makeUDPSocket() {
@@ -910,10 +988,27 @@ public:
     }
 
 private:
-    std::atomic<bool> syncRun = false;
-    std::atomic<bool> inGameRun = false;
-    std::atomic<uint16_t> level;
-    std::atomic<unsigned int> exp;
+    char recvBuffer[PACKET_SIZE];
+
+    std::string userId = "quokka";
+
+    std::thread syncThread;
+    std::thread inGameThread;
+    sockaddr_in udpAddr;
+
+    std::vector<EQUIPMENT> eq{ INVENTORY_SIZE };
+    std::vector<CONSUMABLES> cs{ INVENTORY_SIZE };
+    std::vector<MATERIALS> mt{ INVENTORY_SIZE };
+    std::vector<uint16_t> tempChannelUserCounts;
+
+    std::chrono::time_point<std::chrono::steady_clock> rEndTime;
+
+    SOCKET userSkt;
+    SOCKET sessionSkt;
+    SOCKET gameServerSkt;
+    SOCKET channelSkt;
+    SOCKET udpSocket;
+
     unsigned int raidScore;
     char recvUDPBuffer[sizeof(unsigned int)];
 
@@ -925,23 +1020,8 @@ private:
     uint16_t currentServer = 0;
     uint16_t currentChannel = 0;
 
-    SOCKET userSkt;
-    SOCKET sessionSkt;
-    SOCKET gameServerSkt;
-    SOCKET channelSkt;
-    SOCKET udpSocket;
-
-    std::chrono::time_point<std::chrono::steady_clock> rEndTime;
-
-    std::thread syncThread;
-    std::thread inGameThread;
-    sockaddr_in udpAddr;
-
-    std::string userId = "quokka";
-
-    std::vector<EQUIPMENT> eq{ INVENTORY_SIZE };
-    std::vector<CONSUMABLES> cs{ INVENTORY_SIZE };
-    std::vector<MATERIALS> mt{ INVENTORY_SIZE };
-
-    char recvBuffer[PACKET_SIZE];
+    std::atomic<bool> syncRun = false;
+    std::atomic<bool> inGameRun = false;
+    std::atomic<uint16_t> level;
+    std::atomic<unsigned int> exp;
 };
