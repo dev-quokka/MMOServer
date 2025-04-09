@@ -2,10 +2,10 @@
 #define WIN32_LEAN_AND_MEAN 
 
 #include <winsock2.h>
-#include <cstdint>
+#include <ws2tcpip.h>
 
-const UINT32 MAX_SOCK = 1024; // Set Max Socket Buf
-const UINT32 MAX_RECV_DATA = 8096;
+const uint32_t MAX_RECV_SIZE = 1024; // Set Max RECV Buf
+const uint32_t MAX_CIRCLE_SIZE = 8096;
 
 enum class TaskType {
 	TCP_RECV,

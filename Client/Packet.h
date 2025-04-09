@@ -67,8 +67,8 @@ struct SERVER_USER_COUNTS_REQUEST : PACKET_HEADER {
 };
 
 struct SERVER_USER_COUNTS_RESPONSE : PACKET_HEADER {
-	char serverUserCnt[MAX_SERVER_USERS + 1];
 	uint16_t serverCount;
+	char serverUserCnt[MAX_SERVER_USERS + 1];
 };
 
 struct MOVE_SERVER_REQUEST : PACKET_HEADER {
@@ -86,8 +86,8 @@ struct CHANNEL_USER_COUNTS_REQUEST : PACKET_HEADER {
 };
 
 struct CHANNEL_USER_COUNTS_RESPONSE : PACKET_HEADER {
-	char serverUserCnt[MAX_SERVER_USERS + 1];
-	uint16_t serverCount;
+	uint16_t channelCount;
+	char channelUserCnt[MAX_SERVER_USERS + 1];
 };
 
 struct USER_CONNECT_CHANNEL_REQUEST_PACKET : PACKET_HEADER {
@@ -393,4 +393,9 @@ enum class CHANNEL_ID : uint16_t {
 	ENH_EQUIPMENT_RESPONSE = 38,
 	MOV_EQUIPMENT_REQUEST = 39,
 	MOV_EQUIPMENT_RESPONSE = 40,
+};
+
+enum class GAME_ID : uint16_t {
+	RAID_TEAMINFO_REQUEST = 1,
+	RAID_HIT_REQUEST = 2,
 };

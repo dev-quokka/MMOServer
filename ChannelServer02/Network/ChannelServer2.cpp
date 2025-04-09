@@ -1,14 +1,6 @@
-#include "QuokkaServer.h"
+#include "ChannelServer2.h"
 
-void QuokkaServer::SetServerAddressMap() {
-    ServerAddressMap[ServerType::GatewayServer] = { "127.0.0.1", 9091 };
-    ServerAddressMap[ServerType::MatchingServer] = { "127.0.0.1", 9092 };
-    ServerAddressMap[ServerType::ChannelServer01] = { "127.0.0.1", 9211 };
-    ServerAddressMap[ServerType::ChannelServer02] = { "127.0.0.1", 9221 };
-    ServerAddressMap[ServerType::RaidGameServer01] = { "127.0.0.1", 9501 };
-}
-
-bool QuokkaServer::init(const uint16_t MaxThreadCnt_, int port_) {
+bool ChannelServer1::init(const uint16_t MaxThreadCnt_, int port_) {
     WSADATA wsadata;
     int check = 0;
     MaxThreadCnt = MaxThreadCnt_; // 워크 스레드 개수 설정
@@ -57,13 +49,17 @@ bool QuokkaServer::init(const uint16_t MaxThreadCnt_, int port_) {
     overLappedManager = new OverLappedManager;
     overLappedManager->init();
 
-    SetServerAddressMap(); // 서버 주소 설정
-
     return true;
 }
 
-bool QuokkaServer::StartWork() {
+bool ChannelServer1::CenterConnect() {
+    ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE, 0, sIOCPHandle, overLappedManager); // 0번은 중앙 서버 연결 객체
+    connUsersManager->InsertUser(0, connUser); // Init ConnUsers
+    connUser->CenterConnect();
+    return true;
+}
 
+bool ChannelServer1::StartWork() {
     bool check = CreateWorkThread();
     if (!check) {
         std::cout << "WorkThread 생성 실패" << std::endl;
@@ -76,31 +72,25 @@ bool QuokkaServer::StartWork() {
         return false;
     }
 
-    connUsersManager = new ConnUsersManager(maxClientCount);
+    connUsersManager = new ConnUsersManager(MAX_USERS_OBJECT);
     inGameUserManager = new InGameUserManager;
     redisManager = new RedisManager;
 
-    for (int i = 0; i < maxClientCount; i++) { // Make ConnUsers Queue
+    for (int i = 1; i < MAX_USERS_OBJECT; i++) { // Make ConnUsers Queue
         ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE, i, sIOCPHandle, overLappedManager);
 
         AcceptQueue.push(connUser); // Push ConnUser
         connUsersManager->InsertUser(i, connUser); // Init ConnUsers
     }
 
-    for (int i = maxClientCount; i < maxClientCount * 2; i++) { // Make Waitting Users Queue
-        ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE, i, sIOCPHandle, overLappedManager);
-
-        WaittingQueue.push(connUser); // Push ConnUser
-    }
-
     redisManager->init(MaxThreadCnt);// Run MySQL && Run Redis Threads (The number of Clsuter Master Nodes + 1)
-    inGameUserManager->Init(maxClientCount);
+    inGameUserManager->Init(MAX_USERS_OBJECT);
     redisManager->SetManager(connUsersManager, inGameUserManager);
 
     return true;
 }
 
-bool QuokkaServer::CreateWorkThread() {
+bool ChannelServer1::CreateWorkThread() {
     WorkRun = true;
     auto threadCnt = MaxThreadCnt; // core
     for (int i = 0; i < threadCnt; i++) {
@@ -110,7 +100,7 @@ bool QuokkaServer::CreateWorkThread() {
     return true;
 }
 
-bool QuokkaServer::CreateAccepterThread() {
+bool ChannelServer1::CreateAccepterThread() {
     AccepterRun = true;
     auto threadCnt = MaxThreadCnt / 4 + 1; // (core/4)
     for (int i = 0; i < threadCnt; i++) {
@@ -120,7 +110,7 @@ bool QuokkaServer::CreateAccepterThread() {
     return true;
 }
 
-void QuokkaServer::WorkThread() {
+void ChannelServer1::WorkThread() {
     LPOVERLAPPED lpOverlapped = NULL;
     ConnUser* connUser = nullptr;
     DWORD dwIoSize = 0;
@@ -140,25 +130,23 @@ void QuokkaServer::WorkThread() {
             continue;
         }
 
-        auto overlappedTCP = (OverlappedTCP*)lpOverlapped;
-        uint16_t connObjNum = overlappedTCP->connObjNum;
+        auto overlappedEx = (OverlappedEx*)lpOverlapped;
+        uint16_t connObjNum = overlappedEx->connObjNum;
         connUser = connUsersManager->FindUser(connObjNum);
 
-        if (!gqSucces || (dwIoSize == 0 && overlappedTCP->taskType != TaskType::ACCEPT)) { // User Disconnect
+        if (!gqSucces || (dwIoSize == 0 && overlappedEx->taskType != TaskType::ACCEPT)) { // User Disconnect
             std::cout << "socket " << connUser->GetSocket() << " Disconnect" << std::endl;
 
             redisManager->Disconnect(connObjNum);
             inGameUserManager->Reset(connObjNum);
             connUser->Reset(); // Reset 
-            UserCnt.fetch_sub(1); // UserCnt -1
             AcceptQueue.push(connUser);
             continue;
         }
 
-        if (overlappedTCP->taskType == TaskType::ACCEPT) { // User Connect
+        if (overlappedEx->taskType == TaskType::ACCEPT) { // User Connect
             if (connUser->ConnUserRecv()) {
                 std::cout << "socket " << connUser->GetSocket() << " Connect Requset" << std::endl;
-                UserCnt.fetch_add(1); // UserCnt +1
             }
             else { // Bind Fail
                 connUser->Reset(); // Reset ConnUser
@@ -166,30 +154,30 @@ void QuokkaServer::WorkThread() {
                 std::cout << "socket " << connUser->GetSocket() << " ConnectFail" << std::endl;
             }
         }
-        else if (overlappedTCP->taskType == TaskType::RECV) {
-            redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedTCP->wsaBuf.buf); // Proccess In Redismanager
+        else if (overlappedEx->taskType == TaskType::RECV) {
+            redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
             connUser->ConnUserRecv(); // Wsarecv Again
-            overLappedManager->returnOvLap(overlappedTCP);
+            overLappedManager->returnOvLap(overlappedEx);
         }
-        else if (overlappedTCP->taskType == TaskType::NEWRECV) {
-            redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedTCP->wsaBuf.buf); // Proccess In Redismanager
+        else if (overlappedEx->taskType == TaskType::NEWRECV) {
+            redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
             connUser->ConnUserRecv(); // Wsarecv Again
-            delete[] overlappedTCP->wsaBuf.buf;
-            delete overlappedTCP;
+            delete[] overlappedEx->wsaBuf.buf;
+            delete overlappedEx;
         }
-        else if (overlappedTCP->taskType == TaskType::SEND) {
-            overLappedManager->returnOvLap(overlappedTCP);
+        else if (overlappedEx->taskType == TaskType::SEND) {
+            overLappedManager->returnOvLap(overlappedEx);
             connUser->SendComplete();
         }
-        else if (overlappedTCP->taskType == TaskType::NEWSEND) {
-            delete[] overlappedTCP->wsaBuf.buf;
-            delete overlappedTCP;
+        else if (overlappedEx->taskType == TaskType::NEWSEND) {
+            delete[] overlappedEx->wsaBuf.buf;
+            delete overlappedEx;
             connUser->SendComplete();
         }
     }
 }
 
-void QuokkaServer::AccepterThread() {
+void ChannelServer1::AccepterThread() {
     ConnUser* connUser;
 
     while (AccepterRun) {
@@ -213,7 +201,7 @@ void QuokkaServer::AccepterThread() {
     }
 }
 
-void QuokkaServer::ServerEnd() {
+void ChannelServer1::ServerEnd() {
     WorkRun = false;
     AccepterRun = false;
 
@@ -234,13 +222,7 @@ void QuokkaServer::ServerEnd() {
 
     ConnUser* connUser;
 
-    while (WaittingQueue.pop(connUser)) { // 접속 대기큐 유저 객체 삭제
-        closesocket(connUser->GetSocket());
-        delete connUser;
-    }
-
     delete redisManager;
-    delete connUsersManager;
     delete inGameUserManager;
     CloseHandle(sIOCPHandle);
     closesocket(serverSkt);

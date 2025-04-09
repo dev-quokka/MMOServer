@@ -32,18 +32,32 @@ int main() {
     while (onlineCheck) { // 서버 이동 페이지
         inChannelCheck = false;
 
-        if (!user.MoveServer()) {
-            continue;
-        }
-
-        bool tempBool = false;
+        bool tempServerBool = false; // 서버 인원 수를 한 번만 불러오기 위한 플래그 (서버 이동 페이지에 머무르는 동안 재요청 방지)
 
         while (1) {
-            if (user.SelectChannel(tempBool) == 0) { // 채널 입장 실패. 다른 채널 이동
-                tempBool = true; // 채널 유저 이미 체크 했으면 받아온 채널 별 수 벡터 그대로 이용하기
+            uint16_t checkServer = user.MoveServer(tempServerBool);
+            if (checkServer == 0) { // 서버 입장 실패. 다시 서버 이동 페이지
+                tempServerBool = true;
                 continue;
             }
-            else if (user.SelectChannel(tempBool) == 10) { // 서버 선택 페이지로 돌아가기
+            else if (checkServer == 10) { // 서버 선택 페이지로 돌아가기
+                onlineCheck = false;
+                break;
+            }
+            else { // 서버 입장 성공
+                break;
+            }
+        }
+
+        bool tempChannelBool = false; // 채널 인원 수를 한 번만 불러오기 위한 플래그 (채널 이동 페이지에 머무르는 동안 재요청 방지)
+
+        while (1) {
+            uint16_t checkChannel = user.SelectChannel(tempChannelBool);
+            if (checkChannel == 0) { // 채널 입장 실패. 다시 채널 이동 페이지
+                tempChannelBool = true;
+                continue;
+            }
+            else if (checkChannel == 10) { // 서버 선택 페이지로 돌아가기
                 break;
             }
             else { // 채널 입장 성공
@@ -226,6 +240,7 @@ int main() {
                 break;
             }
             case 6: {
+                user.ChannelSocketinitialization();
                 inChannelCheck = false;
             }
             case 7: {

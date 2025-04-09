@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 
 #include <jwt-cpp/jwt.h>
 #include <winsock2.h>
@@ -12,7 +13,7 @@
 #include "Packet.h"
 #include "InGameUser.h"
 #include "InGameUserManager.h"
-#include "ChannelServersManager.h"
+#include "ChannelManager.h"
 #include "ConnUsersManager.h"
 
 class RedisManager {
@@ -39,20 +40,26 @@ private:
     void RedisThread();
 
     //SYSTEM
-    void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // User Connect
-    void Logout(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Normal Disconnect (Set Short Time TTL)
-    void UserDisConnect(uint16_t connObjNum_); // Abnormal Disconnect (Set Long Time TTL)
-    void ImSessionRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Session Server Socket Check
     void ImChannelRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Channel Server Socket Check
-    void SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 서버당 유저 수 요청 (유저가 서버 이동 화면으로 오면 전송)
-    void MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 채널 서버 이동 요청
+    void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 해당 서버로 유저 접속 요청 From Center Server
+    void UserDisConnect(uint16_t connObjNum_); // Send Message To Center Server
+    void SendChannelUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 채널당 유저 수 요청 (유저가 채널 이동 화면으로 오면 전송)
+    void MoveChannel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 채널 서버 이동 요청
 
-    // RAID
-    void MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 매치 대기열 삽입
-    void MatchFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 레이드 매칭 실패시 전달 받는 패킷
-    void MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Center Server to Matching Server
-    void MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Matching Server to Center Server
-    void GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    // USER STATUS
+    void ExpUp(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+
+    // INVENTORY
+    void AddItem(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void DeleteItem(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void ModifyItem(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void MoveItem(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+
+    // INVENTORY:EQUIPMENT
+    void AddEquipment(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void DeleteEquipment(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void EnhanceEquipment(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void MoveEquipment(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
     typedef void(RedisManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
 
@@ -69,8 +76,6 @@ private:
     std::unordered_map<uint16_t, RECV_PACKET_FUNCTION> packetIDTable;
 
     // 32 bytes
-    std::vector<uint16_t> channelServerObjNums;
-    std::vector<uint16_t> raidGameServerObjNums;
     std::vector<std::thread> redisThreads;
     std::vector<uint16_t> enhanceProbabilities = { 100,90,80,70,60,50,40,30,20,10 };
     std::vector<unsigned int> mobExp = { 0,1,2,3,4,5,6,7,8,9,10 };
@@ -85,11 +90,10 @@ private:
 
     ConnUsersManager* connUsersManager;
     InGameUserManager* inGameUserManager;
-    ChannelServersManager* channelServersManager;
+    ChannelManager* channelManager;
 
     // 2 bytes
-    uint16_t GatewayServerObjNum = 0;
-    uint16_t MatchingServerObjNum = 0;
+    uint16_t centerServerObjNum = 0;
 
     // 1 bytes
     bool redisRun = false;
