@@ -34,15 +34,16 @@
    - 유저 게임 접속 관리 및 인증 처리
    - 채널 서버별 유저 수 상태 관리 및 전달
    - 레이드 매칭 요청 수신 및 매칭 완료 후 게임 서버 주소 전달
+   - 레이드 랭킹 조회
    - 서버 이동 시 JWT 토큰 생성 및 발급을 통한 보안 강화
 
 <br> 
 
 ### ㅇChannel Server - Monster Hunting, Inventory Management, and Equipment Enhancement System
+   - 서버 내 채널 이동 관리
    - 몬스터 사냥을 통한 경험치 획득 및 레벨업
    - 인벤토리 내 아이템 획득, 삭제, 이동 관리
    - 장비 강화 시스템 제공
-   - 레이드 랭킹 조회
 
 <br> 
 
