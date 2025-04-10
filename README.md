@@ -1,4 +1,4 @@
-![레전드 서버 이동gif](https://github.com/user-attachments/assets/23655e63-a640-496f-8c95-390fa5926aa1)# IOCP & Redis Cluster를 활용한 MMO 게임 서버 프로젝트
+# IOCP & Redis Cluster를 활용한 MMO 게임 서버 프로젝트
 
 <br> 
 
