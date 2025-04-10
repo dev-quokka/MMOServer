@@ -15,12 +15,12 @@ int main() {
     channelServer2.CenterConnect();
 
     std::cout << "=== CHANNEL SERVER 2 START ===" << std::endl;
-    std::cout << "=== If You Want Exit, Write CHANNEL2 ===" << std::endl;
+    std::cout << "=== If You Want Exit, Write channel2 ===" << std::endl;
     std::string k = "";
 
     while (1) {
         std::cin >> k;
-        if (k == "CHANNEL2") break;
+        if (k == "channel2") break;
     }
 
     channelServer2.ServerEnd();

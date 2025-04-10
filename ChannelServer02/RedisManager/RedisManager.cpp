@@ -8,27 +8,30 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
     packetIDTable = std::unordered_map<uint16_t, RECV_PACKET_FUNCTION>();
 
     // SYSTEM
-    packetIDTable[(UINT16)CHANNEL_ID::IM_CHANNEL_RESPONSE] = &RedisManager::ImChannelRequest;
-    packetIDTable[(UINT16)CHANNEL_ID::CHANNEL_USER_COUNTS_REQUEST] = &RedisManager::SendChannelUserCounts;
-    packetIDTable[(UINT16)CHANNEL_ID::MOVE_CHANNEL_REQUEST] = &RedisManager::MoveChannel;
+    packetIDTable[(UINT16)PACKET_ID::USER_CONNECT_CHANNEL_REQUEST] = &RedisManager::UserConnect;
+
+    packetIDTable[(UINT16)PACKET_ID::IM_CHANNEL_RESPONSE] = &RedisManager::ImChannelRequest;
+    packetIDTable[(UINT16)PACKET_ID::CHANNEL_USER_COUNTS_REQUEST] = &RedisManager::SendChannelUserCounts;
+    packetIDTable[(UINT16)PACKET_ID::MOVE_CHANNEL_REQUEST] = &RedisManager::MoveChannel;
 
     // USER STATUS
-    packetIDTable[(UINT16)CHANNEL_ID::EXP_UP_REQUEST] = &RedisManager::ExpUp;
+    packetIDTable[(UINT16)PACKET_ID::EXP_UP_REQUEST] = &RedisManager::ExpUp;
 
     // INVENTORY
-    packetIDTable[(uint16_t)CHANNEL_ID::ADD_ITEM_REQUEST] = &RedisManager::AddItem;
-    packetIDTable[(uint16_t)CHANNEL_ID::DEL_ITEM_REQUEST] = &RedisManager::DeleteItem;
-    packetIDTable[(uint16_t)CHANNEL_ID::MOD_ITEM_REQUEST] = &RedisManager::ModifyItem;
-    packetIDTable[(uint16_t)CHANNEL_ID::MOV_ITEM_REQUEST] = &RedisManager::MoveItem;
+    packetIDTable[(uint16_t)PACKET_ID::ADD_ITEM_REQUEST] = &RedisManager::AddItem;
+    packetIDTable[(uint16_t)PACKET_ID::DEL_ITEM_REQUEST] = &RedisManager::DeleteItem;
+    packetIDTable[(uint16_t)PACKET_ID::MOD_ITEM_REQUEST] = &RedisManager::ModifyItem;
+    packetIDTable[(uint16_t)PACKET_ID::MOV_ITEM_REQUEST] = &RedisManager::MoveItem;
 
     //INVENTORY:EQUIPMENT
-    packetIDTable[(uint16_t)CHANNEL_ID::ADD_EQUIPMENT_REQUEST] = &RedisManager::AddEquipment;
-    packetIDTable[(uint16_t)CHANNEL_ID::DEL_EQUIPMENT_REQUEST] = &RedisManager::DeleteEquipment;
-    packetIDTable[(uint16_t)CHANNEL_ID::ENH_EQUIPMENT_REQUEST] = &RedisManager::EnhanceEquipment;
-    packetIDTable[(uint16_t)CHANNEL_ID::MOV_EQUIPMENT_REQUEST] = &RedisManager::MoveEquipment;
+    packetIDTable[(uint16_t)PACKET_ID::ADD_EQUIPMENT_REQUEST] = &RedisManager::AddEquipment;
+    packetIDTable[(uint16_t)PACKET_ID::DEL_EQUIPMENT_REQUEST] = &RedisManager::DeleteEquipment;
+    packetIDTable[(uint16_t)PACKET_ID::ENH_EQUIPMENT_REQUEST] = &RedisManager::EnhanceEquipment;
+    packetIDTable[(uint16_t)PACKET_ID::MOV_EQUIPMENT_REQUEST] = &RedisManager::MoveEquipment;
 
     RedisRun(RedisThreadCnt_);
     channelManager = new ChannelManager;
+    channelManager->init();
 }
 
 void RedisManager::RedisRun(const uint16_t RedisThreadCnt_) { // Connect Redis Server
@@ -107,20 +110,34 @@ void RedisManager::ImChannelRequest(uint16_t connObjNum_, uint16_t packetSize_, 
     auto centerConn = reinterpret_cast<IM_CHANNEL_RESPONSE*>(pPacket_);
 
     if (!centerConn->isSuccess) {
-        std::cout << "중앙 서버와 연결 실패" << std::endl;
+        std::cout << "Connected Fail to the central server" << std::endl;
         return;
     }
 
-    std::cout << "중앙 서버와 연결 성공" << std::endl;
+    std::cout << "Connected to the central server" << std::endl;
 }
 
 void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto userConn = reinterpret_cast<USER_CONNECT_CHANNEL_REQUEST*>(pPacket_);
-    std::string key = "jwtcheck:{" + (std::string)userConn->userId + "}";
+    std::string key = "jwtcheck:{" + std::to_string(static_cast<uint16_t>(ServerType::ChannelServer02)) + "}";
 
     USER_CONNECT_CHANNEL_RESPONSE ucReq;
-    ucReq.PacketId = (uint16_t)CHANNEL_ID::USER_CONNECT_CHANNEL_RESPONSE;
+    ucReq.PacketId = (uint16_t)PACKET_ID::USER_CONNECT_CHANNEL_RESPONSE;
     ucReq.PacketLength = sizeof(USER_CONNECT_CHANNEL_RESPONSE);
+
+    { // JWT 토큰 payload에 있는 아이디로 유저 체크
+        auto tempToken = jwt::decode((std::string)userConn->userToken);
+        auto tempId = tempToken.get_payload_claim("user_id");
+
+        std::string user_id = tempId.as_string();
+
+        if (user_id != (std::string)userConn->userId) {
+            ucReq.isSuccess = false;
+            connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(USER_CONNECT_CHANNEL_RESPONSE), (char*)&ucReq);
+            std::cout << (std::string)userConn->userId << " JWT Check Fail" << std::endl;
+            return;
+        }
+    }
 
     try {
         auto pk = static_cast<uint32_t>(std::stoul(*redis->hget(key, (std::string)userConn->userToken)));
@@ -154,26 +171,28 @@ void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char*
 void RedisManager::UserDisConnect(uint16_t connObjNum_) {
     InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
-    USER_DISCONNECT_REQUEST_PACKET userDisconnReqPacket;
-    userDisconnReqPacket.PacketId = (uint16_t)CHANNEL_ID::USER_DISCONNECT_REQUEST;
-    userDisconnReqPacket.PacketLength = sizeof(USER_DISCONNECT_REQUEST_PACKET);
+    channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_); // 해당 채널 인원 감소
+
+    USER_DISCONNECT_AT_CHANNEL_REQUEST userDisconnReqPacket;
+    userDisconnReqPacket.PacketId = (uint16_t)PACKET_ID::USER_DISCONNECT_AT_CHANNEL_REQUEST;
+    userDisconnReqPacket.PacketLength = sizeof(USER_DISCONNECT_AT_CHANNEL_REQUEST);
     userDisconnReqPacket.channelServerNum = CHANNEL_NUM;
 
-    connUsersManager->FindUser(centerServerObjNum)->PushSendMsg(sizeof(USER_DISCONNECT_REQUEST_PACKET), (char*)&userDisconnReqPacket);
+    connUsersManager->FindUser(centerServerObjNum)->PushSendMsg(sizeof(USER_DISCONNECT_AT_CHANNEL_REQUEST), (char*)&userDisconnReqPacket);
 }
 
 void RedisManager::SendChannelUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     CHANNEL_USER_COUNTS_RESPONSE chCntResPacket;
-    chCntResPacket.PacketId = (uint16_t)CHANNEL_ID::CHANNEL_USER_COUNTS_RESPONSE;
+    chCntResPacket.PacketId = (uint16_t)PACKET_ID::CHANNEL_USER_COUNTS_RESPONSE;
     chCntResPacket.PacketLength = sizeof(CHANNEL_USER_COUNTS_RESPONSE);
 
-    std::vector<uint16_t> tempV = std::move(channelManager->GetChannels());
+    auto tempV = channelManager->GetChannels();
 
     char* tempC = new char[MAX_SERVER_USERS + 1];
     char* tc = tempC;
     uint16_t cnt = tempV.size();
 
-    for (int i = 0; i < cnt; i++) {
+    for (int i = 1; i < cnt; i++) {
         uint16_t userCount = tempV[i];
         memcpy(tc, (char*)&userCount, sizeof(uint16_t));
         tc += sizeof(uint16_t);
@@ -192,26 +211,41 @@ void RedisManager::MoveChannel(uint16_t connObjNum_, uint16_t packetSize_, char*
     auto tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
     MOVE_CHANNEL_RESPONSE moveChRes;
-    moveChRes.PacketId = (uint16_t)CHANNEL_ID::MOVE_CHANNEL_RESPONSE;
+    moveChRes.PacketId = (uint16_t)PACKET_ID::MOVE_CHANNEL_RESPONSE;
     moveChRes.PacketLength = sizeof(MOVE_CHANNEL_RESPONSE);
 
     if (expUpReqPacket->channelNum == static_cast<uint16_t>(ChannelType::CH_021)) { // 유저가 요청한 채널 입장 가능 여부 체크
         if (channelManager->InsertChannel(1, connObjNum_, tempUser)) {
             moveChRes.isSuccess = true;
+
+            if (tempUser->GetChannel() != 0) channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_); // 유저가 속한 채널이 있었으면 해당 채널 수 감소
+            tempUser->SetChannel(1);
+
+            std::cout << tempUser->GetId() << " " << static_cast<uint16_t>(ChannelType::CH_021) << "채널로 이동" << std::endl;
         }
-        moveChRes.isSuccess = false;
+        else moveChRes.isSuccess = false;
     }
     else if (expUpReqPacket->channelNum == static_cast<uint16_t>(ChannelType::CH_022)) {
         if (channelManager->InsertChannel(2, connObjNum_, tempUser)) {
             moveChRes.isSuccess = true;
+
+            if (tempUser->GetChannel() != 0) channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_);
+            tempUser->SetChannel(2);
+
+            std::cout << tempUser->GetId() << " " << static_cast<uint16_t>(ChannelType::CH_022) << "채널로 이동" << std::endl;
         }
-        moveChRes.isSuccess = false;
+        else moveChRes.isSuccess = false;
     }
     else if (expUpReqPacket->channelNum == static_cast<uint16_t>(ChannelType::CH_023)) {
         if (channelManager->InsertChannel(3, connObjNum_, tempUser)) {
             moveChRes.isSuccess = true;
+
+            if (tempUser->GetChannel() != 0) channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_);
+            tempUser->SetChannel(3);
+
+            std::cout << tempUser->GetId() << " " << static_cast<uint16_t>(ChannelType::CH_023) << "채널로 이동" << std::endl;
         }
-        moveChRes.isSuccess = false;
+        else moveChRes.isSuccess = false;
     }
 
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_CHANNEL_RESPONSE), (char*)&moveChRes);
@@ -228,7 +262,7 @@ void RedisManager::ExpUp(uint16_t connObjNum_, uint16_t packetSize_, char* pPack
     auto userExp = tempUser->ExpUp(mobExp[expUpReqPacket->mobNum]); // Increase Level Cnt , Current Exp
 
     EXP_UP_RESPONSE expUpResPacket;
-    expUpResPacket.PacketId = (uint16_t)CHANNEL_ID::EXP_UP_RESPONSE;
+    expUpResPacket.PacketId = (uint16_t)PACKET_ID::EXP_UP_RESPONSE;
     expUpResPacket.PacketLength = sizeof(EXP_UP_RESPONSE);
 
     if (userExp.first != 0) { // Level Up
@@ -284,7 +318,7 @@ void RedisManager::AddItem(uint16_t connObjNum_, uint16_t packetSize_, char* pPa
     InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
     ADD_ITEM_RESPONSE addItemResPacket;
-    addItemResPacket.PacketId = (uint16_t)CHANNEL_ID::ADD_ITEM_RESPONSE;
+    addItemResPacket.PacketId = (uint16_t)PACKET_ID::ADD_ITEM_RESPONSE;
     addItemResPacket.PacketLength = sizeof(ADD_ITEM_RESPONSE);
 
     std::string tag = "{" + std::to_string(tempUser->GetPk()) + "}";
@@ -310,7 +344,7 @@ void RedisManager::DeleteItem(uint16_t connObjNum_, uint16_t packetSize_, char* 
     InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
     DEL_ITEM_RESPONSE delItemResPacket;
-    delItemResPacket.PacketId = (uint16_t)CHANNEL_ID::DEL_ITEM_RESPONSE;
+    delItemResPacket.PacketId = (uint16_t)PACKET_ID::DEL_ITEM_RESPONSE;
     delItemResPacket.PacketLength = sizeof(DEL_ITEM_RESPONSE);
 
     std::string inventory_slot = itemType[delItemReqPacket->itemType] + ":";
@@ -335,7 +369,7 @@ void RedisManager::ModifyItem(uint16_t connObjNum_, uint16_t packetSize_, char* 
     InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
     MOD_ITEM_RESPONSE modItemResPacket;
-    modItemResPacket.PacketId = (uint16_t)CHANNEL_ID::MOD_ITEM_RESPONSE;
+    modItemResPacket.PacketId = (uint16_t)PACKET_ID::MOD_ITEM_RESPONSE;
     modItemResPacket.PacketLength = sizeof(MOD_ITEM_RESPONSE);
 
     std::string inventory_slot = itemType[modItemReqPacket->itemType] + ":";
@@ -363,7 +397,7 @@ void RedisManager::MoveItem(uint16_t connObjNum_, uint16_t packetSize_, char* pP
     std::string inventory_slot = itemType[movItemReqPacket->ItemType] + ":" + tag;
 
     MOV_ITEM_RESPONSE movItemResPacket;
-    movItemResPacket.PacketId = (uint16_t)CHANNEL_ID::MOV_ITEM_RESPONSE;
+    movItemResPacket.PacketId = (uint16_t)PACKET_ID::MOV_ITEM_RESPONSE;
     movItemResPacket.PacketLength = sizeof(MOV_ITEM_RESPONSE);
 
     try {
@@ -393,7 +427,7 @@ void RedisManager::AddEquipment(uint16_t connObjNum_, uint16_t packetSize_, char
     InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
     ADD_EQUIPMENT_RESPONSE addEquipResPacket;
-    addEquipResPacket.PacketId = (uint16_t)CHANNEL_ID::ADD_EQUIPMENT_RESPONSE;
+    addEquipResPacket.PacketId = (uint16_t)PACKET_ID::ADD_EQUIPMENT_RESPONSE;
     addEquipResPacket.PacketLength = sizeof(ADD_EQUIPMENT_RESPONSE);
 
     std::string tag = "{" + std::to_string(tempUser->GetPk()) + "}";
@@ -419,7 +453,7 @@ void RedisManager::DeleteEquipment(uint16_t connObjNum_, uint16_t packetSize_, c
     InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
     DEL_EQUIPMENT_RESPONSE delEquipResPacket;
-    delEquipResPacket.PacketId = (uint16_t)CHANNEL_ID::DEL_EQUIPMENT_RESPONSE;
+    delEquipResPacket.PacketId = (uint16_t)PACKET_ID::DEL_EQUIPMENT_RESPONSE;
     delEquipResPacket.PacketLength = sizeof(DEL_EQUIPMENT_RESPONSE);
 
     std::string tag = "{" + std::to_string(tempUser->GetPk()) + "}";
@@ -443,7 +477,7 @@ void RedisManager::EnhanceEquipment(uint16_t connObjNum_, uint16_t packetSize_, 
     InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
     ENH_EQUIPMENT_RESPONSE enhEquipResPacket;
-    enhEquipResPacket.PacketId = (uint16_t)CHANNEL_ID::ENH_EQUIPMENT_RESPONSE;
+    enhEquipResPacket.PacketId = (uint16_t)PACKET_ID::ENH_EQUIPMENT_RESPONSE;
     enhEquipResPacket.PacketLength = sizeof(ENH_EQUIPMENT_RESPONSE);
 
     std::string tag = "{" + std::to_string(tempUser->GetPk()) + "}";
@@ -508,7 +542,7 @@ void RedisManager::MoveEquipment(uint16_t connObjNum_, uint16_t packetSize_, cha
     std::string inventory_slot = itemType[0] + ":" + tag;
 
     MOV_EQUIPMENT_RESPONSE movItemResPacket;
-    movItemResPacket.PacketId = (uint16_t)CHANNEL_ID::MOV_EQUIPMENT_RESPONSE;
+    movItemResPacket.PacketId = (uint16_t)PACKET_ID::MOV_EQUIPMENT_RESPONSE;
     movItemResPacket.PacketLength = sizeof(MOV_EQUIPMENT_RESPONSE);
 
     try {

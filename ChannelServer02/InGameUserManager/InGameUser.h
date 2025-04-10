@@ -18,13 +18,22 @@ public:
 		userExp = userExp_;
 		userPk = userPk_;
 		userId = userId_;
-		raidScore = raidScore_;
+		channelNum = 0;
+	}
+
+	void SetChannel(uint16_t channelNum_) {
+		channelNum = channelNum_;
+	}
+
+	uint16_t GetChannel() {
+		return channelNum;
 	}
 
 	void Reset() {
 		userLevel = 0;
 		userPk = 0;
 		userExp = 0;
+		channelNum = 0;
 	}
 
 	bool CheckMatching() {
@@ -72,6 +81,7 @@ private:
 
 	// 2 bytes
 	uint16_t userLevel;
+	uint16_t channelNum;
 
 	// 1 bytes
 	std::atomic<bool> raidMatching = false;

@@ -24,7 +24,7 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
 
     // CHANNEL
     packetIDTable[(uint16_t)PACKET_ID::IM_CHANNEL_REQUEST] = &RedisManager::ImChannelRequest;
-    packetIDTable[(uint16_t)PACKET_ID::USER_DISCONNECT_REQUEST] = &RedisManager::ChannelDisConnect;
+    packetIDTable[(uint16_t)PACKET_ID::USER_DISCONNECT_AT_CHANNEL_REQUEST] = &RedisManager::ChannelDisConnect;
 
     // RAID
     packetIDTable[(uint16_t)PACKET_ID::RAID_MATCHING_REQUEST] = &RedisManager::MatchStart;
@@ -245,7 +245,7 @@ void RedisManager::SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSiz
 }
 
 void RedisManager::ChannelDisConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
-    auto MoveCHReqPacket = reinterpret_cast<USER_DISCONNECT_REQUEST*>(pPacket_);
+    auto MoveCHReqPacket = reinterpret_cast<USER_DISCONNECT_AT_CHANNEL_REQUEST*>(pPacket_);
     channelServersManager->LeaveChannelServer(MoveCHReqPacket->channelServerNum);
 }
 

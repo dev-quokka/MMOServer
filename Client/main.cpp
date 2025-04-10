@@ -59,6 +59,9 @@ int main() {
                 continue;
             }
             else if (checkChannel == 10) { // 서버 선택 페이지로 돌아가기
+                user.ChannelSocketinitialization();
+                inChannelCheck = false;
+                std::this_thread::sleep_for(std::chrono::seconds(1)); // 서버 이동 전 1초 대기
                 break;
             }
             else { // 채널 입장 성공
@@ -244,6 +247,7 @@ int main() {
             case 6: {
                 user.ChannelSocketinitialization();
                 inChannelCheck = false;
+                std::this_thread::sleep_for(std::chrono::seconds(1)); // 서버 이동 전 1초 대기
                 break;
             }
             case 7: {
@@ -257,7 +261,9 @@ int main() {
                         continue;
                     }
                     else if (checkChannel == 10) { // 서버 선택 페이지로 돌아가기
+                        user.ChannelSocketinitialization();
                         inChannelCheck = false;
+                        std::this_thread::sleep_for(std::chrono::seconds(1)); // 서버 이동 전 1초 대기
                         break;
                     }
                     else { // 채널 입장 성공

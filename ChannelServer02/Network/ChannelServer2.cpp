@@ -1,6 +1,6 @@
 #include "ChannelServer2.h"
 
-bool ChannelServer1::init(const uint16_t MaxThreadCnt_, int port_) {
+bool ChannelServer2::init(const uint16_t MaxThreadCnt_, int port_) {
     WSADATA wsadata;
     int check = 0;
     MaxThreadCnt = MaxThreadCnt_; // 워크 스레드 개수 설정
@@ -52,14 +52,14 @@ bool ChannelServer1::init(const uint16_t MaxThreadCnt_, int port_) {
     return true;
 }
 
-bool ChannelServer1::CenterConnect() {
+bool ChannelServer2::CenterConnect() {
     ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE, 0, sIOCPHandle, overLappedManager); // 0번은 중앙 서버 연결 객체
     connUsersManager->InsertUser(0, connUser); // Init ConnUsers
     connUser->CenterConnect();
     return true;
 }
 
-bool ChannelServer1::StartWork() {
+bool ChannelServer2::StartWork() {
     bool check = CreateWorkThread();
     if (!check) {
         std::cout << "WorkThread 생성 실패" << std::endl;
@@ -90,7 +90,7 @@ bool ChannelServer1::StartWork() {
     return true;
 }
 
-bool ChannelServer1::CreateWorkThread() {
+bool ChannelServer2::CreateWorkThread() {
     WorkRun = true;
     auto threadCnt = MaxThreadCnt; // core
     for (int i = 0; i < threadCnt; i++) {
@@ -100,7 +100,7 @@ bool ChannelServer1::CreateWorkThread() {
     return true;
 }
 
-bool ChannelServer1::CreateAccepterThread() {
+bool ChannelServer2::CreateAccepterThread() {
     AccepterRun = true;
     auto threadCnt = MaxThreadCnt / 4 + 1; // (core/4)
     for (int i = 0; i < threadCnt; i++) {
@@ -110,7 +110,7 @@ bool ChannelServer1::CreateAccepterThread() {
     return true;
 }
 
-void ChannelServer1::WorkThread() {
+void ChannelServer2::WorkThread() {
     LPOVERLAPPED lpOverlapped = NULL;
     ConnUser* connUser = nullptr;
     DWORD dwIoSize = 0;
@@ -177,7 +177,7 @@ void ChannelServer1::WorkThread() {
     }
 }
 
-void ChannelServer1::AccepterThread() {
+void ChannelServer2::AccepterThread() {
     ConnUser* connUser;
 
     while (AccepterRun) {
@@ -201,7 +201,7 @@ void ChannelServer1::AccepterThread() {
     }
 }
 
-void ChannelServer1::ServerEnd() {
+void ChannelServer2::ServerEnd() {
     WorkRun = false;
     AccepterRun = false;
 

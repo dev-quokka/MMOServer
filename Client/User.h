@@ -442,7 +442,7 @@ public:
         tempV.resize(cucResPacket->channelCount, 0);
 
         std::cout << std::endl;
-        std::cout << "카운트 : " << cucResPacket->channelCount << std::endl;
+
         for (int i = 1; i < cucResPacket->channelCount; i++) {
             memcpy((char*)&tempC, ptr, sizeof(uint16_t));
             std::cout << i << "채널 유저 수 : " << tempC << std::endl;

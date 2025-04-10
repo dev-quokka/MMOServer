@@ -27,7 +27,7 @@
 constexpr uint16_t MAX_USERS_OBJECT = 30; // 1서버 평균 접속 유저를 30으로 가정하고 미리 동적할당한 유저 객체 (나중에 1서버 평균 유저 늘어나면 카운트 수정)
 constexpr int MAX_CHANNEL1_USERS_COUNT = 30; // 각 채널 접속 가능 인원 * 채널 수
 
-class ChannelServer1 {
+class ChannelServer2 {
 public:
     bool init(const uint16_t MaxThreadCnt_, int port_);
     bool CenterConnect();

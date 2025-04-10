@@ -171,12 +171,14 @@ void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char*
 void RedisManager::UserDisConnect(uint16_t connObjNum_) {
     InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
-    USER_DISCONNECT_REQUEST_PACKET userDisconnReqPacket;
-    userDisconnReqPacket.PacketId = (uint16_t)PACKET_ID::USER_DISCONNECT_REQUEST;
-    userDisconnReqPacket.PacketLength = sizeof(USER_DISCONNECT_REQUEST_PACKET);
+    channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_); // 해당 채널 인원 감소
+
+    USER_DISCONNECT_AT_CHANNEL_REQUEST userDisconnReqPacket;
+    userDisconnReqPacket.PacketId = (uint16_t)PACKET_ID::USER_DISCONNECT_AT_CHANNEL_REQUEST;
+    userDisconnReqPacket.PacketLength = sizeof(USER_DISCONNECT_AT_CHANNEL_REQUEST);
     userDisconnReqPacket.channelServerNum = CHANNEL_NUM;
 
-    connUsersManager->FindUser(centerServerObjNum)->PushSendMsg(sizeof(USER_DISCONNECT_REQUEST_PACKET), (char*)&userDisconnReqPacket);
+    connUsersManager->FindUser(centerServerObjNum)->PushSendMsg(sizeof(USER_DISCONNECT_AT_CHANNEL_REQUEST), (char*)&userDisconnReqPacket);
 }
 
 void RedisManager::SendChannelUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
@@ -189,8 +191,6 @@ void RedisManager::SendChannelUserCounts(uint16_t connObjNum_, uint16_t packetSi
     char* tempC = new char[MAX_SERVER_USERS + 1];
     char* tc = tempC;
     uint16_t cnt = tempV.size();
-
-    std::cout << "카운트 : " << cnt << std::endl;
 
     for (int i = 1; i < cnt; i++) {
         uint16_t userCount = tempV[i];
@@ -215,22 +215,37 @@ void RedisManager::MoveChannel(uint16_t connObjNum_, uint16_t packetSize_, char*
     moveChRes.PacketLength = sizeof(MOVE_CHANNEL_RESPONSE);
 
     if (expUpReqPacket->channelNum == static_cast<uint16_t>(ChannelType::CH_011)) { // 유저가 요청한 채널 입장 가능 여부 체크
-        if (!channelManager->InsertChannel(1, connObjNum_, tempUser)) {
-            moveChRes.isSuccess = false;
+        if (channelManager->InsertChannel(1, connObjNum_, tempUser)) {
+            moveChRes.isSuccess = true;
+
+            if (tempUser->GetChannel() != 0) channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_); // 유저가 속한 채널이 있었으면 해당 채널 수 감소
+            tempUser->SetChannel(1);
+
+            std::cout << tempUser->GetId() << " " << static_cast<uint16_t>(ChannelType::CH_011) << "채널로 이동" << std::endl;
         }
-        else moveChRes.isSuccess = true;
+        else moveChRes.isSuccess = false;
     }
     else if (expUpReqPacket->channelNum == static_cast<uint16_t>(ChannelType::CH_012)) {
-        if (!channelManager->InsertChannel(2, connObjNum_, tempUser)) {
-            moveChRes.isSuccess = false;
+        if (channelManager->InsertChannel(2, connObjNum_, tempUser)) {
+            moveChRes.isSuccess = true;
+
+            if (tempUser->GetChannel() != 0) channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_);
+            tempUser->SetChannel(2);
+
+            std::cout << tempUser->GetId() << " " << static_cast<uint16_t>(ChannelType::CH_012) << "채널로 이동" << std::endl;
         }
-        else moveChRes.isSuccess = true;
+        else moveChRes.isSuccess = false;
     }
     else if (expUpReqPacket->channelNum == static_cast<uint16_t>(ChannelType::CH_013)) {
-        if (!channelManager->InsertChannel(3, connObjNum_, tempUser)) {
-            moveChRes.isSuccess = false;
+        if (channelManager->InsertChannel(3, connObjNum_, tempUser)) {
+            moveChRes.isSuccess = true;
+
+            if (tempUser->GetChannel() != 0) channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_);
+            tempUser->SetChannel(3);
+
+            std::cout << tempUser->GetId() << " " << static_cast<uint16_t>(ChannelType::CH_013) << "채널로 이동" << std::endl;
         }
-        else moveChRes.isSuccess = true;
+        else moveChRes.isSuccess = false;
     }
 
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_CHANNEL_RESPONSE), (char*)&moveChRes);
