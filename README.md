@@ -134,7 +134,8 @@
 
 ## [Test Output]
 - #### Server & Channel Transition
- ![레전드 서버 이동gif](https://github.com/user-attachments/assets/a7d47cc7-2161-4b92-ad49-596b3ae99bee)
+![슈퍼레전드 채널 서버 이동](https://github.com/user-attachments/assets/6877eef1-2666-42a6-972b-85fd15feace3)
+
 
 1. 유저가 중앙 서버에 연결되면, 서버 선택 페이지로 이동합니다.
 2. 서버를 선택하면 중앙 서버로부터 해당 서버의 주소와 JWT 토큰을 받아, 선택한 채널 서버로 연결을 시도합니다.
