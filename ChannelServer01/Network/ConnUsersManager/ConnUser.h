@@ -58,7 +58,7 @@ public:
 		ConnUserRecv();
 
 		IM_CHANNEL_REQUEST imChReq;
-		imChReq.PacketId = (uint16_t)CHANNEL_ID::IM_CHANNEL_REQUEST;
+		imChReq.PacketId = (uint16_t)PACKET_ID::IM_CHANNEL_REQUEST;
 		imChReq.PacketLength = sizeof(IM_CHANNEL_REQUEST);
 		imChReq.channelServerNum = CHANNEL_NUM; // 각 채널 서버 번호 전달
 

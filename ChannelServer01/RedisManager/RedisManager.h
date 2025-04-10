@@ -41,7 +41,7 @@ private:
 
     //SYSTEM
     void ImChannelRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Channel Server Socket Check
-	void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 해당 서버로 유저 접속 요청 From Center Server
+    void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 해당 서버로 유저 접속 요청 From Center Server
     void UserDisConnect(uint16_t connObjNum_); // Send Message To Center Server
     void SendChannelUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 채널당 유저 수 요청 (유저가 채널 이동 화면으로 오면 전송)
     void MoveChannel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 채널 서버 이동 요청

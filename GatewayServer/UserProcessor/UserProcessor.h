@@ -147,7 +147,7 @@ public:
             else if (a == 1) {
                 auto k = reinterpret_cast<PACKET_HEADER*>(overlappedTCP->wsaBuf.buf);
 
-                if (k->PacketId == (uint16_t)SESSION_ID::USER_GAMESTART_REQUEST) {
+                if (k->PacketId == (uint16_t)PACKET_ID::USER_GAMESTART_REQUEST) {
                     auto ugReq = reinterpret_cast<USER_GAMESTART_REQUEST*>(overlappedTCP->wsaBuf.buf);
                     GameStart(tempUser, ugReq);
                     delete[] overlappedTCP->wsaBuf.buf;
@@ -155,7 +155,7 @@ public:
                     tempUser->UserRecv();
                 }
 
-                else if (k->PacketId == (uint16_t)SESSION_ID::USERINFO_REQUEST) { // GetUserInfo
+                else if (k->PacketId == (uint16_t)PACKET_ID::USERINFO_REQUEST) { // GetUserInfo
                     auto ugReq = reinterpret_cast<USERINFO_REQUEST*>(overlappedTCP->wsaBuf.buf);
                     GetUserInfo(tempUser, ugReq);
                     delete[] overlappedTCP->wsaBuf.buf;
@@ -163,21 +163,21 @@ public:
                     tempUser->UserRecv();
                 }
 
-                else if (k->PacketId == (uint16_t)SESSION_ID::EQUIPMENT_REQUEST) { // GetEquipment
+                else if (k->PacketId == (uint16_t)PACKET_ID::EQUIPMENT_REQUEST) { // GetEquipment
                     GetEquipment(tempUser);
                     delete[] overlappedTCP->wsaBuf.buf;
                     delete overlappedTCP;
                     tempUser->UserRecv();
                 }
 
-                else if (k->PacketId == (uint16_t)SESSION_ID::CONSUMABLES_REQUEST) { // GetConsumables
+                else if (k->PacketId == (uint16_t)PACKET_ID::CONSUMABLES_REQUEST) { // GetConsumables
                     GetConsumables(tempUser);
                     delete[] overlappedTCP->wsaBuf.buf;
                     delete overlappedTCP;
                     tempUser->UserRecv();
                 }
 
-                else if (k->PacketId == (uint16_t)SESSION_ID::MATERIALS_REQUEST) { // GetMaterials
+                else if (k->PacketId == (uint16_t)PACKET_ID::MATERIALS_REQUEST) { // GetMaterials
                     GetMaterials(tempUser);
                     delete[] overlappedTCP->wsaBuf.buf;
                     delete overlappedTCP;
@@ -213,7 +213,7 @@ public:
 
         tempUser->SetPk(userInfoPk.first);
         USERINFO_RESPONSE uiRes;
-        uiRes.PacketId = (UINT16)SESSION_ID::USERINFO_RESPONSE;
+        uiRes.PacketId = (UINT16)PACKET_ID::USERINFO_RESPONSE;
         uiRes.PacketLength = sizeof(USERINFO_RESPONSE);
         uiRes.UserInfo = userInfoPk.second;
         tempUser->SendUserInfo(uiRes);
@@ -232,7 +232,7 @@ public:
         }
 
         EQUIPMENT_RESPONSE eqSend;
-        eqSend.PacketId = (UINT16)SESSION_ID::EQUIPMENT_RESPONSE;
+        eqSend.PacketId = (UINT16)PACKET_ID::EQUIPMENT_RESPONSE;
         eqSend.PacketLength = sizeof(EQUIPMENT_RESPONSE);
         eqSend.eqCount = eq.first;
         std::memcpy(eqSend.Equipments, eq.second, MAX_INVEN_SIZE + 1);
@@ -253,7 +253,7 @@ public:
         }
 
         CONSUMABLES_RESPONSE csSend;
-        csSend.PacketId = (UINT16)SESSION_ID::CONSUMABLES_RESPONSE;
+        csSend.PacketId = (UINT16)PACKET_ID::CONSUMABLES_RESPONSE;
         csSend.PacketLength = sizeof(CONSUMABLES_RESPONSE);
         csSend.csCount = es.first;
         std::memcpy(csSend.Consumables, es.second, MAX_INVEN_SIZE + 1);
@@ -274,7 +274,7 @@ public:
         }
 
         MATERIALS_RESPONSE mtSend;
-        mtSend.PacketId = (UINT16)SESSION_ID::MATERIALS_RESPONSE;
+        mtSend.PacketId = (UINT16)PACKET_ID::MATERIALS_RESPONSE;
         mtSend.PacketLength = sizeof(MATERIALS_RESPONSE);
         mtSend.mtCount = em.first;
         std::memcpy(mtSend.Materials, em.second, MAX_INVEN_SIZE + 1);
@@ -301,7 +301,7 @@ public:
         pipe.exec();
 
         USER_GAMESTART_RESPONSE ugRes;
-        ugRes.PacketId = (UINT16)SESSION_ID::USER_GAMESTART_RESPONSE;
+        ugRes.PacketId = (UINT16)PACKET_ID::USER_GAMESTART_RESPONSE;
         ugRes.PacketLength = sizeof(USER_GAMESTART_RESPONSE);
         strncpy_s(ugRes.Token, token.c_str(), 256);
         tempUser->SendGameStart(ugRes);

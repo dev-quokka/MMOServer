@@ -18,5 +18,5 @@ public:
 	}
 
 private:
-	std::atomic<uint16_t> userCnt;
+	std::atomic<uint16_t> userCnt = 0;
 };

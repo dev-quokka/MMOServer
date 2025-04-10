@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 
 #include <jwt-cpp/jwt.h>
 #include <winsock2.h>
@@ -47,6 +48,9 @@ private:
     void SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 서버당 유저 수 요청 (유저가 서버 이동 화면으로 오면 전송)
     void MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 채널 서버 이동 요청
 
+    //CHANNEL
+    void ChannelDisConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+
     // RAID
     void MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 매치 대기열 삽입
     void MatchFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 레이드 매칭 실패시 전달 받는 패킷
@@ -67,6 +71,10 @@ private:
 
     // 80 bytes
     std::unordered_map<uint16_t, RECV_PACKET_FUNCTION> packetIDTable;
+    std::unordered_map<ServerType, ServerAddress> ServerAddressMap;
+
+    // 40 bytes
+    std::string JWT_SECRET = "Cute_Quokka";
 
     // 32 bytes
     std::vector<uint16_t> channelServerObjNums;

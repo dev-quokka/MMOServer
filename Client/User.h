@@ -49,7 +49,7 @@ public:
         memset(recvBuffer, 0, PACKET_SIZE);
 
         USERINFO_REQUEST uiReq;
-        uiReq.PacketId = (UINT16)SESSIONPACKET_ID::USERINFO_REQUEST;
+        uiReq.PacketId = (UINT16)PACKET_ID::USERINFO_REQUEST;
         uiReq.PacketLength = sizeof(USERINFO_REQUEST);
         strncpy_s(uiReq.userId, userId.c_str(), MAX_USER_ID_LEN);
 
@@ -69,7 +69,7 @@ public:
         std::cout << "Get Userinfo Success" << std::endl;
 
         EQUIPMENT_REQUEST eqReq;
-        eqReq.PacketId = (UINT16)SESSIONPACKET_ID::EQUIPMENT_REQUEST;
+        eqReq.PacketId = (UINT16)PACKET_ID::EQUIPMENT_REQUEST;
         eqReq.PacketLength = sizeof(EQUIPMENT_REQUEST);
 
         send(sessionSkt, (char*)&eqReq, sizeof(eqReq), 0); // 장비 정보 요청
@@ -92,7 +92,7 @@ public:
         std::cout << "Get EQUIPMENT Success" << std::endl;
 
         CONSUMABLES_REQUEST csReq;
-        csReq.PacketId = (UINT16)SESSIONPACKET_ID::CONSUMABLES_REQUEST;
+        csReq.PacketId = (UINT16)PACKET_ID::CONSUMABLES_REQUEST;
         csReq.PacketLength = sizeof(CONSUMABLES_REQUEST);
 
         send(sessionSkt, (char*)&csReq, sizeof(csReq), 0);
@@ -117,7 +117,7 @@ public:
         std::cout << "Get CONSUMABLES Success" << std::endl;
 
         MATERIALS_REQUEST mtReq;
-        mtReq.PacketId = (UINT16)SESSIONPACKET_ID::MATERIALS_REQUEST;
+        mtReq.PacketId = (UINT16)PACKET_ID::MATERIALS_REQUEST;
         mtReq.PacketLength = sizeof(MATERIALS_REQUEST);
 
         send(sessionSkt, (char*)&mtReq, sizeof(mtReq), 0);
@@ -142,7 +142,7 @@ public:
         std::cout << "Get MATERIALS Success" << std::endl;
 
         USER_GAMESTART_REQUEST ugReq;
-        ugReq.PacketId = (UINT16)SESSIONPACKET_ID::USER_GAMESTART_REQUEST;
+        ugReq.PacketId = (UINT16)PACKET_ID::USER_GAMESTART_REQUEST;
         ugReq.PacketLength = sizeof(USER_GAMESTART_REQUEST);
         strncpy_s(ugReq.userId, userId.c_str(), MAX_USER_ID_LEN);
 
@@ -220,6 +220,7 @@ public:
 
     uint16_t MoveServer(bool countCheck_) {
         if (countCheck_ == true) {
+            std::cout << std::endl;
             uint16_t tempC = 0;
             for (int i = 1; i < tempServerUserCounts.size(); i++) {
                 std::cout << i << "서버 유저 수 : " << tempServerUserCounts[i] << std::endl;
@@ -264,7 +265,7 @@ public:
             }
 
             USER_CONNECT_CHANNEL_REQUEST_PACKET uccReq;
-            uccReq.PacketId = (UINT16)CHANNEL_ID::USER_CONNECT_CHANNEL_REQUEST;
+            uccReq.PacketId = (UINT16)PACKET_ID::USER_CONNECT_CHANNEL_REQUEST;
             uccReq.PacketLength = sizeof(USER_CONNECT_CHANNEL_REQUEST_PACKET);
             strncpy_s(uccReq.userId, userId.c_str(), MAX_USER_ID_LEN);
             strncpy_s(uccReq.userToken, Token.c_str(), MAX_JWT_TOKEN_LEN);
@@ -282,6 +283,8 @@ public:
                 return 0;
             }
 
+            std::cout << "Connect Success To Channel Server" << std::endl;
+
             // 토큰까지 체크 완료 (서버 연결 성공)
             currentServer = tempC;
             return 1;
@@ -296,14 +299,20 @@ public:
 
         auto ucResPacket = reinterpret_cast<SERVER_USER_COUNTS_RESPONSE*>(recvBuffer);
         char* ptr = recvBuffer + sizeof(PACKET_HEADER) + sizeof(uint16_t);
-
+        std::vector<uint16_t> tempV;
+        tempV.resize(ucResPacket->serverCount, 0);
         uint16_t tempC = 0;
 
-        for (int i = 0; i < ucResPacket->serverCount; i++) {
+        std::cout << std::endl;
+
+        for (int i = 1; i < ucResPacket->serverCount; i++) {
             memcpy((char*)&tempC, ptr, sizeof(uint16_t));
-            std::cout << i + 1 << "서버 유저 수 : " << tempC << std::endl;
+            std::cout << i << "서버 유저 수 : " << tempC << std::endl;
+            tempV[i] = tempC;
             ptr += sizeof(uint16_t);
         }
+
+        tempServerUserCounts = tempV;
 
         std::cout << "이동할 서버를 선택해주세요 (게임을 종료하시려면 10번을 눌러주세요) : ";
         std::cin >> tempC;
@@ -316,9 +325,11 @@ public:
 
         if (tempC == 1) {
             movesServerReq.serverNum = static_cast<uint16_t>(ChannelServerType::CH_01);
+            std::cout << static_cast<uint16_t>(ChannelServerType::CH_01) << " 접속 요청" << std::endl;
         }
         else if (tempC == 2) {
             movesServerReq.serverNum = static_cast<uint16_t>(ChannelServerType::CH_02);
+            std::cout << static_cast<uint16_t>(ChannelServerType::CH_02) << " 접속 요청" << std::endl;
         }
 
         send(userSkt, (char*)&movesServerReq, sizeof(movesServerReq), 0);
@@ -345,7 +356,7 @@ public:
         }
 
         USER_CONNECT_CHANNEL_REQUEST_PACKET uccReq;
-        uccReq.PacketId = (UINT16)CHANNEL_ID::USER_CONNECT_CHANNEL_REQUEST;
+        uccReq.PacketId = (UINT16)PACKET_ID::USER_CONNECT_CHANNEL_REQUEST;
         uccReq.PacketLength = sizeof(USER_CONNECT_CHANNEL_REQUEST_PACKET);
         strncpy_s(uccReq.userId, userId.c_str(), MAX_USER_ID_LEN);
         strncpy_s(uccReq.userToken, Token.c_str(), MAX_JWT_TOKEN_LEN);
@@ -362,6 +373,8 @@ public:
             ChannelSocketinitialization();
             return 0;
         }
+
+        std::cout << "Connect Success To Channel Server" << std::endl;
 
         // 토큰까지 체크 완료 (서버 연결 성공)
         currentServer = tempC;
@@ -385,6 +398,7 @@ public:
     uint16_t SelectChannel(bool countCheck_) {
 
         if (countCheck_ == true) { // 채널 유저 이미 체크 했으면 받아온 채널 별 수 벡터 그대로 이용하기
+            std::cout << std::endl;
             uint16_t tempC = 0;
             for (int i = 1; i < tempChannelUserCounts.size(); i++) {
                 std::cout << i << "채널 유저 수 : " << tempChannelUserCounts[i] << std::endl;
@@ -395,12 +409,12 @@ public:
             if (tempC == 10) return 10;
 
             MOVE_CHANNEL_REQUEST mcReq;
-            mcReq.PacketId = (UINT16)CHANNEL_ID::MOVE_CHANNEL_REQUEST;
+            mcReq.PacketId = (UINT16)PACKET_ID::MOVE_CHANNEL_REQUEST;
             mcReq.PacketLength = sizeof(MOVE_CHANNEL_REQUEST);
             mcReq.channelNum = tempC;
 
-            send(userSkt, (char*)&mcReq, sizeof(mcReq), 0);
-            recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+            send(channelSkt, (char*)&mcReq, sizeof(mcReq), 0);
+            recv(channelSkt, recvBuffer, PACKET_SIZE, 0);
 
             auto mcResPacket = reinterpret_cast<MOVE_CHANNEL_RESPONSE*>(recvBuffer);
 
@@ -414,11 +428,11 @@ public:
         }
 
         CHANNEL_USER_COUNTS_REQUEST chUserCountsReq;
-        chUserCountsReq.PacketId = (UINT16)CHANNEL_ID::CHANNEL_USER_COUNTS_REQUEST;
+        chUserCountsReq.PacketId = (UINT16)PACKET_ID::CHANNEL_USER_COUNTS_REQUEST;
         chUserCountsReq.PacketLength = sizeof(CHANNEL_USER_COUNTS_REQUEST);
 
-        send(userSkt, (char*)&chUserCountsReq, sizeof(chUserCountsReq), 0);
-        recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+        send(channelSkt, (char*)&chUserCountsReq, sizeof(chUserCountsReq), 0);
+        recv(channelSkt, recvBuffer, PACKET_SIZE, 0);
 
         auto cucResPacket = reinterpret_cast<CHANNEL_USER_COUNTS_RESPONSE*>(recvBuffer);
         char* ptr = recvBuffer + sizeof(PACKET_HEADER) + sizeof(uint16_t);
@@ -427,14 +441,16 @@ public:
         std::vector<uint16_t> tempV;
         tempV.resize(cucResPacket->channelCount, 0);
 
-        for (int i = 0; i < cucResPacket->channelCount; i++) {
+        std::cout << std::endl;
+        std::cout << "카운트 : " << cucResPacket->channelCount << std::endl;
+        for (int i = 1; i < cucResPacket->channelCount; i++) {
             memcpy((char*)&tempC, ptr, sizeof(uint16_t));
-            std::cout << i + 1 << "채널 유저 수 : " << tempC << std::endl;
-            tempV[i + 1] = tempC;
+            std::cout << i << "채널 유저 수 : " << tempC << std::endl;
+            tempV[i] = tempC;
             ptr += sizeof(uint16_t);
         }
 
-        tempChannelUserCounts = std::move(tempV);
+        tempChannelUserCounts = tempV;
 
         std::cout << "이동할 채널을 선택해주세요 (뒤로가려면 10번을 눌러주세요) : ";
         std::cin >> tempC;
@@ -442,12 +458,12 @@ public:
         if (tempC == 10) return 10;
 
         MOVE_CHANNEL_REQUEST mcReq;
-        mcReq.PacketId = (UINT16)CHANNEL_ID::MOVE_CHANNEL_REQUEST;
+        mcReq.PacketId = (UINT16)PACKET_ID::MOVE_CHANNEL_REQUEST;
         mcReq.PacketLength = sizeof(MOVE_CHANNEL_REQUEST);
         mcReq.channelNum = tempC;
 
-        send(userSkt, (char*)&mcReq, sizeof(mcReq), 0);
-        recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+        send(channelSkt, (char*)&mcReq, sizeof(mcReq), 0);
+        recv(channelSkt, recvBuffer, PACKET_SIZE, 0);
 
         auto mcResPacket = reinterpret_cast<MOVE_CHANNEL_RESPONSE*>(recvBuffer);
 
@@ -488,12 +504,12 @@ public:
 
     void AddExpFromMob(uint16_t mobNum_) {
         EXP_UP_REQUEST euReq;
-        euReq.PacketId = (UINT16)CHANNEL_ID::EXP_UP_REQUEST;
+        euReq.PacketId = (UINT16)PACKET_ID::EXP_UP_REQUEST;
         euReq.PacketLength = sizeof(EXP_UP_REQUEST);
         euReq.mobNum = mobNum_;
 
-        send(userSkt, (char*)&euReq, sizeof(euReq), 0);
-        recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+        send(channelSkt, (char*)&euReq, sizeof(euReq), 0);
+        recv(channelSkt, recvBuffer, PACKET_SIZE, 0);
 
         auto ucResPacket = reinterpret_cast<EXP_UP_RESPONSE*>(recvBuffer);
 
@@ -547,7 +563,7 @@ public:
     bool MoveItem(uint16_t invenNum_, uint16_t currentpos_, uint16_t movepos_) {
         if (invenNum_ == 1) { // 장비
             MOV_EQUIPMENT_REQUEST miReq;
-            miReq.PacketId = (UINT16)CHANNEL_ID::MOV_EQUIPMENT_REQUEST;
+            miReq.PacketId = (UINT16)PACKET_ID::MOV_EQUIPMENT_REQUEST;
             miReq.PacketLength = sizeof(MOV_EQUIPMENT_REQUEST);
 
             EQUIPMENT currentE = eq[currentpos_];
@@ -560,8 +576,8 @@ public:
             miReq.targetItemEnhancement = currentE.enhance;
             miReq.targetItemPos = moveE.position;
 
-            send(userSkt, (char*)&miReq, sizeof(miReq), 0);
-            recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+            send(channelSkt, (char*)&miReq, sizeof(miReq), 0);
+            recv(channelSkt, recvBuffer, PACKET_SIZE, 0);
 
             auto miResPacket = reinterpret_cast<MOV_EQUIPMENT_RESPONSE*>(recvBuffer);
 
@@ -577,7 +593,7 @@ public:
         }
         else { // 소비 or 재료
             MOV_ITEM_REQUEST miReq;
-            miReq.PacketId = (UINT16)CHANNEL_ID::MOV_ITEM_REQUEST;
+            miReq.PacketId = (UINT16)PACKET_ID::MOV_ITEM_REQUEST;
             miReq.PacketLength = sizeof(MOV_ITEM_REQUEST);
 
             if (invenNum_ == 2) { // 소비
@@ -592,8 +608,8 @@ public:
                 miReq.targetItemCount = currentC.count;
                 miReq.targetItemPos = moveC.position;
 
-                send(userSkt, (char*)&miReq, sizeof(miReq), 0);
-                recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+                send(channelSkt, (char*)&miReq, sizeof(miReq), 0);
+                recv(channelSkt, recvBuffer, PACKET_SIZE, 0);
 
                 auto miResPacket = reinterpret_cast<MOV_ITEM_RESPONSE*>(recvBuffer);
 
@@ -619,8 +635,8 @@ public:
                 miReq.targetItemCount = currentM.count;
                 miReq.targetItemPos = moveM.position;
 
-                send(userSkt, (char*)&miReq, sizeof(miReq), 0);
-                recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+                send(channelSkt, (char*)&miReq, sizeof(miReq), 0);
+                recv(channelSkt, recvBuffer, PACKET_SIZE, 0);
 
                 auto miResPacket = reinterpret_cast<MOV_ITEM_RESPONSE*>(recvBuffer);
 
@@ -639,7 +655,7 @@ public:
 
     bool AddEquipment(uint16_t itemCode_, uint16_t enhancement_) {
         ADD_EQUIPMENT_REQUEST aeReq;
-        aeReq.PacketId = (UINT16)CHANNEL_ID::ADD_EQUIPMENT_REQUEST;
+        aeReq.PacketId = (UINT16)PACKET_ID::ADD_EQUIPMENT_REQUEST;
         aeReq.PacketLength = sizeof(ADD_EQUIPMENT_REQUEST);
 
         uint16_t addPosition = INVENTORY_SIZE + 1;
@@ -660,8 +676,8 @@ public:
         aeReq.itemPosition = addPosition;
         aeReq.Enhancement = enhancement_;
 
-        send(userSkt, (char*)&aeReq, sizeof(aeReq), 0);
-        recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+        send(channelSkt, (char*)&aeReq, sizeof(aeReq), 0);
+        recv(channelSkt, recvBuffer, PACKET_SIZE, 0);
 
         auto miResPacket = reinterpret_cast<ADD_EQUIPMENT_RESPONSE*>(recvBuffer);
 
@@ -679,7 +695,7 @@ public:
 
     bool AddItem(uint16_t invenNum_, uint16_t itemCode_, uint16_t count_) {
         ADD_ITEM_REQUEST aiReq;
-        aiReq.PacketId = (UINT16)CHANNEL_ID::ADD_ITEM_REQUEST;
+        aiReq.PacketId = (UINT16)PACKET_ID::ADD_ITEM_REQUEST;
         aiReq.PacketLength = sizeof(ADD_ITEM_REQUEST);
 
         if (invenNum_ == 2) { // 소비
@@ -713,8 +729,8 @@ public:
             aiReq.itemPosition = addPosition;
             aiReq.itemCount = addCount;
 
-            send(userSkt, (char*)&aiReq, sizeof(aiReq), 0);
-            recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+            send(channelSkt, (char*)&aiReq, sizeof(aiReq), 0);
+            recv(channelSkt, recvBuffer, PACKET_SIZE, 0);
 
             auto miResPacket = reinterpret_cast<ADD_ITEM_RESPONSE*>(recvBuffer);
 
@@ -760,8 +776,8 @@ public:
             aiReq.itemPosition = addPosition;
             aiReq.itemCount = count_;
 
-            send(userSkt, (char*)&aiReq, sizeof(aiReq), 0);
-            recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+            send(channelSkt, (char*)&aiReq, sizeof(aiReq), 0);
+            recv(channelSkt, recvBuffer, PACKET_SIZE, 0);
 
             auto miResPacket = reinterpret_cast<ADD_ITEM_RESPONSE*>(recvBuffer);
 
@@ -780,18 +796,18 @@ public:
 
     bool DeleteItem(uint16_t invenNum_, uint16_t pos_) {
         DEL_ITEM_REQUEST delReq;
-        delReq.PacketId = (UINT16)CHANNEL_ID::DEL_ITEM_REQUEST;
+        delReq.PacketId = (UINT16)PACKET_ID::DEL_ITEM_REQUEST;
         delReq.PacketLength = sizeof(DEL_ITEM_REQUEST);
         delReq.itemPosition = pos_;
 
         if (invenNum_ == 1) {
             DEL_EQUIPMENT_REQUEST delEReq;
-            delEReq.PacketId = (UINT16)CHANNEL_ID::DEL_EQUIPMENT_REQUEST;
+            delEReq.PacketId = (UINT16)PACKET_ID::DEL_EQUIPMENT_REQUEST;
             delEReq.PacketLength = sizeof(DEL_EQUIPMENT_REQUEST);
             delEReq.itemPosition = pos_;
 
-            send(userSkt, (char*)&delEReq, sizeof(delEReq), 0);
-            recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+            send(channelSkt, (char*)&delEReq, sizeof(delEReq), 0);
+            recv(channelSkt, recvBuffer, PACKET_SIZE, 0);
 
             auto enhResPacket = reinterpret_cast<DEL_EQUIPMENT_RESPONSE*>(recvBuffer);
 
@@ -805,8 +821,8 @@ public:
         else if (invenNum_ == 2) {
             delReq.itemType = invenNum_ - 1;
 
-            send(userSkt, (char*)&delReq, sizeof(delReq), 0);
-            recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+            send(channelSkt, (char*)&delReq, sizeof(delReq), 0);
+            recv(channelSkt, recvBuffer, PACKET_SIZE, 0);
 
             auto delResPacket = reinterpret_cast<DEL_ITEM_RESPONSE*>(recvBuffer);
 
@@ -820,8 +836,8 @@ public:
         else if (invenNum_ == 3) {
             delReq.itemType = invenNum_ - 1;
 
-            send(userSkt, (char*)&delReq, sizeof(delReq), 0);
-            recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+            send(channelSkt, (char*)&delReq, sizeof(delReq), 0);
+            recv(channelSkt, recvBuffer, PACKET_SIZE, 0);
 
             auto delResPacket = reinterpret_cast<DEL_ITEM_RESPONSE*>(recvBuffer);
 
@@ -836,12 +852,12 @@ public:
 
     bool EnhanceEquip(uint16_t pos_) { // Equipment Only
         ENH_EQUIPMENT_REQUEST enhReq;
-        enhReq.PacketId = (UINT16)CHANNEL_ID::ENH_EQUIPMENT_REQUEST;
+        enhReq.PacketId = (UINT16)PACKET_ID::ENH_EQUIPMENT_REQUEST;
         enhReq.PacketLength = sizeof(ENH_EQUIPMENT_REQUEST);
         enhReq.itemPosition = pos_;
 
-        send(userSkt, (char*)&enhReq, sizeof(enhReq), 0);
-        recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+        send(channelSkt, (char*)&enhReq, sizeof(enhReq), 0);
+        recv(channelSkt, recvBuffer, PACKET_SIZE, 0);
 
         std::cout << "강화중 ,," << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(2));
