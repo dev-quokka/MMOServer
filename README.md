@@ -1,4 +1,4 @@
-# IOCP & Redis Cluster를 활용한 MMO 게임 서버 프로젝트
+![레전드 서버 이동gif](https://github.com/user-attachments/assets/23655e63-a640-496f-8c95-390fa5926aa1)# IOCP & Redis Cluster를 활용한 MMO 게임 서버 프로젝트
 
 <br> 
 
@@ -133,6 +133,16 @@
 <br>
 
 ## [Test Output]
+- #### Server & Channel Transition
+ ![레전드 서버 이동gif](https://github.com/user-attachments/assets/a7d47cc7-2161-4b92-ad49-596b3ae99bee)
+
+1. 유저가 중앙 서버에 연결되면, 서버 선택 페이지로 이동합니다.
+2. 서버를 선택하면 중앙 서버로부터 해당 서버의 주소와 JWT 토큰을 받아, 선택한 채널 서버로 연결을 시도합니다.
+3. 채널 서버와의 연결이 성공하면, 채널 이동 페이지로 전환됩니다.
+4. 유저가 서버 선택 페이지로 돌아가면, 현재 접속 중인 채널 서버의 유저 수를 감소시키고, 채널 서버는 중앙 서버에 유저 퇴장 신호를 보내어 중앙 서버의 채널 유저 수를 감소시킵니다.
+5. 채널 및 서버 이동 중에도 유저 수 동기화를 지속하며, 유저가 서버 선택 페이지로 돌아갈 때 중앙 서버의 유저 수 감소 처리가 완료될 수 있도록 1초간 대기합니다.
+
+
 - #### User Connect & Logout & Syncronization
 ![접속, 접속종료](https://github.com/user-attachments/assets/e9d78268-0fb4-40b1-970f-538dd39c6fc3)
 
