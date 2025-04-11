@@ -38,7 +38,7 @@ int main() {
         while (1) {
             uint16_t checkServer = user.MoveServer(tempServerBool);
             if (checkServer == 0) { // 서버 입장 실패. 다시 서버 이동 페이지
-                tempServerBool = true; 
+                tempServerBool = true;
                 continue;
             }
             else if (checkServer == 10) { // 게임 종료
@@ -73,7 +73,7 @@ int main() {
                 break;
             }
         }
-        
+
         while (inChannelCheck) {
             std::cout << std::endl;
             uint16_t select;

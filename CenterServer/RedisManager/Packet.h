@@ -133,8 +133,8 @@ struct RAID_RANKING_REQUEST : PACKET_HEADER {
 };
 
 struct RAID_RANKING_RESPONSE : PACKET_HEADER {
-	char reqScore[MAX_SCORE_SIZE + 1];
 	uint16_t rkCount;
+	char reqScore[MAX_SCORE_SIZE + 1];
 };
 
 
@@ -191,8 +191,8 @@ enum class PACKET_ID : uint16_t {
 	// SYSTEM (1~)
 	USER_CONNECT_REQUEST = 1,
 	USER_CONNECT_RESPONSE = 2,
-	USER_LOGOUT_REQUEST = 3, 
-	USER_FULL_REQUEST = 6, 
+	USER_LOGOUT_REQUEST = 3,
+	USER_FULL_REQUEST = 6,
 	WAITTING_NUMBER_REQUSET = 7,
 	SERVER_USER_COUNTS_REQUEST = 8,
 	SERVER_USER_COUNTS_RESPONSE = 9,
@@ -206,7 +206,7 @@ enum class PACKET_ID : uint16_t {
 	MATCHING_CANCEL_RESPONSE = 48,
 	RAID_READY_REQUEST = 49,
 
-	RAID_RANKING_REQUEST = 55, 
+	RAID_RANKING_REQUEST = 55,
 	RAID_RANKING_RESPONSE = 56,
 
 
@@ -236,7 +236,7 @@ enum class PACKET_ID : uint16_t {
 	SYNCRONIZE_DISCONNECT_REQUEST = 853,
 
 	//  ---------------------------- CHANNEL (1501~)  ----------------------------
-	
+
 	// SYSTEM (1501~)
 	IM_CHANNEL_REQUEST = 1501,
 	IM_CHANNEL_RESPONSE = 1502,
@@ -272,7 +272,7 @@ enum class PACKET_ID : uint16_t {
 
 
 	//  ---------------------------- MATCHING (5001~)  ----------------------------
-	
+
 	//SYSTEM (5001~)
 	IM_MATCHING_REQUEST = 5001,
 	IM_MATCHING_RESPONSE = 5002,

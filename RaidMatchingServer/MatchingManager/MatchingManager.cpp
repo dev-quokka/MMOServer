@@ -21,7 +21,7 @@ bool MatchingManager::CreateMatchThread() {
     return true;
 }
 
-bool MatchingManager::Insert(uint16_t userPk_, uint16_t userCenterObjNum_, uint16_t userGroupNum_) {
+uint16_t MatchingManager::Insert(uint16_t userPk_, uint16_t userCenterObjNum_, uint16_t userGroupNum_) {
     MatchingRoom* tempRoom = new MatchingRoom(userPk_, userCenterObjNum_);
 
     tbb::concurrent_hash_map<uint16_t, std::set<MatchingRoom*, MatchingRoomComp>>::accessor accessor;
@@ -30,11 +30,13 @@ bool MatchingManager::Insert(uint16_t userPk_, uint16_t userCenterObjNum_, uint1
     if (matchingMap.find(accessor, groupNum)) { // Insert Success
         accessor->second.insert(tempRoom);
         std::cout << "Insert Group " << groupNum << std::endl;
-        return true;
+        return userCenterObjNum_;
     }
 
+    std::cout << "pk : " << userPk_ << "Insert Success" << std::endl;
+
     // Match Queue Full || Insert Fail
-    return false;
+    return 0;
 }
 
 uint16_t MatchingManager::CancelMatching(uint16_t userCenterObjNum_, uint16_t userGroupNum_) {
@@ -87,10 +89,10 @@ void MatchingManager::MatchingThread() {
                                     rMatchingResPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER;
                                     rMatchingResPacket.PacketLength = sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER);
                                     rMatchingResPacket.roomNum = tempRoomNum;
-									rMatchingResPacket.userObjNum1 = tempMatching1->userCenterObjNum;
-									rMatchingResPacket.userObjNum2 = tempMatching2->userCenterObjNum;
+                                    rMatchingResPacket.userObjNum1 = tempMatching1->userCenterObjNum;
+                                    rMatchingResPacket.userObjNum2 = tempMatching2->userCenterObjNum;
 
-									connServersManager->FindUser(0)->  // 중앙 서버로 매칭된 유저 정보 전달
+                                    connServersManager->FindUser(0)->  // 중앙 서버로 매칭된 유저 정보 전달
                                         PushSendMsg(sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER), (char*)&rMatchingResPacket);
 
                                     //connServersManager->FindUser(1)-> // 매칭된 게임 서버로 매칭된 유저 정보 전달

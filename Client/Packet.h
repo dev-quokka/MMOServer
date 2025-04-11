@@ -332,7 +332,7 @@ struct RAID_END_RESPONSE : PACKET_HEADER { // User to Server (If Server Get This
 
 enum class PACKET_ID : uint16_t {
 	//  ---------------------------- CENTER (1~)  ----------------------------
-	
+
 	// SYSTEM (1~)
 	USER_CONNECT_REQUEST = 1,
 	USER_CONNECT_RESPONSE = 2,
@@ -352,7 +352,7 @@ enum class PACKET_ID : uint16_t {
 	RAID_RANKING_RESPONSE = 56,
 
 	//  ---------------------------- SESSION (801~)  ----------------------------
-	
+
 	// USER LOGIN (811~)
 	USER_LOGIN_REQUEST = 811,
 	USER_LOGIN_RESPONSE = 812,

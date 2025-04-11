@@ -300,14 +300,14 @@ public:
         auto ucResPacket = reinterpret_cast<SERVER_USER_COUNTS_RESPONSE*>(recvBuffer);
         char* ptr = recvBuffer + sizeof(PACKET_HEADER) + sizeof(uint16_t);
         std::vector<uint16_t> tempV;
-        tempV.resize(ucResPacket->serverCount,0);
+        tempV.resize(ucResPacket->serverCount, 0);
         uint16_t tempC = 0;
 
         std::cout << std::endl;
 
         for (int i = 1; i < ucResPacket->serverCount; i++) {
             memcpy((char*)&tempC, ptr, sizeof(uint16_t));
-            std::cout << i << "서버 유저 수 : " << tempC <<  std::endl;
+            std::cout << i << "서버 유저 수 : " << tempC << std::endl;
             tempV[i] = tempC;
             ptr += sizeof(uint16_t);
         }

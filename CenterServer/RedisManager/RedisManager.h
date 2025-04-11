@@ -58,8 +58,8 @@ private:
     void MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 유저의 매칭 취소 요청
     void MatchingCancelResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 매칭 서버에서 유저 매칭 취소 여부 응답
     void MatchFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 레이드 매칭 실패 (매칭 성공되는 시점에 유저 로그아웃 or 매칭 취소 요청)
-	void MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Center Server to Matching Server
-	void MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Matching Server to Center Server
+    void MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Center Server to Matching Server
+    void MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Matching Server to Center Server
     void GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
     typedef void(RedisManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
@@ -87,7 +87,7 @@ private:
     std::vector<uint16_t> enhanceProbabilities = { 100,90,80,70,60,50,40,30,20,10 };
     std::vector<unsigned int> mobExp = { 0,1,2,3,4,5,6,7,8,9,10 };
     std::vector<std::string> itemType = { "equipment", "consumables", "materials" };
-    
+
     // 16 bytes
     std::unique_ptr<sw::redis::RedisCluster> redis;
     std::thread redisThread;

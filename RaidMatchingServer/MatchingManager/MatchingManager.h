@@ -29,7 +29,7 @@ constexpr uint16_t USER_MAX_LEVEL = 15;
 constexpr uint16_t MAX_ROOM = 10;
 
 struct MatchingRoom {
-	uint16_t userPk; 
+	uint16_t userPk;
 	uint16_t userCenterObjNum;
 	std::chrono::time_point<std::chrono::steady_clock> insertTime = std::chrono::steady_clock::now();
 	MatchingRoom(uint16_t userPk_, uint16_t userCenterObjNum_) : userPk(userPk_), userCenterObjNum(userCenterObjNum_) {}
@@ -63,7 +63,7 @@ public:
 	}
 
 	bool Init();
-	bool Insert(uint16_t userPk_, uint16_t userCenterObjNum, uint16_t userGroupNum_);
+	uint16_t Insert(uint16_t userPk_, uint16_t userCenterObjNum, uint16_t userGroupNum_);
 	uint16_t CancelMatching(uint16_t userCenterObjNum_, uint16_t userGroupNum_);
 	bool CreateMatchThread();
 	void MatchingThread();
@@ -73,7 +73,7 @@ private:
 	tbb::concurrent_hash_map<uint16_t, std::set<MatchingRoom*, MatchingRoomComp>> matchingMap; // {Level/3 + 1 (0~2 = 1, 3~5 = 2 ...), UserSkt}
 
 	// 512 bytes
-	char recvBuf[PACKET_SIZE] = {0};
+	char recvBuf[PACKET_SIZE] = { 0 };
 
 	// 136 bytes
 	boost::lockfree::queue<char*> procQueue{ 10 };

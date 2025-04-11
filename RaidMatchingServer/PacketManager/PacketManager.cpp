@@ -5,8 +5,10 @@ void PacketManager::init(const uint16_t RedisThreadCnt_) {
     packetIDTable = std::unordered_map<uint16_t, RECV_PACKET_FUNCTION>();
 
     // SYSTEM
+    packetIDTable[(uint16_t)PACKET_ID::IM_MATCHING_RESPONSE] = &PacketManager::ImMatchingRequest;
+
     packetIDTable[(uint16_t)PACKET_ID::MATCHING_REQUEST_TO_MATCHING_SERVER] = &PacketManager::MatchStart;
-    packetIDTable[(uint16_t)PACKET_ID::MATCHING_REQUEST_TO_MATCHING_SERVER] = &PacketManager::MatchingCancel;
+    packetIDTable[(uint16_t)PACKET_ID::MATCHING_CANCEL_REQUEST_TO_MATCHING_SERVER] = &PacketManager::MatchingCancel;
 
     RedisRun(RedisThreadCnt_);
 }
@@ -26,11 +28,6 @@ void PacketManager::RedisRun(const uint16_t RedisThreadCnt_) { // Connect Redis 
     catch (const  sw::redis::Error& err) {
         std::cout << "Redis Connect Error : " << err.what() << std::endl;
     }
-}
-
-void PacketManager::SetManager(ConnServersManager* connServersManager_, MatchingManager* matchingManager_) {
-    connServersManager = connServersManager_;
-    matchingManager = matchingManager_;
 }
 
 bool PacketManager::CreateRedisThread(const uint16_t RedisThreadCnt_) {
@@ -93,14 +90,16 @@ void PacketManager::MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char*
     MATCHING_RESPONSE_FROM_MATCHING_SERVER matchResPacket;
     matchResPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_RESPONSE_FROM_MATCHING_SERVER;
     matchResPacket.PacketLength = sizeof(MATCHING_RESPONSE_FROM_MATCHING_SERVER);
+    matchResPacket.userCenterObjNum = matchingManager->Insert(matchingReqPacket->userPk, matchingReqPacket->userCenterObjNum, matchingReqPacket->userGroupNum);
 
     // 매칭 쓰레드 insert 성공 여부 전달
-    matchResPacket.isSuccess = matchingManager->Insert(matchingReqPacket->userPk, matchingReqPacket->userCenterObjNum, matchingReqPacket->userGroupNum);
+    if (matchResPacket.userCenterObjNum == 0) matchResPacket.isSuccess = false;
+    else matchResPacket.isSuccess = true;
 
     connServersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MATCHING_RESPONSE_FROM_MATCHING_SERVER), (char*)&matchResPacket);
 }
 
-void PacketManager::MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_){
+void PacketManager::MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto matchingReqPacket = reinterpret_cast<MATCHING_CANCEL_REQUEST_TO_MATCHING_SERVER*>(pPacket_);
 
     MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER matchCancelResPacket;
@@ -108,7 +107,10 @@ void PacketManager::MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, c
     matchCancelResPacket.PacketLength = sizeof(MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER);
 
     // 매칭 취소 성공 여부 전달
-    matchCancelResPacket.isSuccess = matchingManager->CancelMatching(matchingReqPacket->userCenterObjNum, matchingReqPacket->userGroupNum);
+    if (!matchingManager->CancelMatching(matchingReqPacket->userCenterObjNum, matchingReqPacket->userGroupNum)) {
+        matchCancelResPacket.isSuccess = false;
+    }
+    else matchCancelResPacket.isSuccess = true;
 
     connServersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER), (char*)&matchCancelResPacket);
 }
