@@ -1,7 +1,6 @@
 #pragma once
 #define NOMINMAX
 
-#include <jwt-cpp/jwt.h>
 #include <winsock2.h>
 #include <windef.h>
 #include <cstdint>
@@ -12,6 +11,7 @@
 
 #include "Packet.h"
 #include "ConnServersManager.h"
+#include "MatchingManager.h"
 
 class PacketManager {
 public:
@@ -26,8 +26,8 @@ public:
     }
 
     void init(const uint16_t RedisThreadCnt_);
-    void SetManager(ConnServersManager* connServersManager_);
-    void PushRedisPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_); // Push Redis Packet
+    void SetManager(ConnServersManager* connServersManager_, MatchingManager* matchingManager_);
+    void PushPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_);
 
 private:
     bool CreateRedisThread(const uint16_t RedisThreadCnt_);
@@ -35,13 +35,13 @@ private:
     void RedisThread();
 
     //SYSTEM
-    void ServerDisConnect(uint16_t connObjNum_); // Abnormal Disconnect (Set Long Time TTL)
+    void ImMatchingRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void ServerDisConnect(uint16_t connObjNum_);
 
     // RAID
     void MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 매치 대기열 삽입
-    void MatchFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 레이드 매칭 실패시 전달 받는 패킷
-    void MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Center Server to Matching Server
-    void MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Matching Server to Center Server
+    void MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 매치 대기열 삽입
+    void MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 매칭 완료 중에 실패 (매칭이 성공하는 시점에 유저가 나갔거나, 취소를 먼저 눌렀을때)
 
     typedef void(PacketManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
 
@@ -63,6 +63,7 @@ private:
 
     // 8 bytes
     ConnServersManager* connServersManager;
+    MatchingManager* matchingManager;
 
     // 1 bytes
     bool redisRun = false;

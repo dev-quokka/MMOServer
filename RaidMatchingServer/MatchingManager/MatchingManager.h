@@ -22,16 +22,17 @@
 #include "Packet.h"
 #include "Define.h"
 #include "OverLappedManager.h"
+#include "ConnServersManager.h"
 
 constexpr int UDP_PORT = 50000;
 constexpr uint16_t USER_MAX_LEVEL = 15;
 constexpr uint16_t MAX_ROOM = 10;
-constexpr uint16_t IOCP_THREAD_CNT = 1;
 
 struct MatchingRoom {
-	uint16_t userObjNum;
+	uint16_t userPk; 
+	uint16_t userCenterObjNum;
 	std::chrono::time_point<std::chrono::steady_clock> insertTime = std::chrono::steady_clock::now();
-	MatchingRoom(uint16_t userObjNum_) : userObjNum(userObjNum_) {}
+	MatchingRoom(uint16_t userPk_, uint16_t userCenterObjNum_) : userPk(userPk_), userCenterObjNum(userCenterObjNum_) {}
 };
 
 struct MatchingRoomComp {
@@ -61,19 +62,10 @@ public:
 		}
 	}
 
-	bool RecvData();
-	void PushSendMsg(const uint32_t dataSize_, char* sendMsg);
-	void ProcSend();
-	void SendComplete();
-
-	bool Init(const uint16_t maxClientCount_);
-	// void PushPacket(const uint32_t size_, char* recvData_);
-	bool Insert(uint16_t userPk_, uint16_t userGroupNum_);
-	bool CancelMatching(uint16_t userPk_, uint16_t userGroupNum_);
-	bool CreatePacketThread();
+	bool Init();
+	bool Insert(uint16_t userPk_, uint16_t userCenterObjNum, uint16_t userGroupNum_);
+	uint16_t CancelMatching(uint16_t userCenterObjNum_, uint16_t userGroupNum_);
 	bool CreateMatchThread();
-	void WorkThread();
-	void PacketThread();
 	void MatchingThread();
 
 private:
@@ -93,8 +85,6 @@ private:
 	std::mutex mDeleteMatch;
 
 	// 16 bytes
-	std::thread workThread;
-	std::thread packetThread;
 	std::thread matchingThread;
 
 	// 8 bytes
@@ -104,12 +94,11 @@ private:
 	OverlappedEx* recvOvLap;
 	OverlappedEx* sendOvLap;
 	OverLappedManager* overlappedManager;
+	ConnServersManager* connServersManager;
 
 	// 2 bytes
 	std::atomic<uint16_t> sendQueueSize{ 0 };
 
 	// 1 bytes
-	std::atomic<bool> workRun;
-	std::atomic<bool> packetRun;
 	std::atomic<bool> matchRun;
 };

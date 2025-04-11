@@ -5,21 +5,8 @@ void PacketManager::init(const uint16_t RedisThreadCnt_) {
     packetIDTable = std::unordered_map<uint16_t, RECV_PACKET_FUNCTION>();
 
     // SYSTEM
-    packetIDTable[(uint16_t)PACKET_ID::USER_CONNECT_REQUEST] = &RedisManager::UserConnect;
-    packetIDTable[(uint16_t)PACKET_ID::USER_LOGOUT_REQUEST] = &RedisManager::Logout;
-    packetIDTable[(uint16_t)PACKET_ID::SERVER_USER_COUNTS_REQUEST] = &RedisManager::SendServerUserCounts;
-    packetIDTable[(uint16_t)PACKET_ID::MOVE_SERVER_REQUEST] = &RedisManager::MoveServer;
-
-    // SESSION
-    packetIDTable[(uint16_t)PACKET_ID::IM_SESSION_REQUEST] = &RedisManager::ImSessionRequest;
-
-    // CHANNEL
-    packetIDTable[(uint16_t)PACKET_ID::IM_CHANNEL_REQUEST] = &RedisManager::ImChannelRequest;
-    packetIDTable[(uint16_t)PACKET_ID::USER_DISCONNECT_AT_CHANNEL_REQUEST] = &RedisManager::ChannelDisConnect;
-
-    // RAID
-    packetIDTable[(uint16_t)PACKET_ID::RAID_MATCHING_REQUEST] = &RedisManager::MatchStart;
-    packetIDTable[(uint16_t)PACKET_ID::RAID_RANKING_REQUEST] = &RedisManager::GetRanking;
+    packetIDTable[(uint16_t)PACKET_ID::MATCHING_REQUEST_TO_MATCHING_SERVER] = &PacketManager::MatchStart;
+    packetIDTable[(uint16_t)PACKET_ID::MATCHING_REQUEST_TO_MATCHING_SERVER] = &PacketManager::MatchingCancel;
 
     RedisRun(RedisThreadCnt_);
 }
@@ -41,8 +28,9 @@ void PacketManager::RedisRun(const uint16_t RedisThreadCnt_) { // Connect Redis 
     }
 }
 
-void PacketManager::SetManager(ConnServersManager* connServersManager_) {
+void PacketManager::SetManager(ConnServersManager* connServersManager_, MatchingManager* matchingManager_) {
     connServersManager = connServersManager_;
+    matchingManager = matchingManager_;
 }
 
 bool PacketManager::CreateRedisThread(const uint16_t RedisThreadCnt_) {
@@ -71,7 +59,7 @@ void PacketManager::RedisThread() {
     }
 }
 
-void PacketManager::PushRedisPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_) {
+void PacketManager::PushPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_) {
     ConnServer* TempConnServer = connServersManager->FindUser(connObjNum_);
     TempConnServer->WriteRecvData(recvData_, size_); // Push Data in Circualr Buffer
     DataPacket tempD(size_, connObjNum_);
@@ -82,6 +70,17 @@ void PacketManager::PushRedisPacket(const uint16_t connObjNum_, const uint32_t s
 
 //  ---------------------------- SYSTEM  ----------------------------
 
+void PacketManager::ImMatchingRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    auto centerConn = reinterpret_cast<IM_MATCHING_RESPONSE*>(pPacket_);
+
+    if (!centerConn->isSuccess) {
+        std::cout << "Connected Fail to the central server" << std::endl;
+        return;
+    }
+
+    std::cout << "Connected to the central server" << std::endl;
+}
+
 void PacketManager::ServerDisConnect(uint16_t connObjNum_) { // Abnormal Disconnect
 
 }
@@ -89,79 +88,27 @@ void PacketManager::ServerDisConnect(uint16_t connObjNum_) { // Abnormal Disconn
 //  ---------------------------- RAID  ----------------------------
 
 void PacketManager::MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
-    InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
+    auto matchingReqPacket = reinterpret_cast<MATCHING_REQUEST_TO_MATCHING_SERVER*>(pPacket_);
 
-    MATCHING_REQUEST_TO_MATCHING_SERVER matchReqPacket;
-    matchReqPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_REQUEST_TO_MATCHING_SERVER;
-    matchReqPacket.PacketLength = sizeof(MATCHING_REQUEST_TO_MATCHING_SERVER);
-    matchReqPacket.userObjNum = connObjNum_;
-    matchReqPacket.userGroupNum = tempUser->GetLevel() / 3 + 1; // 설정해둔 그룹 번호 만들어서 전달
+    MATCHING_RESPONSE_FROM_MATCHING_SERVER matchResPacket;
+    matchResPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_RESPONSE_FROM_MATCHING_SERVER;
+    matchResPacket.PacketLength = sizeof(MATCHING_RESPONSE_FROM_MATCHING_SERVER);
 
-    connUsersManager->FindUser(MatchingServerObjNum)->PushSendMsg(sizeof(MATCHING_REQUEST_TO_MATCHING_SERVER), (char*)&matchReqPacket);
+    // 매칭 쓰레드 insert 성공 여부 전달
+    matchResPacket.isSuccess = matchingManager->Insert(matchingReqPacket->userPk, matchingReqPacket->userCenterObjNum, matchingReqPacket->userGroupNum);
+
+    connServersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MATCHING_RESPONSE_FROM_MATCHING_SERVER), (char*)&matchResPacket);
 }
 
-void PacketManager::MatchFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
-    auto matchResPacket = reinterpret_cast<MATCHING_RESPONSE_FROM_MATCHING_SERVER*>(pPacket_);
+void PacketManager::MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_){
+    auto matchingReqPacket = reinterpret_cast<MATCHING_CANCEL_REQUEST_TO_MATCHING_SERVER*>(pPacket_);
 
-    RAID_MATCHING_RESPONSE matchResToUserPacket;
-    matchResToUserPacket.PacketId = (uint16_t)PACKET_ID::RAID_MATCHING_RESPONSE;
-    matchResToUserPacket.PacketLength = sizeof(RAID_MATCHING_RESPONSE);
-    matchResToUserPacket.insertSuccess = matchResPacket->isSuccess;
+    MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER matchCancelResPacket;
+    matchCancelResPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER;
+    matchCancelResPacket.PacketLength = sizeof(MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER);
 
-    connUsersManager->FindUser(matchResPacket->userObjNum)->PushSendMsg(sizeof(RAID_MATCHING_RESPONSE), (char*)&matchResToUserPacket);
-}
+    // 매칭 취소 성공 여부 전달
+    matchCancelResPacket.isSuccess = matchingManager->CancelMatching(matchingReqPacket->userCenterObjNum, matchingReqPacket->userGroupNum);
 
-void PacketManager::MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
-    auto matchSuccessReqPacket = reinterpret_cast<MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER*>(pPacket_);
-
-    uint16_t tempRoomNum = matchSuccessReqPacket->roomNum;
-
-    RAID_READY_REQUEST raidReadyReqPacket;
-    raidReadyReqPacket.PacketId = (uint16_t)PACKET_ID::RAID_READY_REQUEST;
-    raidReadyReqPacket.PacketLength = sizeof(RAID_READY_REQUEST);
-    raidReadyReqPacket.roomNum = tempRoomNum;
-    raidReadyReqPacket.udpPort = 50001; // 나중에 게임 서버가 늘어나면 해당 서버로 부터 udp 포트 직접 받기
-    raidReadyReqPacket.port = ServerAddressMap[ServerType::RaidGameServer01].port;
-    strncpy_s(raidReadyReqPacket.ip, ServerAddressMap[ServerType::RaidGameServer01].ip.c_str(), 256);
-
-    { // 매칭된 유저들에게 선택된 게임 서버의 ip, port와 채널 이동 간 보안을 위한 JWT Token 생성 (유저가 많아지면 vector 이용 고려)
-        std::string token1 = jwt::create()
-            .set_issuer("Center_Server")
-            .set_subject("Connect_GameServer")
-            .set_payload_claim("user_id", jwt::claim(std::to_string(matchSuccessReqPacket->userObjNum1)))  // 유저 고유번호
-            .set_payload_claim("room_id", jwt::claim(std::to_string(tempRoomNum)))  // 방 번호
-            .set_expires_at(std::chrono::system_clock::now() +
-                std::chrono::seconds{ 300 })
-            .sign(jwt::algorithm::hs256{ JWT_SECRET });
-
-        std::string tag = "{" + std::to_string(static_cast<uint16_t>(ServerType::RaidGameServer01)) + "}";
-        std::string key = "jwtcheck:" + tag;
-
-        auto pipe = redis->pipeline(tag);
-
-        pipe.hset(key, token1, std::to_string(matchSuccessReqPacket->userObjNum1))
-            .expire(key, 300);
-
-        connUsersManager->FindUser(matchSuccessReqPacket->userObjNum1)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&raidReadyReqPacket);
-
-        std::string token2 = jwt::create()
-            .set_issuer("Center_Server")
-            .set_subject("Connect_GameServer")
-            .set_payload_claim("user_id", jwt::claim(std::to_string(matchSuccessReqPacket->userObjNum2)))  // 유저 고유번호
-            .set_payload_claim("room_id", jwt::claim(std::to_string(tempRoomNum)))  // 방 번호
-            .set_expires_at(std::chrono::system_clock::now() +
-                std::chrono::seconds{ 300 })
-            .sign(jwt::algorithm::hs256{ JWT_SECRET });
-
-        pipe.hset(key, token2, std::to_string(matchSuccessReqPacket->userObjNum2))
-            .expire(key, 150);
-
-        connUsersManager->FindUser(matchSuccessReqPacket->userObjNum2)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&raidReadyReqPacket);
-
-        pipe.exec();
-    }
-}
-
-void PacketManager::MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
-
+    connServersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER), (char*)&matchCancelResPacket);
 }

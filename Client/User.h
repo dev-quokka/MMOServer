@@ -300,14 +300,14 @@ public:
         auto ucResPacket = reinterpret_cast<SERVER_USER_COUNTS_RESPONSE*>(recvBuffer);
         char* ptr = recvBuffer + sizeof(PACKET_HEADER) + sizeof(uint16_t);
         std::vector<uint16_t> tempV;
-        tempV.resize(ucResPacket->serverCount, 0);
+        tempV.resize(ucResPacket->serverCount,0);
         uint16_t tempC = 0;
 
         std::cout << std::endl;
 
         for (int i = 1; i < ucResPacket->serverCount; i++) {
             memcpy((char*)&tempC, ptr, sizeof(uint16_t));
-            std::cout << i << "서버 유저 수 : " << tempC << std::endl;
+            std::cout << i << "서버 유저 수 : " << tempC <<  std::endl;
             tempV[i] = tempC;
             ptr += sizeof(uint16_t);
         }
@@ -890,15 +890,19 @@ public:
             return;
         }
 
+        std::cout << "Raid Start" << std::endl;
+        std::cout << "Raid End" << std::endl;
+        return;
+
         std::cout << "Match Insert Success" << std::endl;
         std::cout << "Team Waitting" << std::endl;
         recv(userSkt, recvBuffer, PACKET_SIZE, 0);
         auto rrReqPacket = reinterpret_cast<RAID_READY_REQUEST*>(recvBuffer);
 
-        timer = rrReqPacket->timer; // Minutes
-        roomNum = rrReqPacket->roomNum; // If Max RoomNum Up to Short Range, Back to Number One
-        myNum = rrReqPacket->yourNum;
-        mobHp = rrReqPacket->mobHp;
+        //timer = rrReqPacket->timer; // Minutes
+        //roomNum = rrReqPacket->roomNum; // If Max RoomNum Up to Short Range, Back to Number One
+        //myNum = rrReqPacket->yourNum;
+        //mobHp = rrReqPacket->mobHp;
 
         if (!makeUDPSocket()) { // UDP 소켓 생성 실패했을때
             std::cout << "Udp Socket Make Fail" << std::endl;

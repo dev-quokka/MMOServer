@@ -20,7 +20,7 @@ void ChannelServersManager::LeaveChannelServer(uint16_t channelNum_) {
 }
 
 std::vector<uint16_t> ChannelServersManager::GetServerCounts() {
-	std::vector<uint16_t> k(3, 0);
+	std::vector<uint16_t> k(3,0);
 
 	for (int i = 1; i < servers.size(); i++) {
 		k[i] = servers[i]->GetUserCount();

@@ -39,15 +39,16 @@ struct IM_MATCHING_RESPONSE : PACKET_HEADER {
 };
 
 
-//  ---------------------------- RAID  ----------------------------
+//  ---------------------------- MATCHING  ----------------------------
 
-struct MATCHING_REQUEST : PACKET_HEADER {
-	uint16_t userObjNum;
-	uint16_t userGroupNum;
+struct MATCHING_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
+	uint16_t userPk; // 유저 pk
+	uint16_t userCenterObjNum; // 중앙 서버에서 사용하는 고유 번호
+	uint16_t userGroupNum; // 유저 그룹 번호
 };
 
-struct MATCHING_RESPONSE : PACKET_HEADER {
-	uint16_t userObjNum;
+struct MATCHING_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
+	uint16_t userCenterObjNum;
 	bool isSuccess;
 };
 
@@ -61,6 +62,17 @@ struct RAID_START_FAIL_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER { // 서버에서 
 	uint16_t roomNum;
 };
 
+struct MATCHING_CANCEL_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
+	uint16_t userCenterObjNum;
+	uint16_t userGroupNum;
+};
+
+struct MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
+	uint16_t userCenterObjNum;
+	bool isSuccess; // True : 취소 성공, Fail : 이미 매치 시작 or 예기치 못한 오류 (레디스 클러스터 상태로 확인)
+};
+
+
 enum class PACKET_ID : uint16_t {
 	//SYSTEM (5001~)
 	IM_MATCHING_REQUEST = 5001,
@@ -70,5 +82,8 @@ enum class PACKET_ID : uint16_t {
 	MATCHING_REQUEST_TO_MATCHING_SERVER = 5011,
 	MATCHING_RESPONSE_FROM_MATCHING_SERVER = 5012,
 	MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER = 5013,
-	RAID_START_FAIL_REQUEST_TO_MATCHING_SERVER = 5014
+	RAID_START_FAIL_REQUEST_TO_MATCHING_SERVER = 5014,
+
+	MATCHING_CANCEL_REQUEST_TO_MATCHING_SERVER = 5021,
+	MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER = 5022,
 };

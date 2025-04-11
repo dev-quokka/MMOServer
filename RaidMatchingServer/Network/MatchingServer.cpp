@@ -1,8 +1,9 @@
 #include "MatchingServer.h"
 
-bool MatchingServer::Init() {
+bool MatchingServer::Init(const uint16_t MaxThreadCnt_, int port_) {
     WSAData wsadata;
     int check = 0;
+    MaxThreadCnt = MaxThreadCnt_;
 
     check = WSAStartup(MAKEWORD(2, 2), &wsadata);
     if (check) {
@@ -30,6 +31,7 @@ bool MatchingServer::Init() {
     }
 
     overLappedManager = new OverLappedManager;
+    overLappedManager->init();
 
     return true;
 }
@@ -105,25 +107,32 @@ bool MatchingServer::StartWork() {
         return false;
     }
 
-    // 1 : Game Server
-    ConnServer* connServer = new ConnServer(MAX_CIRCLE_SIZE, 1, IOCPHandle, overLappedManager);
-    connServersManager->InsertUser(1, connServer);
+    //// 1 : Game Server
+    //ConnServer* connServer = new ConnServer(MAX_CIRCLE_SIZE, 1, IOCPHandle, overLappedManager);
+    //connServersManager->InsertUser(1, connServer);
 
-    GameServerConnect();
+    //GameServerConnect();
 
-    auto imRes = reinterpret_cast<IM_MATCHING_RESPONSE*>(recvBuf);
+    //auto imRes = reinterpret_cast<IM_MATCHING_RESPONSE*>(recvBuf);
 
-    if (!imRes->isSuccess) {
-        std::cout << "Fail to Connet" << std::endl;
-        return false;
-    }
+    //if (!imRes->isSuccess) {
+    //    std::cout << "Fail to Connet" << std::endl;
+    //    return false;
+    //}
 
     matchingManager = new MatchingManager;
+    packetManager = new PacketManager;
+
+    matchingManager->Init();
+    packetManager->init(1);
 }
 
 bool MatchingServer::CreateWorkThread() {
     workRun = true;
-    workThread = std::thread([this]() {WorkThread(); });
+    auto threadCnt = MaxThreadCnt; // core
+    for (int i = 0; i < threadCnt; i++) {
+        workThreads.emplace_back([this]() { WorkThread(); });
+    }
     std::cout << "WorkThread Start" << std::endl;
     return true;
 }
@@ -153,17 +162,22 @@ void MatchingServer::WorkThread() {
         connServer = connServersManager->FindUser(connObjNum);
 
         if (!gqSucces || (dwIoSize == 0 && overlappedEx->taskType != TaskType::ACCEPT)) { // Server Disconnect
-            std::cout << "socket " << connServer->GetSocket() << " Disconnect" << std::endl;
-
+            if (connObjNum == 0) {
+                std::cout << "Center Server Disconnect" << std::endl;
+            }
+            else if (connObjNum == 1) {
+                std::cout << "Game Server 1 Disconnect" << std::endl;
+            }
             continue;
         }
+
         if (overlappedEx->taskType == TaskType::RECV) {
-            redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
+            packetManager->PushPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf);
             connServer->ServerRecv(); // Wsarecv Again
             overLappedManager->returnOvLap(overlappedEx);
         }
         else if (overlappedEx->taskType == TaskType::NEWRECV) {
-            redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
+            packetManager->PushPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf);
             connServer->ServerRecv(); // Wsarecv Again
             delete[] overlappedEx->wsaBuf.buf;
             delete overlappedEx;
@@ -178,4 +192,29 @@ void MatchingServer::WorkThread() {
             connServer->SendComplete();
         }
     }
+}
+
+void MatchingServer::ServerEnd() {
+    workRun = false;
+
+    for (int i = 0; i < workThreads.size(); i++) {
+        PostQueuedCompletionStatus(IOCPHandle, 0, 0, nullptr);
+    }
+
+    for (int i = 0; i < workThreads.size(); i++) { // Work 쓰레드 종료
+        if (workThreads[i].joinable()) {
+            workThreads[i].join();
+        }
+    }
+
+    delete packetManager;
+    delete connServersManager;
+    delete matchingManager;
+    CloseHandle(IOCPHandle);
+    closesocket(serverIOSkt);
+    WSACleanup();
+
+    std::cout << "종료 5초 대기" << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(5)); // 5초 대기
+    std::cout << "종료" << std::endl;
 }

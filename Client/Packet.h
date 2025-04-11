@@ -275,11 +275,24 @@ struct RAID_MATCHING_RESPONSE : PACKET_HEADER {
 };
 
 struct RAID_READY_REQUEST : PACKET_HEADER {
-	uint16_t timer; // Minutes
-	uint16_t roomNum; // If Max RoomNum Up to Short Range, Back to Number One
-	uint16_t yourNum;
-	int mobHp;
+	char serverToken[MAX_JWT_TOKEN_LEN + 1]; // Token For Server Connection
+	char ip[MAX_IP_LEN + 1];
+	uint16_t port;
+	uint16_t udpPort;
+	uint16_t roomNum;
 };
+
+struct RAID_RANKING_REQUEST : PACKET_HEADER {
+	uint16_t startRank;
+};
+
+struct RAID_RANKING_RESPONSE : PACKET_HEADER {
+	uint16_t rkCount;
+	char reqScore[MAX_SCORE_SIZE + 1];
+};
+
+
+//  ---------------------------- GAME SERVER  ----------------------------
 
 struct RAID_TEAMINFO_REQUEST : PACKET_HEADER { // User To Server
 	bool imReady;
@@ -317,18 +330,9 @@ struct RAID_END_RESPONSE : PACKET_HEADER { // User to Server (If Server Get This
 
 };
 
-struct RAID_RANKING_REQUEST : PACKET_HEADER {
-	uint16_t startRank;
-};
-
-struct RAID_RANKING_RESPONSE : PACKET_HEADER {
-	uint16_t rkCount;
-	char reqScore[MAX_SCORE_SIZE + 1];
-};
-
 enum class PACKET_ID : uint16_t {
 	//  ---------------------------- CENTER (1~)  ----------------------------
-
+	
 	// SYSTEM (1~)
 	USER_CONNECT_REQUEST = 1,
 	USER_CONNECT_RESPONSE = 2,
@@ -340,12 +344,15 @@ enum class PACKET_ID : uint16_t {
 	// RAID (45~)
 	RAID_MATCHING_REQUEST = 45,
 	RAID_MATCHING_RESPONSE = 46,
-	RAID_READY_REQUEST = 47,
+	MATCHING_CANCEL_REQUEST = 47,
+	MATCHING_CANCEL_RESPONSE = 48,
+	RAID_READY_REQUEST = 49,
+
 	RAID_RANKING_REQUEST = 55,
 	RAID_RANKING_RESPONSE = 56,
 
 	//  ---------------------------- SESSION (801~)  ----------------------------
-
+	
 	// USER LOGIN (811~)
 	USER_LOGIN_REQUEST = 811,
 	USER_LOGIN_RESPONSE = 812,

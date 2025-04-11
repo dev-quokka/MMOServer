@@ -27,6 +27,7 @@ int main() {
     }
 
     bool onlineCheck = true;
+    bool inServerCheck = false;
     bool inChannelCheck = false;
 
     while (onlineCheck) { // 서버 이동 페이지
@@ -37,21 +38,24 @@ int main() {
         while (1) {
             uint16_t checkServer = user.MoveServer(tempServerBool);
             if (checkServer == 0) { // 서버 입장 실패. 다시 서버 이동 페이지
-                tempServerBool = true;
+                tempServerBool = true; 
                 continue;
             }
-            else if (checkServer == 10) { // 서버 선택 페이지로 돌아가기
+            else if (checkServer == 10) { // 게임 종료
                 onlineCheck = false;
+                inServerCheck = false;
+                inChannelCheck = false;
                 break;
             }
             else { // 서버 입장 성공
+                inServerCheck = true;
                 break;
             }
         }
 
         bool tempChannelBool = false; // 채널 인원 수를 한 번만 불러오기 위한 플래그 (채널 이동 페이지에 머무르는 동안 재요청 방지)
 
-        while (1) {
+        while (inServerCheck) {
             uint16_t checkChannel = user.SelectChannel(tempChannelBool);
 
             if (checkChannel == 0) { // 채널 입장 실패. 다시 채널 이동 페이지
@@ -69,7 +73,7 @@ int main() {
                 break;
             }
         }
-
+        
         while (inChannelCheck) {
             std::cout << std::endl;
             uint16_t select;

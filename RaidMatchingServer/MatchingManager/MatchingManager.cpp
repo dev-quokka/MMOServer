@@ -1,6 +1,6 @@
 #include "MatchingManager.h"
 
-bool MatchingManager::Init(const uint16_t maxClientCount_) {
+bool MatchingManager::Init() {
     for (int i = 1; i <= USER_MAX_LEVEL / 3 + 1; i++) { // Max i = MaxLevel/3 + 1 (Level Check Set)
         matchingMap.emplace(i, std::set<MatchingRoom*, MatchingRoomComp>());
     }
@@ -10,45 +10,19 @@ bool MatchingManager::Init(const uint16_t maxClientCount_) {
     }
 
     CreateMatchThread();
-    CreatePacketThread();
 
     return true;
 }
 
-//
-//void MatchingManager::PushPacket(const uint32_t size_, char* recvData_) {
-//	procQueue.push(recvData_); // Push Packet
-//}
-
-bool MatchingManager::CreatePacketThread() {
-	packetRun = true;
-	packetThread = std::thread([this]() {PacketThread(); });
-	std::cout << "PacketThread Start" << std::endl;
-	return true;
+bool MatchingManager::CreateMatchThread() {
+    matchRun = true;
+    matchingThread = std::thread([this]() {MatchingThread(); });
+    std::cout << "MatchingThread Start" << std::endl;
+    return true;
 }
 
-void MatchingManager::PacketThread() {
-    MatchingRoom* tempRoom;
-    tbb::concurrent_hash_map<uint16_t, std::set<MatchingRoom*, MatchingRoomComp>>::accessor accessor;
-
-	while (packetRun) {
-		char* recvData = nullptr;
-		if (procQueue.pop(recvData)) { // Packet Exist
-            auto k = reinterpret_cast<MATCHING_REQUEST*>(recvData);
-
-            if (!Insert(k->userObjNum, k->userGroupNum)) {
-                // 중앙 서버로 매칭 실패 메시지 전달
-
-            }
-		}
-		else {
-			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-		}
-	}
-}
-
-bool MatchingManager::Insert(uint16_t userPk_, uint16_t userGroupNum_) {
-    MatchingRoom* tempRoom = new MatchingRoom(userPk_);
+bool MatchingManager::Insert(uint16_t userPk_, uint16_t userCenterObjNum_, uint16_t userGroupNum_) {
+    MatchingRoom* tempRoom = new MatchingRoom(userPk_, userCenterObjNum_);
 
     tbb::concurrent_hash_map<uint16_t, std::set<MatchingRoom*, MatchingRoomComp>>::accessor accessor;
     uint16_t groupNum = userGroupNum_;
@@ -63,7 +37,7 @@ bool MatchingManager::Insert(uint16_t userPk_, uint16_t userGroupNum_) {
     return false;
 }
 
-bool MatchingManager::CancelMatching(uint16_t userPk_, uint16_t userGroupNum_) {
+uint16_t MatchingManager::CancelMatching(uint16_t userCenterObjNum_, uint16_t userGroupNum_) {
     tbb::concurrent_hash_map<uint16_t, std::set<MatchingRoom*, MatchingRoomComp>>::accessor accessor;
     uint16_t groupNum = userGroupNum_;
     matchingMap.find(accessor, groupNum);
@@ -72,13 +46,14 @@ bool MatchingManager::CancelMatching(uint16_t userPk_, uint16_t userGroupNum_) {
     {
         std::lock_guard<std::mutex> guard(mDeleteMatch);
         for (auto iter = tempM.begin(); iter != tempM.end(); iter++) {
-            if ((*iter)->userObjNum == userPk_) { // 매칭 취소한 유저 찾기
+            if ((*iter)->userCenterObjNum == userCenterObjNum_) { // 매칭 취소한 유저 찾기
                 delete* iter;
                 tempM.erase(iter);
                 return true;
             }
         }
     }
+
     return false;
 }
 
@@ -109,13 +84,17 @@ void MatchingManager::MatchingThread() {
                                     MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER rMatchingResPacket;
 
                                     // Send to User1 With User2 Info
-                                    rMatchingResPacket.PacketId = (uint16_t)MATCHING_ID::MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER;
+                                    rMatchingResPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER;
                                     rMatchingResPacket.PacketLength = sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER);
                                     rMatchingResPacket.roomNum = tempRoomNum;
-									rMatchingResPacket.userObjNum1 = tempMatching1->userObjNum;
-									rMatchingResPacket.userObjNum2 = tempMatching2->userObjNum;
+									rMatchingResPacket.userObjNum1 = tempMatching1->userCenterObjNum;
+									rMatchingResPacket.userObjNum2 = tempMatching2->userCenterObjNum;
 
-									PushSendMsg(sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER), (char*)&rMatchingResPacket);
+									connServersManager->FindUser(0)->  // 중앙 서버로 매칭된 유저 정보 전달
+                                        PushSendMsg(sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER), (char*)&rMatchingResPacket);
+
+                                    //connServersManager->FindUser(1)-> // 매칭된 게임 서버로 매칭된 유저 정보 전달
+                                    //    PushSendMsg(sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER), (char*)&rMatchingResPacket);
                                 }
 
                                 delete tempMatching1;
@@ -156,13 +135,17 @@ void MatchingManager::MatchingThread() {
                                 MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER rMatchingResPacket;
 
                                 // Send to User1 With User2 Info
-                                rMatchingResPacket.PacketId = (uint16_t)MATCHING_ID::MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER;
+                                rMatchingResPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER;
                                 rMatchingResPacket.PacketLength = sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER);
                                 rMatchingResPacket.roomNum = tempRoomNum;
-                                rMatchingResPacket.userObjNum1 = tempMatching1->userObjNum;
-                                rMatchingResPacket.userObjNum2 = tempMatching2->userObjNum;
+                                rMatchingResPacket.userObjNum1 = tempMatching1->userCenterObjNum;
+                                rMatchingResPacket.userObjNum2 = tempMatching2->userCenterObjNum;
 
-                                PushSendMsg(sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER), (char*)&rMatchingResPacket);
+                                connServersManager->FindUser(0)->  // 중앙 서버로 매칭된 유저 정보 전달
+                                    PushSendMsg(sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER), (char*)&rMatchingResPacket);
+
+                                //connServersManager->FindUser(1)-> // 매칭된 게임 서버로 매칭된 유저 정보 전달
+                                //    PushSendMsg(sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER), (char*)&rMatchingResPacket);
                             }
 
                             delete tempMatching1;

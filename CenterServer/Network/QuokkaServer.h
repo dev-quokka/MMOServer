@@ -27,7 +27,6 @@ class QuokkaServer {
 public:
     QuokkaServer(uint16_t maxClientCount_) : maxClientCount(maxClientCount_), AcceptQueue(maxClientCount_), WaittingQueue(maxClientCount_) {}
 
-    void SetServerAddressMap();
     bool init(const uint16_t MaxThreadCnt_, int port_);
     bool StartWork();
     void ServerEnd();
@@ -57,7 +56,7 @@ private:
     RedisManager* redisManager;
 
     // 4 bytes
-    std::atomic<int> UserCnt = 0; //Check Current UserCnt
+    std::atomic<uint16_t> UserCnt = 0; //Check Current UserCnt
 
     // 2 bytes
     uint16_t MaxThreadCnt = 0;

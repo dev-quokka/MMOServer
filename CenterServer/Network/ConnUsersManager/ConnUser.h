@@ -208,7 +208,6 @@ private:
 	}
 
 	// 1024 bytes
-	char recvBuf[1024] = { 0 };
 	char readData[1024] = { 0 };
 
 	// 136 bytes 

@@ -68,11 +68,13 @@ public:
 			ZeroMemory(overlappedEx, sizeof(OverlappedEx));
 			overlappedEx->wsaBuf.len = MAX_RECV_SIZE;
 			overlappedEx->wsaBuf.buf = new char[MAX_RECV_SIZE];
+			overlappedEx->connObjNum = connObjNum;
 			overlappedEx->taskType = TaskType::NEWSEND;
 		}
 		else {
 			tempOvLap->wsaBuf.len = MAX_RECV_SIZE;
 			tempOvLap->wsaBuf.buf = new char[MAX_RECV_SIZE];
+			tempOvLap->connObjNum = connObjNum;
 			tempOvLap->taskType = TaskType::RECV;
 		}
 
@@ -100,6 +102,7 @@ public:
 			overlappedEx->wsaBuf.len = MAX_RECV_SIZE;
 			overlappedEx->wsaBuf.buf = new char[MAX_RECV_SIZE];
 			CopyMemory(overlappedEx->wsaBuf.buf, sendMsg, dataSize_);
+			overlappedEx->connObjNum = connObjNum;
 			overlappedEx->taskType = TaskType::NEWSEND;
 
 			sendQueue.push(overlappedEx); // Push Send Msg To User
@@ -109,6 +112,7 @@ public:
 			tempOvLap->wsaBuf.len = MAX_RECV_SIZE;
 			tempOvLap->wsaBuf.buf = new char[MAX_RECV_SIZE];
 			CopyMemory(tempOvLap->wsaBuf.buf, sendMsg, dataSize_);
+			tempOvLap->connObjNum = connObjNum;
 			tempOvLap->taskType = TaskType::SEND;
 
 			sendQueue.push(tempOvLap); // Push Send Msg To User

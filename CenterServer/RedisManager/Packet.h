@@ -68,6 +68,14 @@ struct IM_CHANNEL_REQUEST : PACKET_HEADER {
 	uint16_t channelServerNum;
 };
 
+struct IM_MATCHING_REQUEST : PACKET_HEADER {
+
+};
+
+struct IM_MATCHING_RESPONSE : PACKET_HEADER {
+	bool isSuccess;
+};
+
 struct IM_CHANNEL_RESPONSE : PACKET_HEADER {
 	bool isSuccess;
 };
@@ -140,12 +148,13 @@ struct USER_DISCONNECT_AT_CHANNEL_REQUEST : PACKET_HEADER {
 //  ---------------------------- MATCHING SERVER  ----------------------------
 
 struct MATCHING_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
-	uint16_t userObjNum;
-	uint16_t userGroupNum;
+	uint16_t userPk; // 유저 pk
+	uint16_t userCenterObjNum; // 중앙 서버에서 사용하는 고유 번호
+	uint16_t userGroupNum; // 유저 그룹 번호
 };
 
 struct MATCHING_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
-	uint16_t userObjNum;
+	uint16_t userCenterObjNum;
 	bool isSuccess;
 };
 
@@ -159,14 +168,31 @@ struct RAID_START_FAIL_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER { // 서버에서 
 	uint16_t roomNum;
 };
 
+struct MATCHING_CANCEL_REQUEST : PACKET_HEADER {
+
+};
+
+struct MATCHING_CANCEL_RESPONSE : PACKET_HEADER {
+	bool isSuccess; // True : 취소 성공, Fail : 이미 매치 시작 or 예기치 못한 오류 (레디스 클러스터 상태로 확인)
+};
+
+struct MATCHING_CANCEL_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
+	uint16_t userCenterObjNum;
+	uint16_t userGroupNum;
+};
+
+struct MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
+	uint16_t userCenterObjNum;
+	bool isSuccess; // True : 취소 성공, Fail : 이미 매치 시작 or 예기치 못한 오류 (레디스 클러스터 상태로 확인)
+};
+
 enum class PACKET_ID : uint16_t {
 	//  ---------------------------- CENTER (1~)  ----------------------------
-
 	// SYSTEM (1~)
 	USER_CONNECT_REQUEST = 1,
 	USER_CONNECT_RESPONSE = 2,
-	USER_LOGOUT_REQUEST = 3,
-	USER_FULL_REQUEST = 6,
+	USER_LOGOUT_REQUEST = 3, 
+	USER_FULL_REQUEST = 6, 
 	WAITTING_NUMBER_REQUSET = 7,
 	SERVER_USER_COUNTS_REQUEST = 8,
 	SERVER_USER_COUNTS_RESPONSE = 9,
@@ -176,8 +202,11 @@ enum class PACKET_ID : uint16_t {
 	// RAID (45~)
 	RAID_MATCHING_REQUEST = 45,
 	RAID_MATCHING_RESPONSE = 46,
-	RAID_READY_REQUEST = 47,
-	RAID_RANKING_REQUEST = 55,
+	MATCHING_CANCEL_REQUEST = 47,
+	MATCHING_CANCEL_RESPONSE = 48,
+	RAID_READY_REQUEST = 49,
+
+	RAID_RANKING_REQUEST = 55, 
 	RAID_RANKING_RESPONSE = 56,
 
 
@@ -207,7 +236,7 @@ enum class PACKET_ID : uint16_t {
 	SYNCRONIZE_DISCONNECT_REQUEST = 853,
 
 	//  ---------------------------- CHANNEL (1501~)  ----------------------------
-
+	
 	// SYSTEM (1501~)
 	IM_CHANNEL_REQUEST = 1501,
 	IM_CHANNEL_RESPONSE = 1502,
@@ -243,7 +272,7 @@ enum class PACKET_ID : uint16_t {
 
 
 	//  ---------------------------- MATCHING (5001~)  ----------------------------
-
+	
 	//SYSTEM (5001~)
 	IM_MATCHING_REQUEST = 5001,
 	IM_MATCHING_RESPONSE = 5002,
@@ -252,8 +281,11 @@ enum class PACKET_ID : uint16_t {
 	MATCHING_REQUEST_TO_MATCHING_SERVER = 5011,
 	MATCHING_RESPONSE_FROM_MATCHING_SERVER = 5012,
 	MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER = 5013,
-	RAID_START_FAIL_REQUEST_TO_MATCHING_SERVER = 5014
+	RAID_START_FAIL_REQUEST_TO_MATCHING_SERVER = 5014,
 
+	MATCHING_CANCEL_REQUEST_TO_MATCHING_SERVER = 5021,
+	MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER = 5022,
 
 	//  ---------------------------- GAME(8001~)  ----------------------------
+
 };

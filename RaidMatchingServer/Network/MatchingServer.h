@@ -30,18 +30,21 @@
 #include "OverLappedManager.h"
 #include "ConnServersManager.h"
 #include "MatchingManager.h"
+#include "PacketManager.h"
 
 constexpr uint16_t IOCP_THREAD_CNT = 1;
 
 class MatchingServer {
 public:
-	bool Init();
+	bool Init(const uint16_t MaxThreadCnt_, int port_);
 	bool StartWork();
 	bool CreateWorkThread();
 	void WorkThread();
 
 	void CenterServerConnect();
 	void GameServerConnect();
+
+	void ServerEnd();
 
 private:
 	// 512 bytes
@@ -50,8 +53,8 @@ private:
 	// 136 bytes 
 	boost::lockfree::queue<OverlappedEx*> sendQueue{ 10 };
 
-	// 16 bytes
-	std::thread workThread;
+	// 32 bytes
+	std::vector<std::thread> workThreads;
 
 	// 8 bytes
 	SOCKET serverIOSkt;
@@ -60,9 +63,13 @@ private:
 	OverLappedManager* overLappedManager;
 	ConnServersManager* connServersManager;
 	MatchingManager* matchingManager;
+	PacketManager* packetManager;
 
 	OverlappedEx* recvOvLap;
 	OverlappedEx* sendOvLap;
+
+	// 2 bytes
+	uint16_t MaxThreadCnt = 0;
 
 	// 1 bytes
 	bool workRun = false;
