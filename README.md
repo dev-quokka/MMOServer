@@ -134,7 +134,7 @@
 
 ## [Test Output]
 - #### Server & Channel Transition
-![슈퍼레전드 채널 서버 이동](https://github.com/user-attachments/assets/6877eef1-2666-42a6-972b-85fd15feace3)
+![Server   Channel Transition](https://github.com/user-attachments/assets/1665ab64-d757-43b5-8782-6910498a028b)
 
 
 1. 유저가 중앙 서버에 연결되면, 서버 선택 페이지로 이동합니다.
