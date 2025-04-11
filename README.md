@@ -152,16 +152,17 @@
 <br> 
 
 - #### User Connect & Logout & Syncronization
-![접속, 접속종료](https://github.com/user-attachments/assets/e9d78268-0fb4-40b1-970f-538dd39c6fc3)
+![User Login   Logout](https://github.com/user-attachments/assets/2504378e-88c6-4b3f-a2bc-20cb1ab4981f)
 
-1. 게임 서버가 시작되면 세션 서버와 연결합니다.
-2. 세션 서버로 유저가 게임 시작을 요청하면, MySQL에서 유저 정보와 인벤토리 데이터를 가져와서 Redis Cluster에 load합니다.
-3. 모든 데이터를 Redis Cluster에 정상적으로 load 한 후, JWT 토큰을 생성합니다.
-4. 생성된 JWT 토큰을 Redis Cluster에 저장하고, 유저에게도 전송합니다.
-5. 유저는 받은 JWT 토큰을 포함하여 게임 서버에 접속 요청을 전송합니다.
-6. 게임 서버는 Redis Cluster에서 저장된 JWT토큰과 유저가 전송한 토큰과 비교하여 일치하면 접속을 허가합니다.
-7. 유저가 로그아웃하면, 게임 서버는 세션 서버에 유저 PK와 함께 로그아웃 신호를 보냅니다.
-8. 세션 서버는 받은 PK를 기반으로 Redis Cluster에 저장된 데이터를 MySQL과 동기화합니다.
+
+1. 유저가 게임 시작을 누르면, 로그인 정보를 Gateway Server로 전송합니다.
+2. Gateway Server는 유저의 게임 시작 요청을 수신하면, MySQL에서 유저 정보와 인벤토리 데이터를 가져와 Redis Cluster에 로드합니다.
+3. 모든 데이터를 Redis Cluster에 정상적으로 로드한 후, JWT 토큰을 생성합니다.
+4. 생성된 JWT 토큰을 Redis Cluster에 저장하고, 동시에 유저에게 전송합니다.
+5. 유저는 전달받은 JWT 토큰으로 중앙 서버에 접속 요청을 전송합니다.
+6. 중앙 서버는 Redis Cluster에 저장된 JWT 토큰과 유저가 전송한 토큰을 비교하여, 일치하는 경우 접속을 허가합니다.
+7. 유저가 로그아웃하면, 중앙 서버는 Gateway Server에 유저 PK와 함께 로그아웃 신호를 전송합니다.
+8. Gateway Server는 수신한 유저 PK를 기반으로, Redis Cluster에 저장된 유저 데이터를 MySQL과 동기화합니다.
 
 <br>
 
