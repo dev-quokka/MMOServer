@@ -6,8 +6,9 @@
 #include <mswsock.h>
 #include <cstdint>
 
-const uint32_t MAX_SOCK = 1024; // Set Max Socket Buf
-const uint32_t MAX_RECV_DATA = 8096;
+const uint32_t SERVER_COUNT = 2;
+const uint32_t MAX_RECV_SIZE = 1024; // Set Max Recv Buf
+const uint32_t MAX_CIRCLE_SIZE = 8096;
 
 enum class TaskType {
 	ACCEPT = 0,
@@ -18,10 +19,11 @@ enum class TaskType {
 };
 
 struct OverlappedEx {
+	WSAOVERLAPPED wsaOverlapped;
 	// 16 bytes
 	WSABUF wsaBuf; // TCP Buffer
-
 	// 4 bytes
 	TaskType taskType; // ACCPET, RECV, SEND, LASTSEND
-	WSAOVERLAPPED wsaOverlapped;
+	// 2 bytes
+	uint16_t connObjNum;
 };

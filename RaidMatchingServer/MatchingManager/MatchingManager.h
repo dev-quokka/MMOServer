@@ -70,7 +70,6 @@ public:
 	// void PushPacket(const uint32_t size_, char* recvData_);
 	bool Insert(uint16_t userPk_, uint16_t userGroupNum_);
 	bool CancelMatching(uint16_t userPk_, uint16_t userGroupNum_);
-	bool CreateWorkThread();
 	bool CreatePacketThread();
 	bool CreateMatchThread();
 	void WorkThread();
