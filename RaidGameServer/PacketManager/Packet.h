@@ -35,6 +35,13 @@ struct PACKET_HEADER
 	uint16_t PacketId;
 };
 
+struct RaidUserInfo {
+	std::string userId;
+	sockaddr_in userAddr;
+	uint16_t userObjNum;
+	uint16_t userLevel;
+	std::atomic<unsigned int> userScore = 0;
+};
 
 //  ---------------------------- RAID  ----------------------------
 
@@ -46,15 +53,25 @@ struct IM_GAME_RESPONSE : PACKET_HEADER {
 	bool isSuccess;
 };
 
+struct USER_CONNECT_GAME_REQUEST : PACKET_HEADER {
+	char userToken[MAX_JWT_TOKEN_LEN + 1]; // userToken For User Check
+	char userId[MAX_USER_ID_LEN + 1];
+};
+
+struct USER_CONNECT_GAME_RESPONSE : PACKET_HEADER {
+	bool isSuccess;
+};
+
 struct RAID_TEAMINFO_REQUEST : PACKET_HEADER {
 	sockaddr_in userAddr; // 유저가 만든 udp 소켓의 sockaddr_in 전달
 	uint16_t roomNum;
+	uint16_t mapNum; // 생성된 방 번호 전달
 	uint16_t myNum;
 };
 
 struct RAID_TEAMINFO_RESPONSE : PACKET_HEADER {
-	uint16_t teamLevel;
 	char teamId[MAX_USER_ID_LEN + 1];
+	uint16_t teamLevel;
 };
 
 struct RAID_START : PACKET_HEADER {
@@ -102,6 +119,8 @@ enum class PACKET_ID : uint16_t {
 	//  ---------------------------- GAME(8001~)  ----------------------------
 	IM_GAME_REQUEST = 8001,
 	IM_GAME_RESPONSE = 8002,
+	USER_CONNECT_GAME_REQUEST = 8003,
+	USER_CONNECT_GAME_RESPONSE = 8004,
 
 	MATCHING_REQUEST_TO_GAME_SERVER = 8011,
 	MATCHING_RESPONSE_FROM_GAME_SERVER = 8012,

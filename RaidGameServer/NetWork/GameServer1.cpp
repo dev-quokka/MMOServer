@@ -73,7 +73,8 @@ bool GameServer1::StartWork() {
     }
 
     connUsersManager = new ConnUsersManager(MAX_USERS_OBJECT);
-    redisManager = new RedisManager;
+    roomManager = new RoomManager;
+    packetManager = new PacketManager;
 
     for (int i = 1; i < MAX_USERS_OBJECT; i++) { // Make ConnUsers Queue
         ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE, i, sIOCPHandle, overLappedManager);
@@ -82,10 +83,9 @@ bool GameServer1::StartWork() {
         connUsersManager->InsertUser(i, connUser); // Init ConnUsers
     }
 
-    redisManager->init(MaxThreadCnt);// Run MySQL && Run Redis Threads (The number of Clsuter Master Nodes + 1)
-    inGameUserManager->Init(MAX_USERS_OBJECT);
-    redisManager->SetManager(connUsersManager, inGameUserManager);
-
+    packetManager->init(MaxThreadCnt);// Run MySQL && Run Redis Threads (The number of Clsuter Master Nodes + 1)
+    roomManager->init();
+    packetManager->SetManager(connUsersManager, roomManager);
     return true;
 }
 
@@ -136,7 +136,7 @@ void GameServer1::WorkThread() {
         if (!gqSucces || (dwIoSize == 0 && overlappedEx->taskType != TaskType::ACCEPT)) { // User Disconnect
             std::cout << "socket " << connUser->GetSocket() << " Disconnect" << std::endl;
 
-            redisManager->Disconnect(connObjNum);
+            packetManager->Disconnect(connObjNum);
             connUser->Reset(); // Reset 
             AcceptQueue.push(connUser);
             continue;
@@ -153,12 +153,12 @@ void GameServer1::WorkThread() {
             }
         }
         else if (overlappedEx->taskType == TaskType::RECV) {
-            redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
+            packetManager->PushRedisPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
             connUser->ConnUserRecv(); // Wsarecv Again
             overLappedManager->returnOvLap(overlappedEx);
         }
         else if (overlappedEx->taskType == TaskType::NEWRECV) {
-            redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
+            packetManager->PushRedisPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
             connUser->ConnUserRecv(); // Wsarecv Again
             delete[] overlappedEx->wsaBuf.buf;
             delete overlappedEx;

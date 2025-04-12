@@ -2,41 +2,32 @@
 
 #include <chrono>
 #include <vector>
+#include <string>
 #include <cstdint>
 #include <iostream>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-struct RaidUserInfo {
-	std::atomic<unsigned int> userScore = 0;
-	uint16_t userObjNum; // TCP Socket
-	sockaddr_in userAddr;
-};
-
 class Room {
 public:
 	Room(SOCKET* udpSkt_) {
-		RaidUserInfo* ruInfo1 = new RaidUserInfo;
-		ruInfos.emplace_back(ruInfo1);
-
-		RaidUserInfo* ruInfo2 = new RaidUserInfo;
-		ruInfos.emplace_back(ruInfo2);
-
 		udpSkt = udpSkt_;
 	}
+
 	~Room() {
 		for (int i = 0; i < ruInfos.size(); i++) {
 			delete ruInfos[i];
 		}
 	}
 
-	void set(uint16_t roomNum_, uint16_t timer_, int mobHp_, uint16_t userObjNum1_, uint16_t userObjNum2_, InGameUser* user1_, InGameUser* user2_) {
-		ruInfos[0]->userObjNum = userObjNum1_;
-		ruInfos[0]->inGameUser = user1_;
+	void set(uint16_t roomNum_, uint16_t mapNum_, uint16_t timer_, int mobHp_, RaidUserInfo raidUserInfo1, RaidUserInfo raidUserInfo2) {
+		RaidUserInfo* ruInfo1 = new RaidUserInfo;
+		ruInfos.emplace_back(raidUserInfo1);
 
-		ruInfos[1]->userObjNum = userObjNum2_;
-		ruInfos[1]->inGameUser = user2_;
+		RaidUserInfo* ruInfo2 = new RaidUserInfo;
+		ruInfos.emplace_back(raidUserInfo2);
 
+		mapNum = mapNum_;
 		mobHp.store(mobHp_);
 	}
 
@@ -77,11 +68,6 @@ public:
 		return ruInfos.size();
 	}
 
-	InGameUser* GetUser(uint16_t userNum_) {
-		if (userNum_ == 0) return ruInfos[0]->inGameUser;
-		else if (userNum_ == 1) return ruInfos[1]->inGameUser;
-	}
-
 	std::chrono::time_point<std::chrono::steady_clock> SetEndTime() {
 		endTime = std::chrono::steady_clock::now() + std::chrono::seconds(10);
 		return endTime;
@@ -104,11 +90,6 @@ public:
 	SOCKET GetTeamObjNum(uint16_t userNum_) {
 		if (userNum_ == 1) return ruInfos[0]->userObjNum;
 		else if (userNum_ == 0) return ruInfos[1]->userObjNum;
-	}
-
-	InGameUser* GetTeamUser(uint16_t userNum_) {
-		if (userNum_ == 1) return ruInfos[0]->inGameUser;
-		else if (userNum_ == 0) return ruInfos[1]->inGameUser;
 	}
 
 	unsigned int GetTeamScore(uint16_t userNum) {
@@ -146,22 +127,23 @@ public:
 	}
 
 private:
-	// 1 bytes
-	bool timeOver = false;
-	std::atomic<bool> finishCheck = false;
-	std::atomic<uint16_t> startCheck = 0;
-
-	// 2 bytes
-	uint16_t roomNum;
-
-	// 4 bytes
-	std::atomic<int> mobHp;
-	char mobHpBuf[sizeof(unsigned int)];
+	// 32 bytes
+	std::vector<RaidUserInfo*> ruInfos;
 
 	// 8 bytes
 	SOCKET* udpSkt;
 	std::chrono::time_point<std::chrono::steady_clock> endTime = std::chrono::steady_clock::now() + std::chrono::minutes(2); // 생성 되자마자 삭제 방지
 
-	// 32 bytes
-	std::vector<RaidUserInfo*> ruInfos;
+	// 4 bytes
+	std::atomic<int> mobHp;
+	char mobHpBuf[sizeof(unsigned int)];
+
+	// 2 bytes
+	uint16_t roomNum;
+	uint16_t mapNum;
+
+	// 1 bytes
+	bool timeOver = false;
+	std::atomic<bool> finishCheck = false;
+	std::atomic<uint16_t> startCheck = 0;
 };

@@ -27,9 +27,9 @@ struct EndTimeComp {
 	}
 };
 
-class RaidRoomManager {
+class RoomManager {
 public:
-	~RaidRoomManager() {
+	~RoomManager() {
 		timeChekcRun = false;
 		if (timeCheckThread.joinable()) {
 			timeCheckThread.join();
@@ -46,6 +46,11 @@ public:
 	bool CreateTickRateThread();
 	void TimeCheckThread();
 	void TickRateThread();
+
+	bool MakeRoom();
+	Room* GetRoom(uint16_t roomNum_);
+	void DeleteRoom(uint16_t roomNum_);
+
 	void DeleteMob(Room* room_);
 
 	// Tick Rate Test 1 (vector) 방이 적을때는 2번보다 성능 좋을것으로 예상
@@ -60,6 +65,8 @@ private:
 	// 80 bytes
 	std::mutex mDeleteRoom;
 	std::mutex mDeleteMatch;
+
+	std::unordered_map<uint16_t, Room*> roomMap;
 
 	// 24 bytes
 	std::set<Room*, EndTimeComp> endRoomCheckSet;

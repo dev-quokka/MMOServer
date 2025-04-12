@@ -11,54 +11,45 @@
 #include <sw/redis++/redis++.h>
 
 #include "Packet.h"
+#include "RoomManager.h"
 #include "ConnUsersManager.h"
 
-class PacketManger {
+class PacketManager {
 public:
-    ~PacketManger() {
-        redisRun = false;
+    ~PacketManager() {
+        packetRun = false;
 
-        for (int i = 0; i < redisThreads.size(); i++) { // End Redis Threads
-            if (redisThreads[i].joinable()) {
-                redisThreads[i].join();
+        for (int i = 0; i < packetThreads.size(); i++) { // End Redis Threads
+            if (packetThreads[i].joinable()) {
+                packetThreads[i].join();
             }
         }
     }
 
-    void init(const uint16_t RedisThreadCnt_);
-    void SetManager(ConnUsersManager* connUsersManager_);
-    void PushRedisPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_); // Push Redis Packet
+    void init(const uint16_t packetThreadCnt_);
+    void SetManager(ConnUsersManager* connUsersManager_, RoomManager* roomManager_);
+    void PushPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_); // Push Packet
     void Disconnect(uint16_t connObjNum_);
 
 private:
-    bool CreateRedisThread(const uint16_t RedisThreadCnt_);
-    bool EquipmentEnhance(uint16_t currentEnhanceCount_);
-    void RedisRun(const uint16_t RedisThreadCnt_);
-    void RedisThread();
+    bool CreatePacketThread(const uint16_t packetThreadCnt_);
+    void PacketRun(const uint16_t packetThreadCnt_);
+    void PacketThread();
+
+    void MakeRoom(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 매칭 서버에서 레이드 시작 요청 들어오면 방 생성
+    void UserDisConnect(uint16_t connObjNum_); // Send Message To Center Server
 
     //SYSTEM
     void ImGameRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Game Server Socket Check
     void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 해당 서버로 유저 접속 요청 From Center Server
-    void UserDisConnect(uint16_t connObjNum_); // Send Message To Center Server
-    void SendChannelUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 채널당 유저 수 요청 (유저가 채널 이동 화면으로 오면 전송)
-    void MoveChannel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 채널 서버 이동 요청
 
-    // USER STATUS
-    void ExpUp(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void RaidTeamInfo(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void RaidHit(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
-    // INVENTORY
-    void AddItem(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    void DeleteItem(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    void ModifyItem(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    void MoveItem(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    typedef void(PacketManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
 
-    // INVENTORY:EQUIPMENT
-    void AddEquipment(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    void DeleteEquipment(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    void EnhanceEquipment(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    void MoveEquipment(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-
-    typedef void(PacketManger::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
+    // 5000 bytes
+    thread_local static std::mt19937 gen;
 
     // 242 bytes
     sw::redis::ConnectionOptions connection_options;
@@ -70,18 +61,23 @@ private:
     std::unordered_map<uint16_t, RECV_PACKET_FUNCTION> packetIDTable;
 
     // 32 bytes
-    std::vector<std::thread> redisThreads;
+    std::vector<std::thread> packetThreads;
+    std::vector<int> mapProbabilities = { 30, 30, 40 }; // 방 생성시 맵 확률 설정
 
     // 16 bytes
     std::unique_ptr<sw::redis::RedisCluster> redis;
-    std::thread redisThread;
+    std::thread packetThread;
+
+    // 8 bytes
+    std::uniform_int_distribution<int> dist;
 
     ConnUsersManager* connUsersManager;
+    RoomManager* roomManager;
 
     // 2 bytes
     uint16_t centerServerObjNum = 0;
 
     // 1 bytes
-    bool redisRun = false;
+    bool packetRun = false;
 };
 
