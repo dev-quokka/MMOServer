@@ -39,20 +39,21 @@ private:
     void RedisRun(const uint16_t RedisThreadCnt_);
     void RedisThread();
 
-    //SYSTEM
+    // SYSTEM
     void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // User Connect
     void Logout(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Normal Disconnect (Set Short Time TTL)
     void UserDisConnect(uint16_t connObjNum_); // Abnormal Disconnect (Set Long Time TTL)
     void ImSessionRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Session Server Socket Check
     void ImChannelRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Channel Server Socket Check
     void ImMatchingRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Matching Server Socket Check
+    void ImGameRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Game Server Socket Check
     void SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 서버당 유저 수 요청 (유저가 서버 이동 화면으로 오면 전송)
     void MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 채널 서버 이동 요청
 
-    //CHANNEL
+    // CHANNEL
     void ChannelDisConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
-    // RAID
+    // MATCHING
     void MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 유저의 매칭 요청
     void MatchStartResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 매칭 서버에서 유저 매칭 insert 성공 여부 응답
     void MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 유저의 매칭 취소 요청
@@ -60,7 +61,11 @@ private:
     void MatchFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 레이드 매칭 실패 (매칭 성공되는 시점에 유저 로그아웃 or 매칭 취소 요청)
     void MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Center Server to Matching Server
     void MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Matching Server to Center Server
+
+    // RAID
+    void RaidEnd(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 게임 서버로 부터 오는 종료 신호
     void GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+
 
     typedef void(RedisManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
 

@@ -68,6 +68,10 @@ struct IM_CHANNEL_REQUEST : PACKET_HEADER {
 	uint16_t channelServerNum;
 };
 
+struct IM_CHANNEL_RESPONSE : PACKET_HEADER {
+	bool isSuccess;
+};
+
 struct IM_MATCHING_REQUEST : PACKET_HEADER {
 
 };
@@ -76,7 +80,11 @@ struct IM_MATCHING_RESPONSE : PACKET_HEADER {
 	bool isSuccess;
 };
 
-struct IM_CHANNEL_RESPONSE : PACKET_HEADER {
+struct IM_GAME_REQUEST : PACKET_HEADER {
+	uint16_t gameServerNum;
+};
+
+struct IM_GAME_RESPONSE : PACKET_HEADER {
 	bool isSuccess;
 };
 
@@ -107,6 +115,11 @@ struct MOVE_SERVER_RESPONSE : PACKET_HEADER {
 	char serverToken[MAX_JWT_TOKEN_LEN + 1]; // Token For Server Connection
 	char ip[MAX_IP_LEN + 1];
 	uint16_t port;
+};
+
+struct RAID_END_REQUEST_TO_GAME_SERVER : PACKET_HEADER {
+	uint16_t gameServerNum;
+	uint16_t roomNum;
 };
 
 
@@ -186,6 +199,15 @@ struct MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
 	bool isSuccess; // True : 취소 성공, Fail : 이미 매치 시작 or 예기치 못한 오류 (레디스 클러스터 상태로 확인)
 };
 
+
+//  ---------------------------- GAME SERVER  ----------------------------
+
+struct RAID_END_REQUEST_TO_CENTER_SERVER : PACKET_HEADER {
+	uint16_t gameServerNum;
+	uint16_t roomNum;
+};
+
+
 enum class PACKET_ID : uint16_t {
 	//  ---------------------------- CENTER (1~)  ----------------------------
 	// SYSTEM (1~)
@@ -205,6 +227,8 @@ enum class PACKET_ID : uint16_t {
 	MATCHING_CANCEL_REQUEST = 47,
 	MATCHING_CANCEL_RESPONSE = 48,
 	RAID_READY_REQUEST = 49,
+
+	RAID_END_REQUEST_TO_GAME_SERVER = 52,
 
 	RAID_RANKING_REQUEST = 55,
 	RAID_RANKING_RESPONSE = 56,
@@ -286,6 +310,13 @@ enum class PACKET_ID : uint16_t {
 	MATCHING_CANCEL_REQUEST_TO_MATCHING_SERVER = 5021,
 	MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER = 5022,
 
+
 	//  ---------------------------- GAME(8001~)  ----------------------------
+
+	IM_GAME_REQUEST = 8001,
+	IM_GAME_RESPONSE = 8002,
+
+	RAID_END_REQUEST_TO_CENTER_SERVER = 8102,
+
 
 };

@@ -18,6 +18,7 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
     packetIDTable[(uint16_t)PACKET_ID::USER_LOGOUT_REQUEST] = &RedisManager::Logout;
     packetIDTable[(uint16_t)PACKET_ID::SERVER_USER_COUNTS_REQUEST] = &RedisManager::SendServerUserCounts;
     packetIDTable[(uint16_t)PACKET_ID::MOVE_SERVER_REQUEST] = &RedisManager::MoveServer;
+    packetIDTable[(uint16_t)PACKET_ID::RAID_END_REQUEST_TO_CENTER_SERVER] = &RedisManager::RaidEnd;
 
     // SESSION
     packetIDTable[(uint16_t)PACKET_ID::IM_SESSION_REQUEST] = &RedisManager::ImSessionRequest;
@@ -28,13 +29,16 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
 
     // MATCHING
     packetIDTable[(uint16_t)PACKET_ID::IM_MATCHING_REQUEST] = &RedisManager::ImMatchingRequest;
-
-    // RAID
     packetIDTable[(uint16_t)PACKET_ID::RAID_MATCHING_REQUEST] = &RedisManager::MatchStart;
     packetIDTable[(uint16_t)PACKET_ID::MATCHING_RESPONSE_FROM_MATCHING_SERVER] = &RedisManager::MatchStartResponse;
     packetIDTable[(uint16_t)PACKET_ID::MATCHING_CANCEL_REQUEST] = &RedisManager::MatchingCancel;
     packetIDTable[(uint16_t)PACKET_ID::MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER] = &RedisManager::MatchingCancelResponse;
+
+
+    // RAID
+    packetIDTable[(uint16_t)PACKET_ID::IM_GAME_REQUEST] = &RedisManager::ImGameRequest;
     packetIDTable[(uint16_t)PACKET_ID::RAID_RANKING_REQUEST] = &RedisManager::GetRanking;
+
 
     channelServerObjNums.resize(3, 0); // 생성한 서버 수 + 1
     raidGameServerObjNums.resize(2, 0); // 생성한 서버 수 + 1
@@ -241,6 +245,20 @@ void RedisManager::ImMatchingRequest(uint16_t connObjNum_, uint16_t packetSize_,
     std::cout << "Channel Server Connect Success : " << connObjNum_ << std::endl;
 }
 
+void RedisManager::ImGameRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    auto imGameReqPacket = reinterpret_cast<IM_GAME_REQUEST*>(pPacket_);
+    channelServerObjNums[imGameReqPacket->gameServerNum] = connObjNum_; // 게임 서버 고유번호 설정
+    std::cout << "Game Server" << imGameReqPacket->gameServerNum << " Connect Request : " << connObjNum_ << std::endl;
+
+    IM_GAME_RESPONSE imGameRes;
+    imGameRes.PacketId = (uint16_t)PACKET_ID::IM_GAME_RESPONSE;
+    imGameRes.PacketLength = sizeof(IM_GAME_RESPONSE);
+    imGameRes.isSuccess = true;
+
+    connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(IM_GAME_RESPONSE), (char*)&imGameRes);
+    std::cout << "Game Server" << imGameReqPacket->gameServerNum << " Connect Success : " << connObjNum_ << std::endl;
+}
+
 void RedisManager::SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     SERVER_USER_COUNTS_RESPONSE serverUserCountsResPacket;
     serverUserCountsResPacket.PacketId = (uint16_t)PACKET_ID::SERVER_USER_COUNTS_RESPONSE;
@@ -440,6 +458,18 @@ void RedisManager::MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char
 
 void RedisManager::MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
 
+}
+
+void RedisManager::RaidEnd(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    auto RaidEndPacket = reinterpret_cast<RAID_END_REQUEST_TO_CENTER_SERVER*>(pPacket_);
+
+    RAID_END_REQUEST_TO_GAME_SERVER raidEndReqPacket;
+    raidEndReqPacket.PacketId = (uint16_t)PACKET_ID::RAID_END_REQUEST_TO_GAME_SERVER;
+    raidEndReqPacket.PacketLength = sizeof(RAID_END_REQUEST_TO_GAME_SERVER);
+    raidEndReqPacket.roomNum = RaidEndPacket->roomNum;
+    raidEndReqPacket.gameServerNum = RaidEndPacket->gameServerNum;
+
+    connUsersManager->FindUser(MatchingServerObjNum)->PushSendMsg(sizeof(RAID_RANKING_RESPONSE), (char*)&raidEndReqPacket); // 매칭 서버로 종료된 방 번호 전달
 }
 
 void RedisManager::GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {

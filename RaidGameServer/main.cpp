@@ -1,28 +1,29 @@
 #include <iostream>
-#include <sw/redis++/redis++.h>
+#include "GameServer1.h"
 
-#include "RaidRoomManager.h"
+const uint16_t PORT = 9211;
+const uint16_t maxThreadCount = 1;
 
 int main() {
-    std::shared_ptr<sw::redis::RedisCluster> redis;
-    sw::redis::ConnectionOptions connection_options;
+	GameServer1 gameServer1;
 
-    try {
-        connection_options.host = "127.0.0.1";  // Redis Cluster IP
-        connection_options.port = 7001;  // Redis Cluster Master Node Port
-        connection_options.socket_timeout = std::chrono::seconds(10);
-        connection_options.keep_alive = true;
-
-        // Redis 클러스터 연결
-        redis = std::make_shared<sw::redis::RedisCluster>(connection_options);
-        std::cout << "Redis Cluster Connect Success !" << std::endl;
-
-    }
-    catch (const  sw::redis::Error& err) {
-        std::cout << "Redis 에러 발생: " << err.what() << std::endl;
+    if (!gameServer1.init(maxThreadCount, PORT)) {
+        return 0;
     }
 
-	RaidRoomManager raidRoomManager;
+    gameServer1.StartWork();
+    gameServer1.CenterConnect();
+
+    std::cout << "=== GAME SERVER 1 START ===" << std::endl;
+    std::cout << "=== If You Want Exit, Write game1 ===" << std::endl;
+    std::string k = "";
+
+    while (1) {
+        std::cin >> k;
+        if (k == "game1") break;
+    }
+
+    gameServer1.ServerEnd();
 
 	return 0;
 }
