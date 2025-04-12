@@ -8,6 +8,15 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
+struct RaidUserInfo {
+	std::string userId;
+	sockaddr_in userAddr;
+	uint16_t userObjNum;
+	uint16_t userLevel;
+	uint16_t userPk;
+	std::atomic<unsigned int> userScore = 0;
+};
+
 class Room {
 public:
 	Room(SOCKET* udpSkt_) {
@@ -20,7 +29,7 @@ public:
 		}
 	}
 
-	void set(uint16_t roomNum_, uint16_t mapNum_, uint16_t timer_, int mobHp_, RaidUserInfo raidUserInfo1, RaidUserInfo raidUserInfo2) {
+	bool set(uint16_t roomNum_, uint16_t mapNum_, uint16_t timer_, int mobHp_, RaidUserInfo* raidUserInfo1, RaidUserInfo* raidUserInfo2) {
 		RaidUserInfo* ruInfo1 = new RaidUserInfo;
 		ruInfos.emplace_back(raidUserInfo1);
 
@@ -29,6 +38,8 @@ public:
 
 		mapNum = mapNum_;
 		mobHp.store(mobHp_);
+
+		return true;
 	}
 
 	void setSockAddr(uint16_t userNum_, sockaddr_in userAddr_) {

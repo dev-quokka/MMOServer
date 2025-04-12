@@ -59,7 +59,7 @@ private:
     void MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 유저의 매칭 취소 요청
     void MatchingCancelResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 매칭 서버에서 유저 매칭 취소 여부 응답
     void MatchFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 레이드 매칭 실패 (매칭 성공되는 시점에 유저 로그아웃 or 매칭 취소 요청)
-    void MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Center Server to Matching Server
+    void CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 게임 서버에서 방 생성이 완료되면 받는 패킷
     void MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Matching Server to Center Server
 
     // RAID

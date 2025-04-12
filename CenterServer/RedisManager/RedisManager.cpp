@@ -403,10 +403,8 @@ void RedisManager::MatchFail(uint16_t connObjNum_, uint16_t packetSize_, char* p
 
 }
 
-void RedisManager::MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
-    return;
-
-    auto matchSuccessReqPacket = reinterpret_cast<MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER*>(pPacket_);
+void RedisManager::CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    auto matchSuccessReqPacket = reinterpret_cast<MATCHING_RESPONSE_FROM_GAME_SERVER*>(pPacket_);
 
     uint16_t tempRoomNum = matchSuccessReqPacket->roomNum;
 
@@ -417,6 +415,12 @@ void RedisManager::MatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char
     raidReadyReqPacket.udpPort = 50001; // 나중에 게임 서버가 늘어나면 해당 서버로 부터 udp 포트 직접 받기
     raidReadyReqPacket.port = ServerAddressMap[ServerType::RaidGameServer01].port;
     strncpy_s(raidReadyReqPacket.ip, ServerAddressMap[ServerType::RaidGameServer01].ip.c_str(), 256);
+
+    if (!matchSuccessReqPacket->isSuccess) { // 방 생성 실패 (Send Matching Fail Message To Matched User)
+        raidReadyReqPacket.roomNum = 0;
+        connUsersManager->FindUser(matchSuccessReqPacket->userObjNum1)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&raidReadyReqPacket);
+        connUsersManager->FindUser(matchSuccessReqPacket->userObjNum2)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&raidReadyReqPacket);
+    }
 
     { // 매칭된 유저들에게 선택된 게임 서버의 ip, port와 채널 이동 간 보안을 위한 JWT Token 생성 (유저가 많아지면 vector 이용 고려)
         std::string token1 = jwt::create()

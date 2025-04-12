@@ -95,14 +95,6 @@ void PacketManager::ImGameRequest(uint16_t connObjNum_, uint16_t packetSize_, ch
     std::cout << "Connected to the central server" << std::endl;
 }
 
-void PacketManager::MakeRoom(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
-
-
-
-    std::discrete_distribution<int> dist(mapProbabilities.begin(), mapProbabilities.end());
-
-}
-
 void PacketManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto userConn = reinterpret_cast<USER_CONNECT_GAME_REQUEST*>(pPacket_);
     std::string key = "jwtcheck:{" + std::to_string(static_cast<uint16_t>(ServerType::RaidGameServer01)) + "}";
@@ -159,6 +151,56 @@ void PacketManager::UserDisConnect(uint16_t connObjNum_) {
 
 }
 
+void PacketManager::MakeRoom(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    auto matchReqPacket = reinterpret_cast<MATCHING_REQUEST_TO_GAME_SERVER*>(pPacket_);
+
+    RaidUserInfo* user1;
+    RaidUserInfo* user2;
+
+    user1->userObjNum = 1;
+    user2->userObjNum = 2;
+
+    user1->userPk = matchReqPacket->userPk1;
+    user2->userPk = matchReqPacket->userPk2;
+
+    std::vector<std::string> fields = { "id", "level" };
+    std::vector<sw::redis::OptionalString> values;
+
+    { // 매칭된 유저 데이터 레디스 클러스터에서 가져오기
+        std::string tag1 = "{" + std::to_string(matchReqPacket->userPk1) + "}";
+        std::string key1 = "userinfo:" + tag1;
+
+        redis->hmget(key1, fields.begin(), fields.end(), std::back_inserter(values));
+
+        if (values[0] && values[1] && values[2]) {
+            user1->userId = *values[0];
+            user1->userLevel = static_cast<uint16_t>(std::stoul(*values[1]));
+        }
+    }
+
+    values.clear(); // 값 벡터 재사용전에 초기화 
+
+    { // 매칭된 유저 데이터 레디스 클러스터에서 가져오기
+        std::string tag2 = "{" + std::to_string(matchReqPacket->userPk2) + "}";
+        std::string key2 = "userinfo:" + tag2;
+
+        redis->hmget(key2, fields.begin(), fields.end(), std::back_inserter(values));
+
+        if (values[0] && values[1] && values[2]) {
+            user2->userId = *values[0];
+            user2->userLevel = static_cast<uint16_t>(std::stoul(*values[1]));
+        }
+    }
+
+    std::discrete_distribution<int> dist(mapProbabilities.begin(), mapProbabilities.end()); // 확률에 따른 맵 랜덤 선택
+
+    MATCHING_REQUEST_TO_GAME_SERVER match
+
+        if (!roomManager->MakeRoom(matchReqPacket->roomNum, dist(gen), 10, 30, user1, user2)) {
+
+        }
+
+}
 
 void PacketManager::RaidTeamInfo(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto raidTeamInfoReqPacket = reinterpret_cast<RAID_TEAMINFO_REQUEST*>(pPacket_);

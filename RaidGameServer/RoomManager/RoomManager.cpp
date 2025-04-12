@@ -48,7 +48,7 @@ void RoomManager::TickRateThread() {
     }
 }
 
-bool RoomManager::MakeRoom() {
+bool RoomManager::MakeRoom(uint16_t roomNum_, uint16_t mapNum_, uint16_t timer_, int mobHp_, RaidUserInfo* raidUserInfo1, RaidUserInfo* raidUserInfo2) {
     Room* room = new Room(&udpSkt);
 
 

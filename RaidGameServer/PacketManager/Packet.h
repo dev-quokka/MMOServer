@@ -40,6 +40,7 @@ struct RaidUserInfo {
 	sockaddr_in userAddr;
 	uint16_t userObjNum;
 	uint16_t userLevel;
+	uint16_t userPk;
 	std::atomic<unsigned int> userScore = 0;
 };
 
@@ -104,9 +105,9 @@ struct RAID_END_REQUEST_TO_CENTER_SERVER : PACKET_HEADER {
 //  ---------------------------- MATCHING  ----------------------------
 
 struct MATCHING_REQUEST_TO_GAME_SERVER : PACKET_HEADER {
+	uint16_t userPk1;
+	uint16_t userPk2;
 	uint16_t roomNum;
-	uint16_t userObjNum1;
-	uint16_t userObjNum2;
 };
 
 struct MATCHING_RESPONSE_FROM_GAME_SERVER : PACKET_HEADER {

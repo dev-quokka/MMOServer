@@ -47,7 +47,7 @@ public:
 	void TimeCheckThread();
 	void TickRateThread();
 
-	bool MakeRoom();
+	bool MakeRoom(uint16_t roomNum_, uint16_t mapNum_, uint16_t timer_, int mobHp_, RaidUserInfo* raidUserInfo1, RaidUserInfo* raidUserInfo2);
 	Room* GetRoom(uint16_t roomNum_);
 	void DeleteRoom(uint16_t roomNum_);
 
