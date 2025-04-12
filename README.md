@@ -134,7 +134,7 @@
 
 ## [Test Output]
 - #### Server & Channel Transition
-![Server   Channel Transition](https://github.com/user-attachments/assets/1665ab64-d757-43b5-8782-6910498a028b)
+![Server   Channel Transition](https://github.com/user-attachments/assets/358ab894-4f9f-4c68-bcc5-b1ceb29d346d)
 
 
 1. 유저가 중앙 서버에 연결되면, 서버 선택 페이지로 이동합니다.
