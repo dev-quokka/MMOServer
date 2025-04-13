@@ -38,9 +38,11 @@ struct PACKET_HEADER
 struct RaidUserInfo {
 	std::string userId;
 	sockaddr_in userAddr;
-	uint16_t userObjNum;
+	unsigned int userMaxScore;
 	uint16_t userLevel;
 	uint16_t userPk;
+	uint16_t userConnObjNum = 0; // 유저 통신 고유 번호
+	uint16_t userRaidServerObjNum = 0; // 레이드 방에서 사용하는 번호
 	std::atomic<unsigned int> userScore = 0;
 };
 
@@ -54,6 +56,22 @@ struct IM_GAME_RESPONSE : PACKET_HEADER {
 	bool isSuccess;
 };
 
+struct MATCHING_REQUEST_TO_GAME_SERVER : PACKET_HEADER {
+	uint16_t userPk1;
+	uint16_t userPk2;
+	uint16_t userCenterObjNum1;
+	uint16_t userCenterObjNum2;
+	uint16_t roomNum;
+};
+
+struct MATCHING_RESPONSE_FROM_GAME_SERVER : PACKET_HEADER {
+	uint16_t userCenterObjNum1;
+	uint16_t userCenterObjNum2;
+	uint16_t userRaidServerObjNum1;
+	uint16_t userRaidServerObjNum2;
+	uint16_t roomNum;
+};
+
 struct USER_CONNECT_GAME_REQUEST : PACKET_HEADER {
 	char userToken[MAX_JWT_TOKEN_LEN + 1]; // userToken For User Check
 	char userId[MAX_USER_ID_LEN + 1];
@@ -65,9 +83,6 @@ struct USER_CONNECT_GAME_RESPONSE : PACKET_HEADER {
 
 struct RAID_TEAMINFO_REQUEST : PACKET_HEADER {
 	sockaddr_in userAddr; // 유저가 만든 udp 소켓의 sockaddr_in 전달
-	uint16_t roomNum;
-	uint16_t mapNum; // 생성된 방 번호 전달
-	uint16_t myNum;
 };
 
 struct RAID_TEAMINFO_RESPONSE : PACKET_HEADER {
@@ -78,12 +93,11 @@ struct RAID_TEAMINFO_RESPONSE : PACKET_HEADER {
 struct RAID_START : PACKET_HEADER {
 	std::chrono::time_point<std::chrono::steady_clock> endTime; // 설정한 종료 시간 + 5초 (모든 유저 들어오는 시간 5초 설정)
 	unsigned int mobHp;
+	uint16_t mapNum;
 };
 
 struct RAID_HIT_REQUEST : PACKET_HEADER {
 	unsigned int damage;
-	uint16_t roomNum;
-	uint16_t myNum;
 };
 
 struct RAID_HIT_RESPONSE : PACKET_HEADER {
@@ -101,23 +115,8 @@ struct RAID_END_REQUEST_TO_CENTER_SERVER : PACKET_HEADER {
 	uint16_t roomNum;
 };
 
-
-//  ---------------------------- MATCHING  ----------------------------
-
-struct MATCHING_REQUEST_TO_GAME_SERVER : PACKET_HEADER {
-	uint16_t userPk1;
-	uint16_t userPk2;
-	uint16_t roomNum;
-};
-
-struct MATCHING_RESPONSE_FROM_GAME_SERVER : PACKET_HEADER {
-	uint16_t roomNum;
-	bool isSuccess;
-};
-
-
 enum class PACKET_ID : uint16_t {
-	//  ---------------------------- GAME(8001~)  ----------------------------
+	//  ---------------------------- RAID(8001~)  ----------------------------
 	IM_GAME_REQUEST = 8001,
 	IM_GAME_RESPONSE = 8002,
 	USER_CONNECT_GAME_REQUEST = 8003,

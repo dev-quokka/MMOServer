@@ -52,12 +52,6 @@ struct MATCHING_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
 	bool isSuccess;
 };
 
-struct MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER : PACKET_HEADER {
-	uint16_t roomNum;
-	uint16_t userObjNum1;
-	uint16_t userObjNum2;
-};
-
 struct RAID_START_FAIL_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER { // 서버에서 매칭 서버로 전달
 	uint16_t roomNum;
 };
@@ -73,6 +67,16 @@ struct MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
 };
 
 
+//  ---------------------------- RAID  ----------------------------
+
+struct MATCHING_REQUEST_TO_GAME_SERVER : PACKET_HEADER {
+	uint16_t userPk1;
+	uint16_t userPk2;
+	uint16_t userCenterObjNum1;
+	uint16_t userCenterObjNum2;
+	uint16_t roomNum;
+};
+
 enum class PACKET_ID : uint16_t {
 	//SYSTEM (5001~)
 	IM_MATCHING_REQUEST = 5001,
@@ -81,7 +85,6 @@ enum class PACKET_ID : uint16_t {
 	//RAID(5011~)
 	MATCHING_REQUEST_TO_MATCHING_SERVER = 5011,
 	MATCHING_RESPONSE_FROM_MATCHING_SERVER = 5012,
-	MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER = 5013,
 	RAID_START_FAIL_REQUEST_TO_MATCHING_SERVER = 5014,
 
 	MATCHING_CANCEL_REQUEST_TO_MATCHING_SERVER = 5021,
@@ -89,7 +92,7 @@ enum class PACKET_ID : uint16_t {
 
 
 	//  ---------------------------- GAME(8001~)  ----------------------------
-	MATCHING_REQUEST_TO_GAME_SERVER = 8001,
-	MATCHING_RESPONSE_FROM_GAME_SERVER = 8002,
+
+	MATCHING_REQUEST_TO_GAME_SERVER = 8011,
 
 };

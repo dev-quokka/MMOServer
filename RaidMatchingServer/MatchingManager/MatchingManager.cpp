@@ -83,20 +83,19 @@ void MatchingManager::MatchingThread() {
                                 accessor1->second.erase(accessor1->second.begin());
 
                                 { // 두명 유저 방 만들어서 넣어주기
-                                    MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER rMatchingResPacket;
+                                    MATCHING_REQUEST_TO_GAME_SERVER rMatchingResPacket;
 
                                     // Send to User1 With User2 Info
-                                    rMatchingResPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER;
-                                    rMatchingResPacket.PacketLength = sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER);
+                                    rMatchingResPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_REQUEST_TO_GAME_SERVER;
+                                    rMatchingResPacket.PacketLength = sizeof(MATCHING_REQUEST_TO_GAME_SERVER);
                                     rMatchingResPacket.roomNum = tempRoomNum;
-                                    rMatchingResPacket.userObjNum1 = tempMatching1->userCenterObjNum;
-                                    rMatchingResPacket.userObjNum2 = tempMatching2->userCenterObjNum;
+                                    rMatchingResPacket.userCenterObjNum1 = tempMatching1->userCenterObjNum;
+                                    rMatchingResPacket.userCenterObjNum2 = tempMatching2->userCenterObjNum;
+                                    rMatchingResPacket.userPk1 = tempMatching1->userPk;
+                                    rMatchingResPacket.userPk2 = tempMatching1->userPk;
 
-                                    connServersManager->FindUser(0)->  // 중앙 서버로 매칭된 유저 정보 전달
-                                        PushSendMsg(sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER), (char*)&rMatchingResPacket);
-
-                                    //connServersManager->FindUser(1)-> // 매칭된 게임 서버로 매칭된 유저 정보 전달
-                                    //    PushSendMsg(sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER), (char*)&rMatchingResPacket);
+                                    connServersManager->FindUser(1)->  // 매칭된 게임 서버로 매칭된 유저 정보 전달
+                                        PushSendMsg(sizeof(MATCHING_REQUEST_TO_GAME_SERVER), (char*)&rMatchingResPacket);
                                 }
 
                                 delete tempMatching1;
@@ -134,20 +133,18 @@ void MatchingManager::MatchingThread() {
                             accessor1->second.erase(accessor1->second.begin());
 
                             { // 두명 유저 방 만들어서 넣어주기
-                                MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER rMatchingResPacket;
+                                MATCHING_REQUEST_TO_GAME_SERVER rMatchingResPacket;
 
                                 // Send to User1 With User2 Info
-                                rMatchingResPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER;
-                                rMatchingResPacket.PacketLength = sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER);
+                                rMatchingResPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_REQUEST_TO_GAME_SERVER;
+                                rMatchingResPacket.PacketLength = sizeof(MATCHING_REQUEST_TO_GAME_SERVER);
                                 rMatchingResPacket.roomNum = tempRoomNum;
-                                rMatchingResPacket.userObjNum1 = tempMatching1->userCenterObjNum;
-                                rMatchingResPacket.userObjNum2 = tempMatching2->userCenterObjNum;
-
-                                connServersManager->FindUser(0)->  // 중앙 서버로 매칭된 유저 정보 전달
-                                    PushSendMsg(sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER), (char*)&rMatchingResPacket);
-
-                                //connServersManager->FindUser(1)-> // 매칭된 게임 서버로 매칭된 유저 정보 전달
-                                //    PushSendMsg(sizeof(MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER), (char*)&rMatchingResPacket);
+                                rMatchingResPacket.userCenterObjNum1 = tempMatching1->userCenterObjNum;
+                                rMatchingResPacket.userCenterObjNum2 = tempMatching2->userCenterObjNum;
+                                rMatchingResPacket.userPk1 = tempMatching1->userPk;
+                                rMatchingResPacket.userPk2 = tempMatching1->userPk;
+                                connServersManager->FindUser(1)->  // 매칭된 게임 서버로 매칭된 유저 정보 전달
+                                    PushSendMsg(sizeof(MATCHING_REQUEST_TO_GAME_SERVER), (char*)&rMatchingResPacket);
                             }
 
                             delete tempMatching1;

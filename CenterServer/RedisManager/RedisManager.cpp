@@ -66,6 +66,7 @@ void RedisManager::RedisRun(const uint16_t RedisThreadCnt_) { // Connect Redis S
 }
 
 void RedisManager::Disconnect(uint16_t connObjNum_) {
+    if (connUsersManager->FindUser(connObjNum_)->GetPk() == 0) return; // Check the server closed
     UserDisConnect(connObjNum_);
 }
 
@@ -196,7 +197,7 @@ void RedisManager::ImSessionRequest(uint16_t connObjNum_, uint16_t packetSize_, 
         auto pk = redis->hget("jwtcheck:{sessionserver}", str);
 
         if (pk) {
-            connUsersManager->FindUser(connObjNum_)->SetPk(static_cast<uint32_t>(std::stoul(*pk)));
+            connUsersManager->FindUser(connObjNum_)->SetPk(0);
             GatewayServerObjNum = connObjNum_;
             imSessionResPacket.isSuccess = true;
             connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(IM_SESSION_RESPONSE), (char*)&imSessionResPacket);
@@ -226,6 +227,8 @@ void RedisManager::ImChannelRequest(uint16_t connObjNum_, uint16_t packetSize_, 
     imChRes.PacketLength = sizeof(IM_CHANNEL_RESPONSE);
     imChRes.isSuccess = true;
 
+    connUsersManager->FindUser(connObjNum_)->SetPk(0);
+
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(RAID_RANKING_RESPONSE), (char*)&imChRes);
     std::cout << "Channel Server" << imChReqPacket->channelServerNum << " Connect Success : " << connObjNum_ << std::endl;
 }
@@ -241,6 +244,8 @@ void RedisManager::ImMatchingRequest(uint16_t connObjNum_, uint16_t packetSize_,
     imMRes.PacketLength = sizeof(IM_MATCHING_RESPONSE);
     imMRes.isSuccess = true;
 
+    connUsersManager->FindUser(connObjNum_)->SetPk(0);
+
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(IM_MATCHING_RESPONSE), (char*)&imMRes);
     std::cout << "Channel Server Connect Success : " << connObjNum_ << std::endl;
 }
@@ -254,6 +259,8 @@ void RedisManager::ImGameRequest(uint16_t connObjNum_, uint16_t packetSize_, cha
     imGameRes.PacketId = (uint16_t)PACKET_ID::IM_GAME_RESPONSE;
     imGameRes.PacketLength = sizeof(IM_GAME_RESPONSE);
     imGameRes.isSuccess = true;
+
+    connUsersManager->FindUser(connObjNum_)->SetPk(0);
 
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(IM_GAME_RESPONSE), (char*)&imGameRes);
     std::cout << "Game Server" << imGameReqPacket->gameServerNum << " Connect Success : " << connObjNum_ << std::endl;
@@ -416,18 +423,19 @@ void RedisManager::CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_,
     raidReadyReqPacket.port = ServerAddressMap[ServerType::RaidGameServer01].port;
     strncpy_s(raidReadyReqPacket.ip, ServerAddressMap[ServerType::RaidGameServer01].ip.c_str(), 256);
 
-    if (!matchSuccessReqPacket->isSuccess) { // 방 생성 실패 (Send Matching Fail Message To Matched User)
+    if (matchSuccessReqPacket->roomNum == 0) { // 방 생성 실패 (Send Matching Fail Message To Matched User)
         raidReadyReqPacket.roomNum = 0;
-        connUsersManager->FindUser(matchSuccessReqPacket->userObjNum1)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&raidReadyReqPacket);
-        connUsersManager->FindUser(matchSuccessReqPacket->userObjNum2)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&raidReadyReqPacket);
+        connUsersManager->FindUser(matchSuccessReqPacket->userCenterObjNum1)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&raidReadyReqPacket);
+        connUsersManager->FindUser(matchSuccessReqPacket->userCenterObjNum2)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&raidReadyReqPacket);
     }
 
     { // 매칭된 유저들에게 선택된 게임 서버의 ip, port와 채널 이동 간 보안을 위한 JWT Token 생성 (유저가 많아지면 vector 이용 고려)
         std::string token1 = jwt::create()
             .set_issuer("Center_Server")
             .set_subject("Connect_GameServer")
-            .set_payload_claim("user_id", jwt::claim(std::to_string(matchSuccessReqPacket->userObjNum1)))  // 유저 고유번호
+            .set_payload_claim("user_id", jwt::claim(std::to_string(matchSuccessReqPacket->userCenterObjNum1)))  // 유저 고유번호
             .set_payload_claim("room_id", jwt::claim(std::to_string(tempRoomNum)))  // 방 번호
+            .set_payload_claim("raid_id", jwt::claim(std::to_string(matchSuccessReqPacket->userRaidServerObjNum1))) // 레이드 서버에서 사용할 번호
             .set_expires_at(std::chrono::system_clock::now() +
                 std::chrono::seconds{ 300 })
             .sign(jwt::algorithm::hs256{ JWT_SECRET });
@@ -437,24 +445,25 @@ void RedisManager::CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_,
 
         auto pipe = redis->pipeline(tag);
 
-        pipe.hset(key, token1, std::to_string(matchSuccessReqPacket->userObjNum1))
+        pipe.hset(key, token1, std::to_string(matchSuccessReqPacket->userRaidServerObjNum1)) // 게임 서버에서 할당 된 번호 레디스 밸류에 넣어두기
             .expire(key, 300);
 
-        connUsersManager->FindUser(matchSuccessReqPacket->userObjNum1)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&raidReadyReqPacket);
+        connUsersManager->FindUser(matchSuccessReqPacket->userCenterObjNum1)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&raidReadyReqPacket);
 
         std::string token2 = jwt::create()
             .set_issuer("Center_Server")
             .set_subject("Connect_GameServer")
-            .set_payload_claim("user_id", jwt::claim(std::to_string(matchSuccessReqPacket->userObjNum2)))  // 유저 고유번호
+            .set_payload_claim("user_id", jwt::claim(std::to_string(matchSuccessReqPacket->userCenterObjNum2)))  // 유저 고유번호
             .set_payload_claim("room_id", jwt::claim(std::to_string(tempRoomNum)))  // 방 번호
+            .set_payload_claim("raid_id", jwt::claim(std::to_string(matchSuccessReqPacket->userRaidServerObjNum2))) // 레이드 서버에서 사용할 번호
             .set_expires_at(std::chrono::system_clock::now() +
                 std::chrono::seconds{ 300 })
             .sign(jwt::algorithm::hs256{ JWT_SECRET });
 
-        pipe.hset(key, token2, std::to_string(matchSuccessReqPacket->userObjNum2))
+        pipe.hset(key, token2, std::to_string(matchSuccessReqPacket->userRaidServerObjNum2)) // 게임 서버에서 할당 된 번호 레디스 밸류에 넣어두기
             .expire(key, 150);
 
-        connUsersManager->FindUser(matchSuccessReqPacket->userObjNum2)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&raidReadyReqPacket);
+        connUsersManager->FindUser(matchSuccessReqPacket->userCenterObjNum2)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&raidReadyReqPacket);
 
         pipe.exec();
     }

@@ -11,30 +11,35 @@
 struct RaidUserInfo {
 	std::string userId;
 	sockaddr_in userAddr;
-	uint16_t userObjNum;
+	unsigned int userMaxScore;
 	uint16_t userLevel;
 	uint16_t userPk;
+	uint16_t userConnObjNum = 0; // 유저 통신 고유 번호
+	uint16_t userRaidServerObjNum = 0; // 레이드 방에서 사용하는 번호
 	std::atomic<unsigned int> userScore = 0;
 };
 
 class Room {
 public:
 	Room(SOCKET* udpSkt_) {
+		ruInfos.resize(3); // 인원수 + 1
 		udpSkt = udpSkt_;
 	}
-
 	~Room() {
 		for (int i = 0; i < ruInfos.size(); i++) {
 			delete ruInfos[i];
 		}
 	}
 
-	bool set(uint16_t roomNum_, uint16_t mapNum_, uint16_t timer_, int mobHp_, RaidUserInfo* raidUserInfo1, RaidUserInfo* raidUserInfo2) {
+
+	//  ---------------------------- SET  ----------------------------
+
+	bool Set(uint16_t roomNum_, uint16_t mapNum_, uint16_t timer_, int mobHp_, RaidUserInfo* raidUserInfo1, RaidUserInfo* raidUserInfo2) {
 		RaidUserInfo* ruInfo1 = new RaidUserInfo;
-		ruInfos.emplace_back(raidUserInfo1);
+		ruInfos[1] = raidUserInfo1;
 
 		RaidUserInfo* ruInfo2 = new RaidUserInfo;
-		ruInfos.emplace_back(raidUserInfo2);
+		ruInfos[2] = raidUserInfo2;
 
 		mapNum = mapNum_;
 		mobHp.store(mobHp_);
@@ -42,9 +47,62 @@ public:
 		return true;
 	}
 
-	void setSockAddr(uint16_t userNum_, sockaddr_in userAddr_) {
+	bool SetUserConnObjNum(uint16_t userRaidServerObjNum_, uint16_t userConnObjNum_) {
+		if (userRaidServerObjNum_ == 1) ruInfos[1]->userConnObjNum = userConnObjNum_;
+		else if (userRaidServerObjNum_ == 2) ruInfos[2]->userConnObjNum = userConnObjNum_;
+		return true;
+	}
+
+	void SetSockAddr(uint16_t userNum_, sockaddr_in userAddr_) {
 		ruInfos[userNum_]->userAddr = userAddr_;
 	}
+
+	std::chrono::time_point<std::chrono::steady_clock> SetEndTime() {
+		endTime = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+		return endTime;
+	}
+
+
+	//  ---------------------------- GET  ----------------------------
+
+	int GetMobHp() {
+		return mobHp.load();
+	}
+
+	uint16_t GetMapNum() {
+		return mapNum;
+	}
+
+	RaidUserInfo* GetMyInfo(uint16_t userRaidServerObjNum_) {
+		if (userRaidServerObjNum_ == 1) return ruInfos[1];
+		else if (userRaidServerObjNum_ == 2) return ruInfos[2];
+	}
+
+	RaidUserInfo* GetTeamInfo(uint16_t userRaidServerObjNum_) {
+		if (userRaidServerObjNum_ == 2) return ruInfos[1];
+		else if (userRaidServerObjNum_ == 1) return ruInfos[2];
+	}
+
+	unsigned int GetMyScore(uint16_t userRaidServerObjNum_) {
+		if (userRaidServerObjNum_ == 1) return ruInfos[1]->userScore.load();
+		else if (userRaidServerObjNum_ == 2) return ruInfos[2]->userScore.load();
+	}
+
+	unsigned int GetTeamScore(uint16_t userRaidServerObjNum_) {
+		if (userRaidServerObjNum_ == 2) return ruInfos[1]->userScore.load();
+		else if (userRaidServerObjNum_ == 1) return ruInfos[2]->userScore.load();
+	}
+
+	uint16_t GetRoomUserCnt() {
+		return ruInfos.size();
+	}
+
+	std::chrono::time_point<std::chrono::steady_clock> GetEndTime() {
+		return endTime;
+	}
+
+
+	//  ---------------------------- END CHECK  ----------------------------
 
 	void TimeOver() {
 		finishCheck.store(true);
@@ -71,42 +129,8 @@ public:
 		return false;
 	}
 
-	uint16_t GetRoomNum() {
-		return roomNum;
-	}
 
-	uint16_t GetRoomUserCnt() {
-		return ruInfos.size();
-	}
-
-	std::chrono::time_point<std::chrono::steady_clock> SetEndTime() {
-		endTime = std::chrono::steady_clock::now() + std::chrono::seconds(10);
-		return endTime;
-	}
-
-	std::chrono::time_point<std::chrono::steady_clock> GetEndTime() {
-		return endTime;
-	}
-
-	SOCKET GetUserObjNum(uint16_t userNum) {
-		if (userNum == 0) return ruInfos[0]->userObjNum;
-		else if (userNum == 1) return ruInfos[1]->userObjNum;
-	}
-
-	unsigned int GetScore(uint16_t userNum) {
-		if (userNum == 0) return ruInfos[0]->userScore;
-		else if (userNum == 1) return ruInfos[1]->userScore;
-	}
-
-	SOCKET GetTeamObjNum(uint16_t userNum_) {
-		if (userNum_ == 1) return ruInfos[0]->userObjNum;
-		else if (userNum_ == 0) return ruInfos[1]->userObjNum;
-	}
-
-	unsigned int GetTeamScore(uint16_t userNum) {
-		if (userNum == 1) return ruInfos[0]->userScore;
-		else if (userNum == 0) return ruInfos[1]->userScore;
-	}
+	//  ---------------------------- RAID  ----------------------------
 
 	std::pair<unsigned int, unsigned int> Hit(uint16_t userNum_, unsigned int damage_) { // current mobhp, score
 		if (mobHp <= 0 || finishCheck.load()) {

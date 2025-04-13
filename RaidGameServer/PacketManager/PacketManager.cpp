@@ -103,34 +103,32 @@ void PacketManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char
     ucRes.PacketId = (uint16_t)PACKET_ID::USER_CONNECT_GAME_RESPONSE;
     ucRes.PacketLength = sizeof(USER_CONNECT_GAME_RESPONSE);
 
-    { // JWT 토큰 payload에 있는 아이디로 유저 체크
-        auto tempToken = jwt::decode((std::string)userConn->userToken);
-        auto tempId = tempToken.get_payload_claim("room_id");
+    try { // JWT 토큰 체크
+        auto userRaidServerObjNum = static_cast<uint32_t>(std::stoul(*redis->hget(key, (std::string)userConn->userToken)));
 
-        std::string user_id = tempId.as_string();
+        if (userRaidServerObjNum) {
+            auto tempId = jwt::decode((std::string)userConn->userToken).get_payload_claim("user_id");
 
-        if (user_id != (std::string)userConn->userId) {
-            ucRes.isSuccess = false;
-            connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(USER_CONNECT_GAME_RESPONSE), (char*)&ucRes);
-            std::cout << (std::string)userConn->userId << " JWT Check Fail" << std::endl;
-            return;
-        }
-    }
+            std::string user_id = tempId.as_string();
 
-    try {
-        auto pk = static_cast<uint32_t>(std::stoul(*redis->hget(key, (std::string)userConn->userToken)));
-        if (pk) {
-            std::string userInfokey = "userinfo:{" + std::to_string(pk) + "}";
-            std::unordered_map<std::string, std::string> userData;
-            redis->hgetall(userInfokey, std::inserter(userData, userData.begin()));
+            if (user_id != (std::string)userConn->userId) { // ID Check Fail
+                ucRes.isSuccess = false;
+                connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(USER_CONNECT_GAME_RESPONSE), (char*)&ucRes);
+                std::cout << (std::string)userConn->userId << " ID Check Fail" << std::endl;
+            }
 
-            connUsersManager->FindUser(connObjNum_)->SetPk(pk);
+            auto tempRoomId = jwt::decode((std::string)userConn->userToken).get_payload_claim("room_id");
+            auto tempRaidId = jwt::decode((std::string)userConn->userToken).get_payload_claim("raid_id");
 
+            uint16_t room_id = static_cast<uint16_t>(std::stoi(tempRoomId.as_string()));
+            uint16_t raid_id = static_cast<uint16_t>(std::stoi(tempRaidId.as_string()));
 
+            roomManager->GetRoom(room_id)->SetUserConnObjNum(raid_id, connObjNum_); // 룸에 유저 통신 객체 번호 초기화
+            connUsersManager->FindUser(connObjNum_)->SetUserRoomInfo(room_id, raid_id); // 유저 객체에 룸에서 사용할 번호 레디스에서 가져와서 초기화
 
             ucRes.isSuccess = true;
             connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(USER_CONNECT_GAME_RESPONSE), (char*)&ucRes);
-            std::cout << (std::string)userConn->userId << " Connect" << std::endl;
+            std::cout << (std::string)userConn->userId << " Connection Success" << std::endl;
         }
         else {
             ucRes.isSuccess = false;
@@ -157,13 +155,13 @@ void PacketManager::MakeRoom(uint16_t connObjNum_, uint16_t packetSize_, char* p
     RaidUserInfo* user1;
     RaidUserInfo* user2;
 
-    user1->userObjNum = 1;
-    user2->userObjNum = 2;
+    user1->userRaidServerObjNum = 1;
+    user1->userRaidServerObjNum = 2;
 
     user1->userPk = matchReqPacket->userPk1;
     user2->userPk = matchReqPacket->userPk2;
 
-    std::vector<std::string> fields = { "id", "level" };
+    std::vector<std::string> fields = { "id", "level", "raidScore" };
     std::vector<sw::redis::OptionalString> values;
 
     { // 매칭된 유저 데이터 레디스 클러스터에서 가져오기
@@ -175,6 +173,7 @@ void PacketManager::MakeRoom(uint16_t connObjNum_, uint16_t packetSize_, char* p
         if (values[0] && values[1] && values[2]) {
             user1->userId = *values[0];
             user1->userLevel = static_cast<uint16_t>(std::stoul(*values[1]));
+            user1->userMaxScore = std::stoul(*values[2]);
         }
     }
 
@@ -189,96 +188,114 @@ void PacketManager::MakeRoom(uint16_t connObjNum_, uint16_t packetSize_, char* p
         if (values[0] && values[1] && values[2]) {
             user2->userId = *values[0];
             user2->userLevel = static_cast<uint16_t>(std::stoul(*values[1]));
+            user2->userMaxScore = std::stoul(*values[2]);
         }
     }
 
     std::discrete_distribution<int> dist(mapProbabilities.begin(), mapProbabilities.end()); // 확률에 따른 맵 랜덤 선택
 
-    MATCHING_REQUEST_TO_GAME_SERVER match
+    MATCHING_RESPONSE_FROM_GAME_SERVER matchResPacket;
+    matchResPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_RESPONSE_FROM_GAME_SERVER;
+    matchResPacket.PacketLength = sizeof(MATCHING_RESPONSE_FROM_GAME_SERVER);
 
-        if (!roomManager->MakeRoom(matchReqPacket->roomNum, dist(gen), 10, 30, user1, user2)) {
+    if (!roomManager->MakeRoom(matchReqPacket->roomNum, dist(gen), 10, 30, user1, user2)) { // 방 생성 실패
+        matchResPacket.roomNum = 0;
+        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MATCHING_RESPONSE_FROM_GAME_SERVER), (char*)&matchResPacket);
+        return;
+    }
 
-        }
+    matchResPacket.userCenterObjNum1 = matchReqPacket->userCenterObjNum1;
+    matchResPacket.userCenterObjNum2 = matchReqPacket->userCenterObjNum2;
+    matchResPacket.roomNum = matchReqPacket->roomNum;
 
+    connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MATCHING_RESPONSE_FROM_GAME_SERVER), (char*)&matchResPacket);
 }
 
 void PacketManager::RaidTeamInfo(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto raidTeamInfoReqPacket = reinterpret_cast<RAID_TEAMINFO_REQUEST*>(pPacket_);
+    auto connUser = connUsersManager->FindUser(connObjNum_);
 
-    Room* tempRoom = roomManager->GetRoom(raidTeamInfoReqPacket->roomNum);
-    tempRoom->setSockAddr(raidTeamInfoReqPacket->myNum, raidTeamInfoReqPacket->userAddr); // Set User UDP Socket Info
+    Room* tempRoom = roomManager->GetRoom(connUser->GetRoomNum());
+    tempRoom->SetSockAddr(connUser->GetUserRaidServerObjNum(), raidTeamInfoReqPacket->userAddr); // Set User UDP Socket Info
 
-    InGameUser* teamUser = tempRoom->GetTeamUser(raidTeamInfoReqPacket->myNum);
+    auto teamInfo = tempRoom->GetTeamInfo(connUser->GetUserRaidServerObjNum());
 
     RAID_TEAMINFO_RESPONSE raidTeamInfoResPacket;
     raidTeamInfoResPacket.PacketId = (uint16_t)PACKET_ID::RAID_TEAMINFO_RESPONSE;
     raidTeamInfoResPacket.PacketLength = sizeof(RAID_TEAMINFO_RESPONSE);
-    raidTeamInfoResPacket.teamLevel = teamUser->GetLevel();
-    strncpy_s(raidTeamInfoResPacket.teamId, teamUser->GetId().c_str(), MAX_USER_ID_LEN);
+    raidTeamInfoResPacket.teamLevel = teamInfo->userLevel;
+    strncpy_s(raidTeamInfoResPacket.teamId, teamInfo->userId.c_str(), MAX_USER_ID_LEN);
 
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(RAID_TEAMINFO_RESPONSE), (char*)&raidTeamInfoResPacket);
 
     if (tempRoom->StartCheck()) { // 두 명의 유저에게 팀의 정보를 전달하고 둘 다 받음 확인하면 게임 시작 정보 보내주기
-        RAID_START_REQUEST raidStartReqPacket1;
-        raidStartReqPacket1.PacketId = (uint16_t)PACKET_ID::RAID_START_REQUEST;
-        raidStartReqPacket1.PacketLength = sizeof(RAID_START_REQUEST);
+        RAID_START raidStartReqPacket1;
+        raidStartReqPacket1.PacketId = (uint16_t)PACKET_ID::RAID_START;
+        raidStartReqPacket1.PacketLength = sizeof(RAID_START);
         raidStartReqPacket1.endTime = tempRoom->SetEndTime();
+        raidStartReqPacket1.mapNum = tempRoom->GetMapNum();
+        raidStartReqPacket1.mobHp = tempRoom->GetMobHp();
 
-        RAID_START_REQUEST raidStartReqPacket2;
-        raidStartReqPacket2.PacketId = (uint16_t)PACKET_ID::RAID_START_REQUEST;
-        raidStartReqPacket2.PacketLength = sizeof(RAID_START_REQUEST);
+        RAID_START raidStartReqPacket2;
+        raidStartReqPacket2.PacketId = (uint16_t)PACKET_ID::RAID_START;
+        raidStartReqPacket2.PacketLength = sizeof(RAID_START);
         raidStartReqPacket2.endTime = tempRoom->SetEndTime();
+        raidStartReqPacket1.mapNum = tempRoom->GetMapNum();
+        raidStartReqPacket1.mobHp = tempRoom->GetMobHp();
 
-        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(RAID_START_REQUEST), (char*)&raidStartReqPacket1);
-        connUsersManager->FindUser(tempRoom->GetTeamObjNum(raidTeamInfoReqPacket->myNum))->PushSendMsg(sizeof(RAID_START_REQUEST), (char*)&raidStartReqPacket2);
+        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(RAID_START), (char*)&raidStartReqPacket1);
+        connUsersManager->FindUser(teamInfo->userConnObjNum)->PushSendMsg(sizeof(RAID_START), (char*)&raidStartReqPacket2);
     }
 }
 
 void PacketManager::RaidHit(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto raidHitReqPacket = reinterpret_cast<RAID_HIT_REQUEST*>(pPacket_);
-    InGameUser* user = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
+    auto connUser = connUsersManager->FindUser(connObjNum_);
+
+    auto tempRoom = roomManager->GetRoom(connUser->GetRoomNum());
 
     RAID_HIT_RESPONSE raidHitResPacket;
     raidHitResPacket.PacketId = (uint16_t)PACKET_ID::RAID_HIT_RESPONSE;
     raidHitResPacket.PacketLength = sizeof(RAID_HIT_RESPONSE);
 
-    auto room = roomManager->GetRoom(raidHitReqPacket->roomNum);
-    auto hit = room->Hit(raidHitReqPacket->myNum, raidHitReqPacket->damage);
+    auto hit = tempRoom->Hit(connUser->GetUserRaidServerObjNum(), raidHitReqPacket->damage);
 
     if (hit.first <= 0) { // Mob Dead
-        if (room->EndCheck()) { // SendEndMsg
+        if (tempRoom->EndCheck()) { // SendEndMsg
             raidHitResPacket.currentMobHp = 0;
             raidHitResPacket.yourScore = hit.second;
             connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(RAID_HIT_RESPONSE), (char*)&raidHitResPacket);
 
-            InGameUser* inGameUser;
             try {
                 auto pipe = redis->pipeline("ranking");
-                for (int i = 0; i < room->GetRoomUserCnt(); i++) {  // 레이드 종료 메시지
-                    inGameUser = room->GetUser(i);
+                for (int i = 1; i < tempRoom->GetRoomUserCnt(); i++) {  // 레이드 종료 메시지
+                    auto tempUser = tempRoom->GetMyInfo(i);
 
                     RAID_END_REQUEST raidEndReqPacket;
                     raidEndReqPacket.PacketId = (uint16_t)PACKET_ID::RAID_END_REQUEST;
                     raidEndReqPacket.PacketLength = sizeof(RAID_END_REQUEST);
-                    raidEndReqPacket.userScore = room->GetScore(i);
-                    raidEndReqPacket.teamScore = room->GetTeamScore(i);
-                    connUsersManager->FindUser(room->GetUserObjNum(i))->PushSendMsg(sizeof(RAID_END_REQUEST), (char*)&raidEndReqPacket);
+                    raidEndReqPacket.userScore = tempRoom->GetMyScore(i);
+                    raidEndReqPacket.teamScore = tempRoom->GetTeamScore(i);
+                    connUsersManager->FindUser(tempUser->userConnObjNum)->PushSendMsg(sizeof(RAID_END_REQUEST), (char*)&raidEndReqPacket);
 
-                    if (room->GetScore(i) > room->GetUser(i)->GetScore()) {
-                        pipe.zadd("ranking", inGameUser->GetId(), (double)(room->GetScore(i))); // 점수 레디스에 동기화
+                    if (tempUser->userScore.load() > tempUser->userMaxScore) { // 유저의 기존 최고 점수보다 높을 경우 레디스에 점수 업데이트
+                        pipe.zadd("ranking", tempUser->userId, (double)(tempUser->userScore.load()));
                     }
-
                 }
+
                 pipe.exec(); // 유저들 랭킹 동기화
-                matchingManager->DeleteMob(room); // 방 종료 처리
+                roomManager->DeleteMob(tempRoom); // 방 종료 처리
             }
             catch (const sw::redis::Error& e) {
                 std::cerr << "Redis error: " << e.what() << std::endl;
-                for (int i = 0; i < room->GetRoomUserCnt(); i++) {
-                    std::cout << room->GetUser(i)->GetId() << " 유저 점수 : " << room->GetScore(i) << std::endl;
+
+                for (int i = 1; i < tempRoom->GetRoomUserCnt(); i++) {
+                    auto tempUser = tempRoom->GetMyInfo(i);
+                    std::cout << tempUser->userId << " 유저 점수 : " << tempUser->userScore << std::endl;
                 }
+
                 std::cout << "동기화 실패" << std::endl;
-                matchingManager->DeleteMob(room); // 방 종료 처리
+                roomManager->DeleteMob(tempRoom); // 방 종료 처리
                 return;
             }
         }
@@ -294,7 +311,7 @@ void PacketManager::RaidHit(uint16_t connObjNum_, uint16_t packetSize_, char* pP
         connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(RAID_HIT_RESPONSE), (char*)&raidHitResPacket);
     }
 
-    if (hit.second != 0) { // Score이 0이 아니면 웹 서버에 동기화 메시지 전송 
-        connUsersManager->FindUser(GatewayServerObjNum)->PushSendMsg(sizeof(RAID_HIT_RESPONSE), (char*)&raidHitResPacket);
-    }
+    //if (hit.second != 0) { // Score이 0이 아니면 중앙 서버에 점수 동기화 메시지 전송 
+    //    connUsersManager->FindUser(GatewayServerObjNum)->PushSendMsg(sizeof(RAID_HIT_RESPONSE), (char*)&raidHitResPacket);
+    //}
 }

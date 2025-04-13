@@ -65,6 +65,11 @@ public:
 		PushSendMsg(sizeof(IM_GAME_REQUEST), (char*)&imGameReq);
 	}
 
+	void SetUserRoomInfo(uint16_t roomNum_, uint16_t userRaidServerObjNum_) {
+		roomNum = roomNum_;
+		userRaidServerObjNum = userRaidServerObjNum_;
+	}
+
 	SOCKET GetSocket() {
 		return userSkt;
 	}
@@ -73,12 +78,12 @@ public:
 		return connObjNum;
 	}
 
-	void SetPk(uint32_t userPk_) {
-		userPk = userPk_;
+	uint16_t GetRoomNum() {
+		return roomNum;
 	}
 
-	uint32_t GetPk() {
-		return userPk;
+	uint32_t GetUserRaidServerObjNum() {
+		return userRaidServerObjNum;
 	}
 
 	bool WriteRecvData(const char* data_, uint32_t size_) {
@@ -253,11 +258,10 @@ private:
 	HANDLE sIOCPHandle;
 	OverLappedManager* overLappedManager;
 
-	// 4 bytes
-	uint32_t userPk;
-
 	// 2 bytes
 	uint16_t connObjNum;
+	uint16_t roomNum;
+	uint16_t userRaidServerObjNum;
 
 	// 1 bytes
 	bool isConn = false;
