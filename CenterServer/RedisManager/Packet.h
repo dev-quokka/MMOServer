@@ -117,6 +117,13 @@ struct MOVE_SERVER_RESPONSE : PACKET_HEADER {
 	uint16_t port;
 };
 
+struct RAID_READY_REQUEST : PACKET_HEADER {
+	char serverToken[MAX_JWT_TOKEN_LEN + 1]; // Token For Server Connection
+	char ip[MAX_IP_LEN + 1];
+	uint16_t port;
+	uint16_t roomNum;
+};
+
 struct RAID_END_REQUEST_TO_GAME_SERVER : PACKET_HEADER {
 	uint16_t gameServerNum;
 	uint16_t roomNum;
@@ -131,14 +138,6 @@ struct RAID_MATCHING_REQUEST : PACKET_HEADER { // Users Matching Request
 
 struct RAID_MATCHING_RESPONSE : PACKET_HEADER {
 	bool insertSuccess; // Insert Into Matching Queue Check
-};
-
-struct RAID_READY_REQUEST : PACKET_HEADER {
-	char serverToken[MAX_JWT_TOKEN_LEN + 1]; // Token For Server Connection
-	char ip[MAX_IP_LEN + 1];
-	uint16_t port;
-	uint16_t udpPort;
-	uint16_t roomNum;
 };
 
 struct RAID_RANKING_REQUEST : PACKET_HEADER {

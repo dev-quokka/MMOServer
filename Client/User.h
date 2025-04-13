@@ -325,11 +325,9 @@ public:
 
         if (tempC == 1) {
             movesServerReq.serverNum = static_cast<uint16_t>(ChannelServerType::CH_01);
-            std::cout << static_cast<uint16_t>(ChannelServerType::CH_01) << " 접속 요청" << std::endl;
         }
         else if (tempC == 2) {
             movesServerReq.serverNum = static_cast<uint16_t>(ChannelServerType::CH_02);
-            std::cout << static_cast<uint16_t>(ChannelServerType::CH_02) << " 접속 요청" << std::endl;
         }
 
         send(userSkt, (char*)&movesServerReq, sizeof(movesServerReq), 0);
@@ -383,7 +381,7 @@ public:
 
     bool ChannelSocketinitialization() {
         shutdown(channelSkt, SD_BOTH);
-        closesocket(channelSkt); // 세션 서버 소켓 닫기
+        closesocket(channelSkt); // 채널 서버 소켓 닫기
 
         channelSkt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
@@ -392,6 +390,13 @@ public:
             return false;
         }
 
+        return true;
+    }
+
+    bool gameServerSocketinitialization() {
+        shutdown(gameServerSkt, SD_BOTH);
+        closesocket(gameServerSkt); // 게임 서버 소켓 닫기
+        closesocket(udpSkt);
         return true;
     }
 
@@ -476,19 +481,19 @@ public:
         return 1;
     }
 
-    bool makeUDPSocket() {
-        udpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    bool makeudpSkt() {
+        udpSkt = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
-        if (udpSocket == INVALID_SOCKET) {
+        if (udpSkt == INVALID_SOCKET) {
             std::cout << "Udp Socket Make Fail Error : " << WSAGetLastError() << std::endl;
             return false;
         }
 
         udpAddr.sin_family = AF_INET;
-        udpAddr.sin_port = htons(SERVER_UDP_PORT);
-        udpAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+        udpAddr.sin_addr.s_addr = INADDR_ANY;
+        udpAddr.sin_port = htons(40000);
 
-        bind(udpSocket, (sockaddr*)&udpAddr, sizeof(udpAddr));
+        bind(udpSkt, (sockaddr*)&udpAddr, sizeof(udpAddr));
 
         std::cout << "Udp Socket Make Success" << std::endl;
 
@@ -897,24 +902,53 @@ public:
         std::cout << "Match Insert Success" << std::endl;
         std::cout << "Team Waitting" << std::endl;
         recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+
         auto rrReqPacket = reinterpret_cast<RAID_READY_REQUEST*>(recvBuffer);
 
-        //timer = rrReqPacket->timer; // Minutes
-        //roomNum = rrReqPacket->roomNum; // If Max RoomNum Up to Short Range, Back to Number One
-        //myNum = rrReqPacket->yourNum;
-        //mobHp = rrReqPacket->mobHp;
+        gameServerSkt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (gameServerSkt == INVALID_SOCKET) {
+            std::cout << "gameServerSkt Socket Make Fail" << std::endl;
+        }
 
-        if (!makeUDPSocket()) { // UDP 소켓 생성 실패했을때
+        SOCKADDR_IN addr;
+        ZeroMemory(&addr, sizeof(addr));
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(rrReqPacket->port);
+        inet_pton(AF_INET, rrReqPacket->ip, &addr.sin_addr.s_addr);
+
+        std::cout << "Raid Server Connecting..." << std::endl;
+
+        if (connect(gameServerSkt, (SOCKADDR*)&addr, sizeof(addr))) {
+            std::cout << "Session Server Connection Fail" << std::endl;
+            return;
+        }
+
+        USER_CONNECT_GAME_REQUEST userConnReq;
+        userConnReq.PacketId = (UINT16)PACKET_ID::USER_CONNECT_GAME_REQUEST;
+        userConnReq.PacketLength = sizeof(USER_CONNECT_GAME_REQUEST);
+        strncpy_s(userConnReq.userId, userId.c_str(), MAX_USER_ID_LEN);
+        strncpy_s(userConnReq.userToken, rrReqPacket->serverToken, MAX_JWT_TOKEN_LEN);
+
+        send(gameServerSkt, (char*)&userConnReq, sizeof(userConnReq), 0);
+        recv(gameServerSkt, recvBuffer, PACKET_SIZE, 0);
+
+        auto userConnResPacket = reinterpret_cast<USER_CONNECT_GAME_RESPONSE*>(recvBuffer);
+
+        if (!userConnResPacket->isSuccess) { // 게임 서버 연결 실패
+            gameServerSocketinitialization();
+            return;
+        }
+
+        if (!makeudpSkt()) { // UDP 소켓 생성 실패했을때
             std::cout << "Udp Socket Make Fail" << std::endl;
             return;
         }
 
+        std::cout << "Raid Server Connection Success" << std::endl;
+
         RAID_TEAMINFO_REQUEST rtReq;
-        rtReq.PacketId = (UINT16)GAME_ID::RAID_TEAMINFO_REQUEST;
+        rtReq.PacketId = (UINT16)PACKET_ID::RAID_TEAMINFO_REQUEST;
         rtReq.PacketLength = sizeof(RAID_TEAMINFO_REQUEST);
-        rtReq.imReady = true;
-        rtReq.myNum = myNum;
-        rtReq.roomNum = roomNum;
         rtReq.userAddr = udpAddr;
 
         send(userSkt, (char*)&rtReq, sizeof(rtReq), 0);
@@ -928,9 +962,13 @@ public:
         std::cout << "Team Waitting" << std::endl;
         recv(userSkt, recvBuffer, PACKET_SIZE, 0);
 
-        auto rsReqPacket = reinterpret_cast<RAID_START_REQUEST*>(recvBuffer);
+        auto rsReqPacket = reinterpret_cast<RAID_START*>(recvBuffer);
+
+        mobHp.store(rsReqPacket->mobHp);
+        mapNum = rsReqPacket->mapNum;
 
         std::cout << "Raid Start !" << std::endl;
+        std::cout << "Map : " << mapNum << std::endl;
         std::cout << "Mob Hp : " << mobHp << std::endl;
         std::cout << "My ID : " << userId << " / Level : " << level << std::endl;
         std::cout << "Team ID : " << teamId << " / Level : " << teamLevel << std::endl;
@@ -939,6 +977,7 @@ public:
 
         syncRun = true;
         inGameRun = true;
+
         CreateSyncThread();
         CreateInGameThread();
 
@@ -971,14 +1010,12 @@ public:
 
         while (syncRun) {
             int serverAddrSize = sizeof(serverAddr);
-            int received = recvfrom(udpSocket, recvUDPBuffer, sizeof(recvUDPBuffer), 0,
-                (sockaddr*)&serverAddr, &serverAddrSize);
-            if (received == SOCKET_ERROR)
-            {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            }
-            std::cout << "데이터 들어옴" << std::endl;
-            if (received == sizeof(unsigned int) && syncRun) {
+
+            int received = recvfrom(udpSkt, recvUDPBuffer, sizeof(recvUDPBuffer), 0, (sockaddr*)&serverAddr, &serverAddrSize);
+
+            std::cout << "동기화 데이터 들어옴" << std::endl;
+
+            if (received == sizeof(unsigned int) && syncRun) { // 데이터 잘 들어왔으면 동기화
                 unsigned int mobHp_ = *(unsigned int*)recvUDPBuffer;
                 mobHp.store(mobHp_);
                 std::cout << "Mob Hp : " << mobHp_ << std::endl;
@@ -996,10 +1033,8 @@ public:
             std::cin >> damage;
 
             RAID_HIT_REQUEST rhReq;
-            rhReq.PacketId = (UINT16)GAME_ID::RAID_HIT_REQUEST;
+            rhReq.PacketId = (UINT16)PACKET_ID::RAID_HIT_REQUEST;
             rhReq.PacketLength = sizeof(RAID_HIT_REQUEST);
-            rhReq.myNum = myNum;
-            rhReq.roomNum = roomNum;
             rhReq.damage = damage;
 
             send(userSkt, (char*)&rhReq, sizeof(rhReq), 0);
@@ -1036,7 +1071,7 @@ public:
 
         inGameRun = false;
         syncRun = false;
-        closesocket(udpSocket);
+        closesocket(udpSkt);
     }
 
     bool GetRaidScore(uint16_t startNum_) { // 마지막 유저 스코어면 false 반환. 그 뒤 유저 없으니까 체크 x
@@ -1113,7 +1148,7 @@ private:
     SOCKET sessionSkt;
     SOCKET gameServerSkt;
     SOCKET channelSkt;
-    SOCKET udpSocket;
+    SOCKET udpSkt;
 
     unsigned int raidScore;
     char recvUDPBuffer[sizeof(unsigned int)];
@@ -1123,6 +1158,7 @@ private:
     uint16_t timer;
     uint16_t roomNum;
     uint16_t myNum;
+    uint16_t mapNum;
     uint16_t currentServer = 0;
     uint16_t currentChannel = 0;
 

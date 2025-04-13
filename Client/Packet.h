@@ -278,7 +278,6 @@ struct RAID_READY_REQUEST : PACKET_HEADER {
 	char serverToken[MAX_JWT_TOKEN_LEN + 1]; // Token For Server Connection
 	char ip[MAX_IP_LEN + 1];
 	uint16_t port;
-	uint16_t udpPort;
 	uint16_t roomNum;
 };
 
@@ -294,25 +293,31 @@ struct RAID_RANKING_RESPONSE : PACKET_HEADER {
 
 //  ---------------------------- GAME SERVER  ----------------------------
 
-struct RAID_TEAMINFO_REQUEST : PACKET_HEADER { // User To Server
-	bool imReady;
-	uint16_t roomNum;
-	uint16_t myNum;
-	sockaddr_in userAddr;// 유저가 만든 udp 소켓의 sockaddr_in 전달
+struct USER_CONNECT_GAME_REQUEST : PACKET_HEADER {
+	char userToken[MAX_JWT_TOKEN_LEN + 1]; // userToken For User Check
+	char userId[MAX_USER_ID_LEN + 1];
+};
+
+struct USER_CONNECT_GAME_RESPONSE : PACKET_HEADER {
+	bool isSuccess;
+};
+
+struct RAID_TEAMINFO_REQUEST : PACKET_HEADER {
+	sockaddr_in userAddr; // 유저가 만든 udp 소켓의 sockaddr_in 전달
 };
 
 struct RAID_TEAMINFO_RESPONSE : PACKET_HEADER {
-	uint16_t teamLevel;
 	char teamId[MAX_USER_ID_LEN + 1];
+	uint16_t teamLevel;
 };
 
-struct RAID_START_REQUEST : PACKET_HEADER {
-	std::chrono::time_point<std::chrono::steady_clock> endTime;
+struct RAID_START : PACKET_HEADER {
+	std::chrono::time_point<std::chrono::steady_clock> endTime; // 설정한 종료 시간 + 5초 (모든 유저 들어오는 시간 5초 설정)
+	unsigned int mobHp;
+	uint16_t mapNum;
 };
 
 struct RAID_HIT_REQUEST : PACKET_HEADER {
-	uint16_t roomNum;
-	uint16_t myNum;
 	unsigned int damage;
 };
 
@@ -321,7 +326,7 @@ struct RAID_HIT_RESPONSE : PACKET_HEADER {
 	unsigned int currentMobHp;
 };
 
-struct RAID_END_REQUEST : PACKET_HEADER { // Server to USER
+struct RAID_END_REQUEST : PACKET_HEADER { // Server TO User
 	unsigned int userScore;
 	unsigned int teamScore;
 };
@@ -402,9 +407,17 @@ enum class PACKET_ID : uint16_t {
 	ENH_EQUIPMENT_RESPONSE = 1538,
 	MOV_EQUIPMENT_REQUEST = 1539,
 	MOV_EQUIPMENT_RESPONSE = 1540,
-};
 
-enum class GAME_ID : uint16_t {
-	RAID_TEAMINFO_REQUEST = 1,
-	RAID_HIT_REQUEST = 2,
+	//  ---------------------------- RAID(8001~)  ----------------------------
+
+	USER_CONNECT_GAME_REQUEST = 8003,
+	USER_CONNECT_GAME_RESPONSE = 8004,
+
+	RAID_TEAMINFO_REQUEST = 8055,
+	RAID_TEAMINFO_RESPONSE = 8056,
+	RAID_START = 8057,
+	RAID_HIT_REQUEST = 8058,
+	RAID_HIT_RESPONSE = 8059,
+
+	RAID_END_REQUEST = 8101,
 };

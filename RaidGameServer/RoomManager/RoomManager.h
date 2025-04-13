@@ -17,8 +17,7 @@
 #include "Room.h"
 
 constexpr uint16_t TICK_RATE = 5; // 1초에 몇번씩 보낼건지
-constexpr int PORT = 9501;
-constexpr int UDP_PORT = 50000;
+constexpr int UDP_PORT = 50001;
 constexpr uint16_t MAX_ROOM = 10;
 
 struct EndTimeComp {

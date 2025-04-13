@@ -53,8 +53,8 @@ public:
 		return true;
 	}
 
-	void SetSockAddr(uint16_t userNum_, sockaddr_in userAddr_) {
-		ruInfos[userNum_]->userAddr = userAddr_;
+	void SetSockAddr(uint16_t userRaidServerObjNum_, sockaddr_in userAddr_) {
+		ruInfos[userRaidServerObjNum_]->userAddr = userAddr_;
 	}
 
 	std::chrono::time_point<std::chrono::steady_clock> SetEndTime() {
@@ -67,6 +67,10 @@ public:
 
 	int GetMobHp() {
 		return mobHp.load();
+	}
+
+	uint16_t GetRoomNum() {
+		return roomNum;
 	}
 
 	uint16_t GetMapNum() {
@@ -131,6 +135,13 @@ public:
 
 
 	//  ---------------------------- RAID  ----------------------------
+
+	void SendSyncMsg() {
+		unsigned int tempMobHp = mobHp.load();
+		for (int i = 1; i < ruInfos.size(); i++) { // 게임중인 유저들에게 동기화 메시지 전송
+			sendto(*udpSkt, (char*)&tempMobHp, sizeof(tempMobHp), 0, (sockaddr*)&ruInfos[i]->userAddr, sizeof(ruInfos[i]->userAddr));
+		}
+	}
 
 	std::pair<unsigned int, unsigned int> Hit(uint16_t userNum_, unsigned int damage_) { // current mobhp, score
 		if (mobHp <= 0 || finishCheck.load()) {

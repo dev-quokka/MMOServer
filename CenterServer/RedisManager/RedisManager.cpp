@@ -37,6 +37,7 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
 
     // RAID
     packetIDTable[(uint16_t)PACKET_ID::IM_GAME_REQUEST] = &RedisManager::ImGameRequest;
+    packetIDTable[(uint16_t)PACKET_ID::MATCHING_RESPONSE_FROM_GAME_SERVER] = &RedisManager::CheckMatchSuccess;
     packetIDTable[(uint16_t)PACKET_ID::RAID_RANKING_REQUEST] = &RedisManager::GetRanking;
 
 
@@ -368,17 +369,20 @@ void RedisManager::MatchStartResponse(uint16_t connObjNum_, uint16_t packetSize_
     auto matchSuccessReqPacket = reinterpret_cast<MATCHING_RESPONSE_FROM_MATCHING_SERVER*>(pPacket_);
     InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(matchSuccessReqPacket->userCenterObjNum);
 
-    if (matchSuccessReqPacket->isSuccess) {
-        std::cout << tempUser->GetId() << " " << tempUser->GetLevel() / 3 + 1 << " 그룹 Insert Success" << std::endl;
-    }
-
     RAID_MATCHING_RESPONSE matchResPacket;
     matchResPacket.PacketId = (uint16_t)PACKET_ID::RAID_MATCHING_RESPONSE;
     matchResPacket.PacketLength = sizeof(RAID_MATCHING_RESPONSE);
-    matchResPacket.insertSuccess = matchSuccessReqPacket->isSuccess;
+
+    if (matchSuccessReqPacket->isSuccess) {
+        matchResPacket.insertSuccess = matchSuccessReqPacket->isSuccess;
+        std::cout << tempUser->GetId() << " " << tempUser->GetLevel() / 3 + 1 << " 그룹 Insert Success" << std::endl;
+    }
+    else {
+        matchResPacket.insertSuccess = matchSuccessReqPacket->isSuccess;
+        std::cout << tempUser->GetId() << " " << tempUser->GetLevel() / 3 + 1 << " 그룹 Insert Fail" << std::endl;
+    }
 
     connUsersManager->FindUser(matchSuccessReqPacket->userCenterObjNum)->PushSendMsg(sizeof(RAID_MATCHING_RESPONSE), (char*)&matchResPacket);
-    std::cout << tempUser->GetId() << " " << tempUser->GetLevel() / 3 + 1 << " 그룹 Insert Fail" << std::endl;
 }
 
 void RedisManager::MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
@@ -419,7 +423,6 @@ void RedisManager::CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_,
     raidReadyReqPacket.PacketId = (uint16_t)PACKET_ID::RAID_READY_REQUEST;
     raidReadyReqPacket.PacketLength = sizeof(RAID_READY_REQUEST);
     raidReadyReqPacket.roomNum = tempRoomNum;
-    raidReadyReqPacket.udpPort = 50001; // 나중에 게임 서버가 늘어나면 해당 서버로 부터 udp 포트 직접 받기
     raidReadyReqPacket.port = ServerAddressMap[ServerType::RaidGameServer01].port;
     strncpy_s(raidReadyReqPacket.ip, ServerAddressMap[ServerType::RaidGameServer01].ip.c_str(), 256);
 

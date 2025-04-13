@@ -1,11 +1,11 @@
 #include <iostream>
 #include "GameServer1.h"
 
-const uint16_t PORT = 9211;
+const int PORT = 9501;
 const uint16_t maxThreadCount = 1;
 
 int main() {
-	GameServer1 gameServer1;
+    GameServer1 gameServer1;
 
     if (!gameServer1.init(maxThreadCount, PORT)) {
         return 0;
@@ -25,5 +25,5 @@ int main() {
 
     gameServer1.ServerEnd();
 
-	return 0;
+    return 0;
 }

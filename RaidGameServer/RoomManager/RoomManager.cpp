@@ -8,6 +8,13 @@ bool RoomManager::init() {
         return false;
     }
 
+    sockaddr_in serverUdpAddr{};
+    serverUdpAddr.sin_family = AF_INET;
+    serverUdpAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    serverUdpAddr.sin_port = htons(UDP_PORT);
+
+    bind(udpSkt, (sockaddr*)&serverUdpAddr, sizeof(serverUdpAddr));
+
     if (!CreateTimeCheckThread()) {
         return false;
     }
@@ -29,7 +36,7 @@ bool RoomManager::CreateTimeCheckThread() {
 bool RoomManager::CreateTickRateThread() {
     tickRateRun = true;
     tickRateThread = std::thread([this]() {TickRateThread(); });
-    std::cout << "TickRateThread1 Start" << std::endl;
+    std::cout << "TickRateThread Start" << std::endl;
     return true;
 }
 
@@ -38,8 +45,8 @@ void RoomManager::TickRateThread() {
         auto tickRate = std::chrono::milliseconds(1000 / TICK_RATE);
         auto timeCheck = std::chrono::steady_clock::now() + tickRate;
 
-        for (int i = 1; i <= MAX_ROOM; i++) {
-
+        for (auto iter = roomMap.begin(); iter != roomMap.end(); iter++) { // 게임 중인 방에 틱 레이트 동기화 메시지 전송
+            iter->second->SendSyncMsg();
         }
 
         while (timeCheck > std::chrono::steady_clock::now()) { // 틱레이트 까지 대기
@@ -51,7 +58,13 @@ void RoomManager::TickRateThread() {
 bool RoomManager::MakeRoom(uint16_t roomNum_, uint16_t mapNum_, uint16_t timer_, int mobHp_, RaidUserInfo* raidUserInfo1, RaidUserInfo* raidUserInfo2) {
     Room* room = new Room(&udpSkt);
 
+    if (!room->Set(roomNum_, mapNum_, timer_, mobHp_, raidUserInfo1, raidUserInfo2)) {
+        std::cout << "Making Room Fail in RoomManager" << std::endl;
+        return false;
+    }
 
+    roomMap[roomNum_] = room;
+    return true;
 }
 
 Room* RoomManager::GetRoom(uint16_t roomNum_) {
