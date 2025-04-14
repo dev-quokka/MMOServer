@@ -11,8 +11,11 @@
 #include <sw/redis++/redis++.h>
 
 #include "Packet.h"
+#include "ServerEnum.h"
+#include "RaidUserInfo.h"
 #include "RoomManager.h"
 #include "ConnUsersManager.h"
+
 
 class PacketManager {
 public:
@@ -40,7 +43,8 @@ private:
     void UserDisConnect(uint16_t connObjNum_); // Send Message To Center Server
 
     //SYSTEM
-    void ImGameRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Game Server Socket Check
+    void ImGameResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Game Server Socket Check
+    void ImGameResponsefromMatchingServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 해당 서버로 유저 접속 요청 From Center Server
 
     void RaidTeamInfo(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);

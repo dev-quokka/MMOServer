@@ -21,15 +21,23 @@
 
 #include "OverLappedManager.h"
 #include "ConnUsersManager.h"
+#include "RoomManager.h"
 #include "PacketManager.h"
 
-constexpr uint16_t MAX_USERS_OBJECT = 30; // 1서버 평균 접속 유저를 30으로 가정하고 미리 동적할당한 유저 객체 (나중에 1서버 평균 유저 늘어나면 카운트 수정)
-constexpr int MAX_CHANNEL1_USERS_COUNT = 30; // 각 채널 접속 가능 인원 * 채널 수
+constexpr uint16_t MAX_USERS_OBJECT = 13; // 1서버 평균 접속 유저를 10으로 가정하고 미리 동적할당한 유저 객체 (30 + 중앙 서버, 매칭 서버 + 1)
+constexpr int MAX_CHANNEL1_USERS_COUNT = 10; // 각 채널 접속 가능 인원 * 채널 수
+
+#define CENTER_SERVER_IP "127.0.0.1"
+#define CENTER_SERVER_PORT 9090
+
+#define MATCHING_SERVER_IP "127.0.0.1"
+#define MATCHING_SERVER_PORT 9131
 
 class GameServer1 {
 public:
     bool init(const uint16_t MaxThreadCnt_, int port_);
-    bool CenterConnect();
+    bool CenterServerConnect();
+    bool MatchingServerConnect();
     bool StartWork();
     void ServerEnd();
 
@@ -53,7 +61,8 @@ private:
 
     OverLappedManager* overLappedManager;
     ConnUsersManager* connUsersManager;
-    RedisManager* redisManager;
+    RoomManager* roomManager;
+    PacketManager* packetManager;
 
     // 2 bytes
     uint16_t MaxThreadCnt = 0;

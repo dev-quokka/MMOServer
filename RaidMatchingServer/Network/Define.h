@@ -6,7 +6,7 @@
 #include <mswsock.h>
 #include <cstdint>
 
-const uint32_t SERVER_COUNT = 2;
+const uint32_t SERVER_COUNT = 3; // 중앙 + 게임 서버 수 + 1
 const uint32_t MAX_RECV_SIZE = 1024; // Set Max Recv Buf
 const uint32_t MAX_CIRCLE_SIZE = 8096;
 

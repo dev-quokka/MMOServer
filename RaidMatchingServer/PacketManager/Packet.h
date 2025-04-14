@@ -69,6 +69,14 @@ struct MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
 
 //  ---------------------------- RAID  ----------------------------
 
+struct MATCHING_SERVER_CONNECT_REQUEST : PACKET_HEADER {
+	uint16_t gameServerNum;
+};
+
+struct MATCHING_SERVER_CONNECT_RESPONSE : PACKET_HEADER {
+	bool isSuccess;
+};
+
 struct MATCHING_REQUEST_TO_GAME_SERVER : PACKET_HEADER {
 	uint16_t userPk1;
 	uint16_t userPk2;
@@ -92,6 +100,8 @@ enum class PACKET_ID : uint16_t {
 
 
 	//  ---------------------------- GAME(8001~)  ----------------------------
+	MATCHING_SERVER_CONNECT_REQUEST = 8003,
+	MATCHING_SERVER_CONNECT_RESPONSE = 8004,
 
 	MATCHING_REQUEST_TO_GAME_SERVER = 8011,
 

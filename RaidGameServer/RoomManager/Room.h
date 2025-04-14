@@ -8,16 +8,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-struct RaidUserInfo {
-	std::string userId;
-	sockaddr_in userAddr;
-	unsigned int userMaxScore;
-	uint16_t userLevel;
-	uint16_t userPk;
-	uint16_t userConnObjNum = 0; // 유저 통신 고유 번호
-	uint16_t userRaidServerObjNum = 0; // 레이드 방에서 사용하는 번호
-	std::atomic<unsigned int> userScore = 0;
-};
+#include "RaidUserInfo.h"
 
 class Room {
 public:
@@ -98,7 +89,7 @@ public:
 	}
 
 	uint16_t GetRoomUserCnt() {
-		return ruInfos.size();
+		return static_cast<uint16_t>(ruInfos.size());
 	}
 
 	std::chrono::time_point<std::chrono::steady_clock> GetEndTime() {
@@ -141,6 +132,7 @@ public:
 		for (int i = 1; i < ruInfos.size(); i++) { // 게임중인 유저들에게 동기화 메시지 전송
 			sendto(*udpSkt, (char*)&tempMobHp, sizeof(tempMobHp), 0, (sockaddr*)&ruInfos[i]->userAddr, sizeof(ruInfos[i]->userAddr));
 		}
+		std::cout << "RoomNum : " << roomNum << " Send Sync Msg" << std::endl;
 	}
 
 	std::pair<unsigned int, unsigned int> Hit(uint16_t userNum_, unsigned int damage_) { // current mobhp, score

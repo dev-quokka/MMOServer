@@ -8,7 +8,8 @@ void PacketManager::init(const uint16_t packetThreadCnt_) {
     packetIDTable = std::unordered_map<uint16_t, RECV_PACKET_FUNCTION>();
 
     // SYSTEM
-    packetIDTable[(UINT16)PACKET_ID::IM_GAME_RESPONSE] = &PacketManager::ImGameRequest;
+    packetIDTable[(UINT16)PACKET_ID::IM_GAME_RESPONSE] = &PacketManager::ImGameResponse;
+    packetIDTable[(UINT16)PACKET_ID::MATCHING_SERVER_CONNECT_RESPONSE] = &PacketManager::ImGameResponsefromMatchingServer;
 
     packetIDTable[(UINT16)PACKET_ID::MATCHING_REQUEST_TO_GAME_SERVER] = &PacketManager::MakeRoom;
 
@@ -84,7 +85,7 @@ void PacketManager::PushPacket(const uint16_t connObjNum_, const uint32_t size_,
 
 //  ---------------------------- SYSTEM  ----------------------------
 
-void PacketManager::ImGameRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+void PacketManager::ImGameResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto centerConn = reinterpret_cast<IM_GAME_RESPONSE*>(pPacket_);
 
     if (!centerConn->isSuccess) {
@@ -93,6 +94,17 @@ void PacketManager::ImGameRequest(uint16_t connObjNum_, uint16_t packetSize_, ch
     }
 
     std::cout << "Connected to the central server" << std::endl;
+}
+
+void PacketManager::ImGameResponsefromMatchingServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    auto matchConn = reinterpret_cast<IM_GAME_RESPONSE*>(pPacket_);
+
+    if (!matchConn->isSuccess) {
+        std::cout << "Connected Fail to the Matching server" << std::endl;
+        return;
+    }
+
+    std::cout << "Connected to the Matching server" << std::endl;
 }
 
 void PacketManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
@@ -152,8 +164,8 @@ void PacketManager::UserDisConnect(uint16_t connObjNum_) {
 void PacketManager::MakeRoom(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto matchReqPacket = reinterpret_cast<MATCHING_REQUEST_TO_GAME_SERVER*>(pPacket_);
 
-    RaidUserInfo* user1;
-    RaidUserInfo* user2;
+    RaidUserInfo* user1 = new RaidUserInfo;
+    RaidUserInfo* user2 = new RaidUserInfo;;
 
     user1->userRaidServerObjNum = 1;
     user1->userRaidServerObjNum = 2;

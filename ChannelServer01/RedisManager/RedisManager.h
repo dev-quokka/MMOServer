@@ -12,6 +12,7 @@
 
 #include "Packet.h"
 #include "InGameUser.h"
+#include "ServerChannelEnum.h"
 #include "InGameUserManager.h"
 #include "ChannelManager.h"
 #include "ConnUsersManager.h"

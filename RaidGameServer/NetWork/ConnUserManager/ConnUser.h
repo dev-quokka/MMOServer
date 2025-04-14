@@ -1,8 +1,5 @@
 #pragma once
 
-#define SERVER_IP "127.0.0.1"
-#define CENTER_SERVER_PORT 9090
-
 #include "Define.h"
 #include "CircularBuffer.h"
 #include "Packet.h"
@@ -40,29 +37,6 @@ public:
 public:
 	bool IsConn() { // check connection status
 		return isConn;
-	}
-
-	void CenterConnect() {
-		SOCKADDR_IN addr;
-		ZeroMemory(&addr, sizeof(addr));
-		addr.sin_family = AF_INET;
-		addr.sin_port = htons(CENTER_SERVER_PORT);
-		inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr.s_addr);
-
-		std::cout << "Connect To Center Server" << std::endl;
-
-		connect(userSkt, (SOCKADDR*)&addr, sizeof(addr));
-
-		std::cout << "Connect Center Server Success" << std::endl;
-
-		ConnUserRecv();
-
-		IM_GAME_REQUEST imGameReq;
-		imGameReq.PacketId = (uint16_t)PACKET_ID::IM_GAME_REQUEST;
-		imGameReq.PacketLength = sizeof(IM_GAME_REQUEST);
-		imGameReq.gameServerNum = GAME_NUM; // 각 채널 서버 번호 전달
-
-		PushSendMsg(sizeof(IM_GAME_REQUEST), (char*)&imGameReq);
 	}
 
 	void SetUserRoomInfo(uint16_t roomNum_, uint16_t userRaidServerObjNum_) {
@@ -238,7 +212,6 @@ private:
 	}
 
 	// 1024 bytes
-	char recvBuf[1024] = { 0 };
 	char readData[1024] = { 0 };
 
 	// 136 bytes 

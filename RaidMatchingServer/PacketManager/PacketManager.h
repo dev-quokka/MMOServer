@@ -26,8 +26,8 @@ public:
     }
 
     void init(const uint16_t RedisThreadCnt_);
-    void SetManager(ConnServersManager* connServersManager_, MatchingManager* matchingManager_);
     void PushPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_);
+    void SetManager(ConnServersManager* connServersManager_, MatchingManager* matchingManager_);
 
 private:
     bool CreateRedisThread(const uint16_t RedisThreadCnt_);
@@ -35,7 +35,8 @@ private:
     void RedisThread();
 
     //SYSTEM
-    void ImMatchingRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void ImMatchingResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void ImGameRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void ServerDisConnect(uint16_t connObjNum_);
 
     // RAID

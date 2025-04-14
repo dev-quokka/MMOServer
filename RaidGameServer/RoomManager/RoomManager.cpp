@@ -10,16 +10,21 @@ bool RoomManager::init() {
 
     sockaddr_in serverUdpAddr{};
     serverUdpAddr.sin_family = AF_INET;
-    serverUdpAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    serverUdpAddr.sin_addr.s_addr = INADDR_ANY;
     serverUdpAddr.sin_port = htons(UDP_PORT);
 
-    bind(udpSkt, (sockaddr*)&serverUdpAddr, sizeof(serverUdpAddr));
+    if (bind(udpSkt, (sockaddr*)&serverUdpAddr, sizeof(serverUdpAddr))) {
+        std::cout << "bind 함수 실패:" << WSAGetLastError() << std::endl;
+        return false;
+    }
 
     if (!CreateTimeCheckThread()) {
+        std::cout << "TimeCheckThread Fail" << std::endl;
         return false;
     }
 
     if (!CreateTickRateThread()) {
+        std::cout << "TickRateThread Fail" << std::endl;
         return false;
     }
 
@@ -41,9 +46,15 @@ bool RoomManager::CreateTickRateThread() {
 }
 
 void RoomManager::TickRateThread() {
+    auto tickRate = std::chrono::milliseconds(1000 / TICK_RATE);
+
     while (tickRateRun) {
-        auto tickRate = std::chrono::milliseconds(1000 / TICK_RATE);
         auto timeCheck = std::chrono::steady_clock::now() + tickRate;
+
+        if (roomMap.empty()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            continue;
+        }
 
         for (auto iter = roomMap.begin(); iter != roomMap.end(); iter++) { // 게임 중인 방에 틱 레이트 동기화 메시지 전송
             iter->second->SendSyncMsg();

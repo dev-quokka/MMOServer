@@ -52,10 +52,62 @@ bool GameServer1::init(const uint16_t MaxThreadCnt_, int port_) {
     return true;
 }
 
-bool GameServer1::CenterConnect() {
-    ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE, 0, sIOCPHandle, overLappedManager); // 0번은 중앙 서버 연결 객체
-    connUsersManager->InsertUser(0, connUser); // Init ConnUsers
-    connUser->CenterConnect();
+bool GameServer1::CenterServerConnect() {
+    auto centerObj = connUsersManager->FindUser(0);
+
+    SOCKADDR_IN addr;
+    ZeroMemory(&addr, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(CENTER_SERVER_PORT);
+    inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr.s_addr);
+
+    std::cout << "Connecting To Center Server" << std::endl;
+
+    if (connect(centerObj->GetSocket(), (SOCKADDR*)&addr, sizeof(addr))) {
+        std::cout << "Center Server Connect Fail" << std::endl;
+        return false;
+    }
+
+    std::cout << "Center Server Connected" << std::endl;
+
+    centerObj->ConnUserRecv();
+
+    IM_GAME_REQUEST imReq;
+    imReq.PacketId = (UINT16)PACKET_ID::IM_GAME_REQUEST;
+    imReq.PacketLength = sizeof(IM_GAME_REQUEST);
+    imReq.gameServerNum = GAME_NUM;
+
+    centerObj->PushSendMsg(sizeof(IM_GAME_REQUEST), (char*)&imReq);
+
+    return true;
+}
+
+bool GameServer1::MatchingServerConnect() {
+    auto matchingObj = connUsersManager->FindUser(1);
+
+    SOCKADDR_IN addr;
+    ZeroMemory(&addr, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(MATCHING_SERVER_PORT);
+    inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr.s_addr);
+
+    std::cout << "Connecting To Matching Server" << std::endl;
+
+    if (connect(matchingObj->GetSocket(), (SOCKADDR*)&addr, sizeof(addr))) {
+        std::cout << "Matching Server Connect Fail" << std::endl;
+        return false;
+    }
+    std::cout << "Matching Server Connected" << std::endl;
+
+    matchingObj->ConnUserRecv();
+
+    MATCHING_SERVER_CONNECT_REQUEST imReq;
+    imReq.PacketId = (UINT16)PACKET_ID::MATCHING_SERVER_CONNECT_REQUEST;
+    imReq.PacketLength = sizeof(MATCHING_SERVER_CONNECT_REQUEST);
+    imReq.gameServerNum = GAME_NUM;
+
+    matchingObj->PushSendMsg(sizeof(MATCHING_SERVER_CONNECT_REQUEST), (char*)&imReq);
+
     return true;
 }
 
@@ -76,16 +128,29 @@ bool GameServer1::StartWork() {
     roomManager = new RoomManager;
     packetManager = new PacketManager;
 
-    for (int i = 1; i < MAX_USERS_OBJECT; i++) { // Make ConnUsers Queue
+    // 0 : Center Server
+    ConnUser* centerConnUser = new ConnUser(MAX_CIRCLE_SIZE, 0, sIOCPHandle, overLappedManager);
+    connUsersManager->InsertUser(0, centerConnUser);
+
+    // 1 : Matching Server
+    ConnUser* matchingConnUser = new ConnUser(MAX_CIRCLE_SIZE, 1, sIOCPHandle, overLappedManager);
+    connUsersManager->InsertUser(1, matchingConnUser);
+
+    for (int i = 2; i < MAX_USERS_OBJECT; i++) { // Make ConnUsers Queue
         ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE, i, sIOCPHandle, overLappedManager);
 
         AcceptQueue.push(connUser); // Push ConnUser
         connUsersManager->InsertUser(i, connUser); // Init ConnUsers
     }
 
-    packetManager->init(MaxThreadCnt);// Run MySQL && Run Redis Threads (The number of Clsuter Master Nodes + 1)
     roomManager->init();
+    packetManager->init(MaxThreadCnt);// Run MySQL && Run Redis Threads (The number of Clsuter Master Nodes + 1)
     packetManager->SetManager(connUsersManager, roomManager);
+
+    MatchingServerConnect();
+    CenterServerConnect();
+
+    std::cout << "StartWork 성공" << std::endl;
     return true;
 }
 
@@ -153,12 +218,12 @@ void GameServer1::WorkThread() {
             }
         }
         else if (overlappedEx->taskType == TaskType::RECV) {
-            packetManager->PushRedisPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
+            packetManager->PushPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
             connUser->ConnUserRecv(); // Wsarecv Again
             overLappedManager->returnOvLap(overlappedEx);
         }
         else if (overlappedEx->taskType == TaskType::NEWRECV) {
-            packetManager->PushRedisPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
+            packetManager->PushPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
             connUser->ConnUserRecv(); // Wsarecv Again
             delete[] overlappedEx->wsaBuf.buf;
             delete overlappedEx;
@@ -218,9 +283,10 @@ void GameServer1::ServerEnd() {
         }
     }
 
-    ConnUser* connUser;
+    delete packetManager;
+    delete connUsersManager;
+    delete roomManager;
 
-    delete redisManager;
     CloseHandle(sIOCPHandle);
     closesocket(serverSkt);
     WSACleanup();

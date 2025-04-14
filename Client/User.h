@@ -895,10 +895,6 @@ public:
             return;
         }
 
-        std::cout << "Raid Start" << std::endl;
-        std::cout << "Raid End" << std::endl;
-        return;
-
         std::cout << "Match Insert Success" << std::endl;
         std::cout << "Team Waitting" << std::endl;
         recv(userSkt, recvBuffer, PACKET_SIZE, 0);

@@ -182,6 +182,11 @@ void RedisManager::UserDisConnect(uint16_t connObjNum_) {
 }
 
 void RedisManager::SendChannelUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
+
+    if (tempUser->GetChannel() != 0) channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_); // 유저가 속한 채널이 있었으면 해당 채널 수 감소
+    tempUser->SetChannel(0);
+
     CHANNEL_USER_COUNTS_RESPONSE chCntResPacket;
     chCntResPacket.PacketId = (uint16_t)PACKET_ID::CHANNEL_USER_COUNTS_RESPONSE;
     chCntResPacket.PacketLength = sizeof(CHANNEL_USER_COUNTS_RESPONSE);

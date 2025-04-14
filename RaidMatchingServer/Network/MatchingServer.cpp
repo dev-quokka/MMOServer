@@ -11,20 +11,36 @@ bool MatchingServer::Init(const uint16_t MaxThreadCnt_, int port_) {
         return false;
     }
 
-    serverIOSkt = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, NULL, WSA_FLAG_OVERLAPPED);
-    if (serverIOSkt == INVALID_SOCKET) {
+    serverSkt = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, NULL, WSA_FLAG_OVERLAPPED);
+    if (serverSkt == INVALID_SOCKET) {
         std::cout << "Server Socket Make Fail" << std::endl;
         return false;
     }
 
-    IOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
+    SOCKADDR_IN addr;
+    addr.sin_port = htons(port_);
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
+    check = bind(serverSkt, (SOCKADDR*)&addr, sizeof(addr));
+    if (check) {
+        std::cout << "bind 함수 실패:" << WSAGetLastError() << std::endl;
+        return false;
+    }
+
+    check = listen(serverSkt, SOMAXCONN);
+    if (check) {
+        std::cout << "listen 함수 실패" << std::endl;
+        return false;
+    }
+
+    IOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
     if (IOCPHandle == NULL) {
         std::cout << "Iocp Handle Make Fail" << std::endl;
         return false;
     }
 
-    auto bIOCPHandle = CreateIoCompletionPort((HANDLE)serverIOSkt, IOCPHandle, (ULONG_PTR)this, 0);
+    auto bIOCPHandle = CreateIoCompletionPort((HANDLE)serverSkt, IOCPHandle, (ULONG_PTR)this, 0);
     if (bIOCPHandle == nullptr) {
         std::cout << "Iocp Handle Bind Fail" << std::endl;
         return false;
@@ -36,7 +52,7 @@ bool MatchingServer::Init(const uint16_t MaxThreadCnt_, int port_) {
     return true;
 }
 
-void MatchingServer::CenterServerConnect() {
+bool MatchingServer::CenterServerConnect() {
     auto centerObj = connServersManager->FindUser(0);
 
     SOCKADDR_IN addr;
@@ -45,35 +61,14 @@ void MatchingServer::CenterServerConnect() {
     addr.sin_port = htons(CENTER_SERVER_PORT);
     inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr.s_addr);
 
-    std::cout << "Connect To Center Server" << std::endl;
+    std::cout << "Connecting To Center Server" << std::endl;
 
-    connect(centerObj->GetSocket(), (SOCKADDR*)&addr, sizeof(addr));
+    if (connect(centerObj->GetSocket(), (SOCKADDR*)&addr, sizeof(addr))) {
+        std::cout << "Center Server Connect Fail" << std::endl;
+        return false;
+    }
 
-    std::cout << "Connect Center Server Success" << std::endl;
-
-    centerObj->ServerRecv();
-
-    IM_MATCHING_REQUEST imReq;
-    imReq.PacketId = (UINT16)PACKET_ID::IM_MATCHING_REQUEST;
-    imReq.PacketLength = sizeof(IM_MATCHING_REQUEST);
-
-    centerObj->PushSendMsg(sizeof(IM_MATCHING_REQUEST), (char*)&imReq);
-}
-
-void MatchingServer::GameServerConnect() {
-    auto centerObj = connServersManager->FindUser(1);
-
-    SOCKADDR_IN addr;
-    ZeroMemory(&addr, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(GAME_SERVER_PORT);
-    inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr.s_addr);
-
-    std::cout << "Connect To Center Server" << std::endl;
-
-    connect(centerObj->GetSocket(), (SOCKADDR*)&addr, sizeof(addr));
-
-    std::cout << "Connect Center Server Success" << std::endl;
+    std::cout << "Center Server Connected" << std::endl;
 
     centerObj->ServerRecv();
 
@@ -82,8 +77,9 @@ void MatchingServer::GameServerConnect() {
     imReq.PacketLength = sizeof(IM_MATCHING_REQUEST);
 
     centerObj->PushSendMsg(sizeof(IM_MATCHING_REQUEST), (char*)&imReq);
-}
 
+    return true;
+}
 
 bool MatchingServer::StartWork() {
     bool check = CreateWorkThread();
@@ -92,7 +88,19 @@ bool MatchingServer::StartWork() {
         return false;
     }
 
+    check = CreateAccepterThread();
+    if (!check) {
+        std::cout << "CreateAccepterThread 생성 실패" << std::endl;
+        return false;
+    }
+
     connServersManager = new ConnServersManager(SERVER_COUNT);
+
+    matchingManager = new MatchingManager;
+    packetManager = new PacketManager;
+
+    matchingManager->Init();
+    packetManager->init(1);
 
     // 0 : Center Server
     ConnServer* connServer = new ConnServer(MAX_CIRCLE_SIZE, 0, IOCPHandle, overLappedManager);
@@ -100,31 +108,14 @@ bool MatchingServer::StartWork() {
 
     CenterServerConnect();
 
-    auto imRes = reinterpret_cast<IM_MATCHING_RESPONSE*>(recvBuf);
+    for (int i = 1; i < SERVER_COUNT; i++) { // Make ConnUsers Queue
+        ConnServer* connServer = new ConnServer(MAX_CIRCLE_SIZE, i, IOCPHandle, overLappedManager);
 
-    if (!imRes->isSuccess) {
-        std::cout << "Fail to Connet" << std::endl;
-        return false;
+        AcceptQueue.push(connServer); // Push ConnUser
+        connServersManager->InsertUser(i, connServer); // Init ConnUsers
     }
 
-    //// 1 : Game Server
-    //ConnServer* connServer = new ConnServer(MAX_CIRCLE_SIZE, 1, IOCPHandle, overLappedManager);
-    //connServersManager->InsertUser(1, connServer);
-
-    //GameServerConnect();
-
-    //auto imRes = reinterpret_cast<IM_MATCHING_RESPONSE*>(recvBuf);
-
-    //if (!imRes->isSuccess) {
-    //    std::cout << "Fail to Connet" << std::endl;
-    //    return false;
-    //}
-
-    matchingManager = new MatchingManager;
-    packetManager = new PacketManager;
-
-    matchingManager->Init();
-    packetManager->init(1);
+    packetManager->SetManager(connServersManager, matchingManager);
 }
 
 bool MatchingServer::CreateWorkThread() {
@@ -134,6 +125,16 @@ bool MatchingServer::CreateWorkThread() {
         workThreads.emplace_back([this]() { WorkThread(); });
     }
     std::cout << "WorkThread Start" << std::endl;
+    return true;
+}
+
+bool MatchingServer::CreateAccepterThread() {
+    AccepterRun = true;
+    auto threadCnt = MaxThreadCnt / 4 + 1; // (core/4)
+    for (int i = 0; i < threadCnt; i++) {
+        acceptThreads.emplace_back([this]() { AccepterThread(); });
+    }
+    std::cout << "AcceptThread Start" << std::endl;
     return true;
 }
 
@@ -165,13 +166,19 @@ void MatchingServer::WorkThread() {
             if (connObjNum == 0) {
                 std::cout << "Center Server Disconnect" << std::endl;
             }
-            else if (connObjNum == 1) {
-                std::cout << "Game Server 1 Disconnect" << std::endl;
-            }
             continue;
         }
-
-        if (overlappedEx->taskType == TaskType::RECV) {
+        if (overlappedEx->taskType == TaskType::ACCEPT) { // User Connect
+            if (connServer->ServerRecv()) {
+                std::cout << "socket " << connServer->GetSocket() << " Connect Request" << std::endl;
+            }
+            else { // Bind Fail
+                connServer->Reset(); // Reset ConnUser
+                AcceptQueue.push(connServer);
+                std::cout << "socket " << connServer->GetSocket() << " Connect Fail" << std::endl;
+            }
+        }
+        else if (overlappedEx->taskType == TaskType::RECV) {
             packetManager->PushPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf);
             connServer->ServerRecv(); // Wsarecv Again
             overLappedManager->returnOvLap(overlappedEx);
@@ -194,8 +201,33 @@ void MatchingServer::WorkThread() {
     }
 }
 
+void MatchingServer::AccepterThread() {
+    ConnServer* connServer;
+
+    while (AccepterRun) {
+        if (AcceptQueue.pop(connServer)) { // AcceptQueue not empty
+            if (!connServer->PostAccept(serverSkt)) {
+                AcceptQueue.push(connServer);
+            }
+        }
+        else { // AcceptQueue empty
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            //while (AccepterRun) {
+            //    if (WaittingQueue.pop(connUser)) { // WaittingQueue not empty
+            //        WaittingQueue.push(connUser);
+            //    }
+            //    else { // WaittingQueue empty
+            //        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            //        break;
+            //    }
+            //}
+        }
+    }
+}
+
 void MatchingServer::ServerEnd() {
     workRun = false;
+    AccepterRun = false;
 
     for (int i = 0; i < workThreads.size(); i++) {
         PostQueuedCompletionStatus(IOCPHandle, 0, 0, nullptr);
@@ -207,11 +239,18 @@ void MatchingServer::ServerEnd() {
         }
     }
 
+    for (int i = 0; i < acceptThreads.size(); i++) { // Accept 쓰레드 종료
+        if (acceptThreads[i].joinable()) {
+            acceptThreads[i].join();
+        }
+    }
+
     delete packetManager;
     delete connServersManager;
     delete matchingManager;
+
     CloseHandle(IOCPHandle);
-    closesocket(serverIOSkt);
+    closesocket(serverSkt);
     WSACleanup();
 
     std::cout << "종료 5초 대기" << std::endl;

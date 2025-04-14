@@ -4,7 +4,7 @@
 
 const uint16_t PORT = 9090;
 const uint16_t maxThreadCount = 1;
-const uint16_t maxClientCount = 5;
+const uint16_t maxClientCount = 10;
 
 int main() {
     QuokkaServer server(maxClientCount);

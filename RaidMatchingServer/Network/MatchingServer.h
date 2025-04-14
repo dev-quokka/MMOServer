@@ -39,25 +39,26 @@ public:
 	bool Init(const uint16_t MaxThreadCnt_, int port_);
 	bool StartWork();
 	bool CreateWorkThread();
+	bool CreateAccepterThread();
 	void WorkThread();
-
-	void CenterServerConnect();
-	void GameServerConnect();
-
+	void AccepterThread(); // Accept req Thread
 	void ServerEnd();
 
+	bool CenterServerConnect();
 private:
 	// 512 bytes
 	char recvBuf[PACKET_SIZE];
 
 	// 136 bytes 
 	boost::lockfree::queue<OverlappedEx*> sendQueue{ 10 };
+	boost::lockfree::queue<ConnServer*> AcceptQueue{ SERVER_COUNT }; // For Aceept User Queue
 
 	// 32 bytes
 	std::vector<std::thread> workThreads;
+	std::vector<std::thread> acceptThreads;
 
 	// 8 bytes
-	SOCKET serverIOSkt;
+	SOCKET serverSkt;
 	HANDLE IOCPHandle;
 
 	OverLappedManager* overLappedManager;
@@ -73,5 +74,6 @@ private:
 
 	// 1 bytes
 	bool workRun = false;
+	bool AccepterRun = false;
 	std::atomic<uint16_t> sendQueueSize{ 0 };
 };

@@ -238,7 +238,7 @@ void RedisManager::ImMatchingRequest(uint16_t connObjNum_, uint16_t packetSize_,
     auto imMatchingReqPacket = reinterpret_cast<IM_MATCHING_REQUEST*>(pPacket_);
     MatchingServerObjNum = connObjNum_;
 
-    std::cout << "Channel Server Connect Request : " << connObjNum_ << std::endl;
+    std::cout << "Matching Server Connect Request : " << connObjNum_ << std::endl;
 
     IM_MATCHING_RESPONSE imMRes;
     imMRes.PacketId = (uint16_t)PACKET_ID::IM_MATCHING_RESPONSE;
@@ -248,7 +248,7 @@ void RedisManager::ImMatchingRequest(uint16_t connObjNum_, uint16_t packetSize_,
     connUsersManager->FindUser(connObjNum_)->SetPk(0);
 
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(IM_MATCHING_RESPONSE), (char*)&imMRes);
-    std::cout << "Channel Server Connect Success : " << connObjNum_ << std::endl;
+    std::cout << "Matching Server Connect Success : " << connObjNum_ << std::endl;
 }
 
 void RedisManager::ImGameRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {

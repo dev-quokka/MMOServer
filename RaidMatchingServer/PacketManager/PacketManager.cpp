@@ -5,10 +5,13 @@ void PacketManager::init(const uint16_t RedisThreadCnt_) {
     packetIDTable = std::unordered_map<uint16_t, RECV_PACKET_FUNCTION>();
 
     // SYSTEM
-    packetIDTable[(uint16_t)PACKET_ID::IM_MATCHING_RESPONSE] = &PacketManager::ImMatchingRequest;
+    packetIDTable[(uint16_t)PACKET_ID::IM_MATCHING_RESPONSE] = &PacketManager::ImMatchingResponse;
 
     packetIDTable[(uint16_t)PACKET_ID::MATCHING_REQUEST_TO_MATCHING_SERVER] = &PacketManager::MatchStart;
     packetIDTable[(uint16_t)PACKET_ID::MATCHING_CANCEL_REQUEST_TO_MATCHING_SERVER] = &PacketManager::MatchingCancel;
+
+
+    packetIDTable[(uint16_t)PACKET_ID::MATCHING_SERVER_CONNECT_REQUEST] = &PacketManager::ImGameRequest;
 
     RedisRun(RedisThreadCnt_);
 }
@@ -28,6 +31,11 @@ void PacketManager::RedisRun(const uint16_t RedisThreadCnt_) { // Connect Redis 
     catch (const  sw::redis::Error& err) {
         std::cout << "Redis Connect Error : " << err.what() << std::endl;
     }
+}
+
+void PacketManager::SetManager(ConnServersManager* connServersManager_, MatchingManager* matchingManager_) {
+    connServersManager = connServersManager_;
+    matchingManager = matchingManager_;
 }
 
 bool PacketManager::CreateRedisThread(const uint16_t RedisThreadCnt_) {
@@ -67,19 +75,40 @@ void PacketManager::PushPacket(const uint16_t connObjNum_, const uint32_t size_,
 
 //  ---------------------------- SYSTEM  ----------------------------
 
-void PacketManager::ImMatchingRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+void PacketManager::ImMatchingResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto centerConn = reinterpret_cast<IM_MATCHING_RESPONSE*>(pPacket_);
 
     if (!centerConn->isSuccess) {
-        std::cout << "Connected Fail to the central server" << std::endl;
+        std::cout << "Connected Fail to the center server" << std::endl;
         return;
     }
 
-    std::cout << "Connected to the central server" << std::endl;
+    std::cout << "Connected to the center server" << std::endl;
 }
 
 void PacketManager::ServerDisConnect(uint16_t connObjNum_) { // Abnormal Disconnect
 
+}
+
+void PacketManager::ImGameRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    auto centerConn = reinterpret_cast<MATCHING_SERVER_CONNECT_REQUEST*>(pPacket_);
+    auto tempNum = centerConn->gameServerNum;
+
+    MATCHING_SERVER_CONNECT_RESPONSE imResPacket;
+    imResPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_SERVER_CONNECT_RESPONSE;
+    imResPacket.PacketLength = sizeof(MATCHING_SERVER_CONNECT_RESPONSE);
+
+    if (!connServersManager->CheckGameServerObjNum(tempNum)) { // 이미 번호 있으면 연결 실패 전송
+        imResPacket.isSuccess = false;
+    }
+    else {
+        std::cout << "게임 서버 오브 젝트 설정 " << connObjNum_ << std::endl;
+        connServersManager->SetGameServerObjNum(tempNum, connObjNum_);
+        imResPacket.isSuccess = true;
+        std::cout << "Connected to the Game server" << tempNum << std::endl;
+    }
+
+    connServersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MATCHING_SERVER_CONNECT_RESPONSE), (char*)&imResPacket);
 }
 
 //  ---------------------------- RAID  ----------------------------
