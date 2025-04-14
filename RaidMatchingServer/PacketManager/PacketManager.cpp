@@ -1,6 +1,7 @@
 #include "PacketManager.h"
 
 void PacketManager::init(const uint16_t RedisThreadCnt_) {
+
     // ---------- SET PACKET PROCESS ---------- 
     packetIDTable = std::unordered_map<uint16_t, RECV_PACKET_FUNCTION>();
 
@@ -9,7 +10,6 @@ void PacketManager::init(const uint16_t RedisThreadCnt_) {
 
     packetIDTable[(uint16_t)PACKET_ID::MATCHING_REQUEST_TO_MATCHING_SERVER] = &PacketManager::MatchStart;
     packetIDTable[(uint16_t)PACKET_ID::MATCHING_CANCEL_REQUEST_TO_MATCHING_SERVER] = &PacketManager::MatchingCancel;
-
 
     packetIDTable[(uint16_t)PACKET_ID::MATCHING_SERVER_CONNECT_REQUEST] = &PacketManager::ImGameRequest;
 
@@ -40,9 +40,16 @@ void PacketManager::SetManager(ConnServersManager* connServersManager_, Matching
 
 bool PacketManager::CreateRedisThread(const uint16_t RedisThreadCnt_) {
     redisRun = true;
-    for (int i = 0; i < RedisThreadCnt_; i++) {
-        redisThreads.emplace_back(std::thread([this]() {RedisThread(); }));
+    try {
+        for (int i = 0; i < RedisThreadCnt_; i++) {
+            redisThreads.emplace_back(std::thread([this]() { RedisThread(); }));
+        }
     }
+    catch (const std::system_error& e) {
+        std::cerr << "Create Redis Thread Failed : " << e.what() << std::endl;
+        return false;
+    }
+
     return true;
 }
 
@@ -56,7 +63,7 @@ void PacketManager::RedisThread() {
             std::memset(tempData, 0, sizeof(tempData));
             TempConnServer = connServersManager->FindUser(tempD.connObjNum); // Find User
             PacketInfo packetInfo = TempConnServer->ReadRecvData(tempData, tempD.dataSize); // GetData
-            (this->*packetIDTable[packetInfo.packetId])(packetInfo.connObjNum, packetInfo.dataSize, packetInfo.pData); // Proccess Packet
+            (this->*packetIDTable[packetInfo.packetId])(packetInfo.connObjNum, packetInfo.dataSize, packetInfo.pData);
         }
         else { // Empty Queue
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -102,7 +109,6 @@ void PacketManager::ImGameRequest(uint16_t connObjNum_, uint16_t packetSize_, ch
         imResPacket.isSuccess = false;
     }
     else {
-        std::cout << "게임 서버 오브 젝트 설정 " << connObjNum_ << std::endl;
         connServersManager->SetGameServerObjNum(tempNum, connObjNum_);
         imResPacket.isSuccess = true;
         std::cout << "Connected to the Game server" << tempNum << std::endl;

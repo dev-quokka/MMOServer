@@ -74,7 +74,7 @@ public:
 
 		if (tIOCPHandle == INVALID_HANDLE_VALUE)
 		{
-			std::cout << "reateIoCompletionPort()함수 실패 :" << GetLastError() << std::endl;
+			std::cout << "reateIoCompletionPort() Fail :" << GetLastError() << std::endl;
 		}
 
 	}

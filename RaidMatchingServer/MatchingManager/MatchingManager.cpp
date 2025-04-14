@@ -1,6 +1,8 @@
 #include "MatchingManager.h"
 
-bool MatchingManager::Init() {
+bool MatchingManager::Init(ConnServersManager* connServersManager_) {
+    connServersManager = connServersManager_;
+
     for (int i = 1; i <= USER_MAX_LEVEL / 3 + 1; i++) { // Max i = MaxLevel/3 + 1 (Level Check Set)
         matchingMap.emplace(i, std::set<MatchingRoom*, MatchingRoomComp>());
     }
@@ -16,8 +18,13 @@ bool MatchingManager::Init() {
 
 bool MatchingManager::CreateMatchThread() {
     matchRun = true;
-    matchingThread = std::thread([this]() {MatchingThread(); });
-    std::cout << "MatchingThread Start" << std::endl;
+    try {
+        matchingThread = std::thread([this]() { MatchingThread(); });
+    }
+    catch (const std::system_error& e) {
+        std::cerr << "Create Matching Thread Failed : " << e.what() << std::endl;
+        return false;
+    }
     return true;
 }
 
@@ -34,8 +41,6 @@ uint16_t MatchingManager::Insert(uint16_t userPk_, uint16_t userCenterObjNum_, u
     }
 
     std::cout << "pk : " << userPk_ << "Insert Success" << std::endl;
-
-    // Match Queue Full || Insert Fail
     return 0;
 }
 
@@ -48,7 +53,7 @@ uint16_t MatchingManager::CancelMatching(uint16_t userCenterObjNum_, uint16_t us
     {
         std::lock_guard<std::mutex> guard(mDeleteMatch);
         for (auto iter = tempM.begin(); iter != tempM.end(); iter++) {
-            if ((*iter)->userCenterObjNum == userCenterObjNum_) { // 매칭 취소한 유저 찾기
+            if ((*iter)->userCenterObjNum == userCenterObjNum_) { // Find users who canceled matching
                 delete* iter;
                 tempM.erase(iter);
                 return true;
@@ -66,11 +71,11 @@ void MatchingManager::MatchingThread() {
     MatchingRoom* tempMatching2;
 
     while (matchRun) {
-        if (tempRoomNum == 0) { // 룸넘 한번 뽑아서 새로 뽑아야함
-            if (roomNumQueue.pop(tempRoomNum)) { // Exist Room Num
+        if (tempRoomNum == 0) { // Need to select a new Room Number
+            if (roomNumQueue.pop(tempRoomNum)) { // Select a new Room Number
                 for (int i = cnt; i <= 6; i++) {
                     tbb::concurrent_hash_map<uint16_t, std::set<MatchingRoom*, MatchingRoomComp>>::accessor accessor1;
-                    if (matchingMap.find(accessor1, i)) { // i번째 레벨 그룹 넘버 체크
+                    if (matchingMap.find(accessor1, i)) { // Check the level group number i
 
                         if (!accessor1->second.empty()) { // 유저 한명이라도 있음
                             tempMatching1 = *accessor1->second.begin();
@@ -78,11 +83,12 @@ void MatchingManager::MatchingThread() {
                             accessor1->second.erase(accessor1->second.begin());
 
                             if (!accessor1->second.empty()) { // 두번째 대기 유저가 있음
-                                tempMatching2 = *accessor1->second.begin();
 
+                                tempMatching2 = *accessor1->second.begin();
                                 accessor1->second.erase(accessor1->second.begin());
 
                                 { // 두명 유저 방 만들어서 넣어주기
+
                                     MATCHING_REQUEST_TO_GAME_SERVER rMatchingResPacket;
 
                                     // Send to User1 With User2 Info
@@ -94,7 +100,9 @@ void MatchingManager::MatchingThread() {
                                     rMatchingResPacket.userPk1 = tempMatching1->userPk;
                                     rMatchingResPacket.userPk2 = tempMatching1->userPk;
 
-                                    connServersManager->FindUser(1)->  // 매칭된 게임 서버로 매칭된 유저 정보 전달
+                                    std::cout << "Matching Success" << std::endl;
+
+                                    connServersManager->GetGameServerObjNum(1)->  // 매칭된 게임 서버로 매칭된 유저 정보 전달
                                         PushSendMsg(sizeof(MATCHING_REQUEST_TO_GAME_SERVER), (char*)&rMatchingResPacket);
                                 }
 
@@ -129,10 +137,10 @@ void MatchingManager::MatchingThread() {
 
                         if (!accessor1->second.empty()) { // 두번째 대기 유저가 있음
                             tempMatching2 = *accessor1->second.begin();
-
                             accessor1->second.erase(accessor1->second.begin());
 
                             { // 두명 유저 방 만들어서 넣어주기
+
                                 MATCHING_REQUEST_TO_GAME_SERVER rMatchingResPacket;
 
                                 // Send to User1 With User2 Info
@@ -143,8 +151,12 @@ void MatchingManager::MatchingThread() {
                                 rMatchingResPacket.userCenterObjNum2 = tempMatching2->userCenterObjNum;
                                 rMatchingResPacket.userPk1 = tempMatching1->userPk;
                                 rMatchingResPacket.userPk2 = tempMatching1->userPk;
-                                connServersManager->FindUser(1)->  // 매칭된 게임 서버로 매칭된 유저 정보 전달
+
+                                std::cout << "매칭 성공" << std::endl;
+
+                                connServersManager->GetGameServerObjNum(1)->  // 매칭된 게임 서버로 매칭된 유저 정보 전달
                                     PushSendMsg(sizeof(MATCHING_REQUEST_TO_GAME_SERVER), (char*)&rMatchingResPacket);
+
                             }
 
                             delete tempMatching1;

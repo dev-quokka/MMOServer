@@ -24,13 +24,13 @@ bool MatchingServer::Init(const uint16_t MaxThreadCnt_, int port_) {
 
     check = bind(serverSkt, (SOCKADDR*)&addr, sizeof(addr));
     if (check) {
-        std::cout << "bind 함수 실패:" << WSAGetLastError() << std::endl;
+        std::cout << "bind Fail:" << WSAGetLastError() << std::endl;
         return false;
     }
 
     check = listen(serverSkt, SOMAXCONN);
     if (check) {
-        std::cout << "listen 함수 실패" << std::endl;
+        std::cout << "listen Fail" << std::endl;
         return false;
     }
 
@@ -99,7 +99,7 @@ bool MatchingServer::StartWork() {
     matchingManager = new MatchingManager;
     packetManager = new PacketManager;
 
-    matchingManager->Init();
+    matchingManager->Init(connServersManager);
     packetManager->init(1);
 
     // 0 : Center Server
@@ -120,21 +120,33 @@ bool MatchingServer::StartWork() {
 
 bool MatchingServer::CreateWorkThread() {
     workRun = true;
-    auto threadCnt = MaxThreadCnt; // core
-    for (int i = 0; i < threadCnt; i++) {
-        workThreads.emplace_back([this]() { WorkThread(); });
+    auto threadCnt = MaxThreadCnt;
+    try {
+        for (int i = 0; i < threadCnt; i++) {
+            workThreads.emplace_back([this]() { WorkThread(); });
+        }
     }
-    std::cout << "WorkThread Start" << std::endl;
+    catch (const std::system_error& e) {
+        std::cerr << "Create Work Thread Failed : " << e.what() << std::endl;
+        return false;
+    }
     return true;
 }
 
 bool MatchingServer::CreateAccepterThread() {
     AccepterRun = true;
-    auto threadCnt = MaxThreadCnt / 4 + 1; // (core/4)
-    for (int i = 0; i < threadCnt; i++) {
-        acceptThreads.emplace_back([this]() { AccepterThread(); });
+    auto threadCnt = MaxThreadCnt / 4 + 1;
+
+    try {
+        for (int i = 0; i < threadCnt; i++) {
+            acceptThreads.emplace_back([this]() { AccepterThread(); });
+        }
     }
-    std::cout << "AcceptThread Start" << std::endl;
+    catch (const std::system_error& e) {
+        std::cerr << "Create Accept Thread Failed : " << e.what() << std::endl;
+        return false;
+    }
+
     return true;
 }
 

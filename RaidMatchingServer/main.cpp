@@ -16,16 +16,16 @@ int main() {
         connection_options.socket_timeout = std::chrono::seconds(10);
         connection_options.keep_alive = true;
 
-        // Redis 클러스터 연결
+        // Connect to Redis Cluster
         redis = std::make_shared<sw::redis::RedisCluster>(connection_options);
         std::cout << "Redis Cluster Connect Success !" << std::endl;
 
     }
     catch (const  sw::redis::Error& err) {
-        std::cout << "Redis 에러 발생: " << err.what() << std::endl;
+        std::cout << "Redis Error : " << err.what() << std::endl;
     }
 
-	MatchingServer matchingServer;
+    MatchingServer matchingServer;
     matchingServer.Init(maxThreadCount, MATCHING_SERVER_PORT);
     matchingServer.StartWork();
 
@@ -40,5 +40,5 @@ int main() {
 
     matchingServer.ServerEnd();
 
-	return 0;
+    return 0;
 }

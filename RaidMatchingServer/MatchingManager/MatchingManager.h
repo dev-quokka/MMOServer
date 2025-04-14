@@ -1,6 +1,6 @@
 #pragma once
-#pragma comment(lib, "ws2_32.lib") // 비주얼에서 소켓프로그래밍 하기 위한 것
-#pragma comment(lib,"mswsock.lib") //AcceptEx를 사용하기 위한 것
+#pragma comment(lib, "ws2_32.lib") 
+#pragma comment(lib,"mswsock.lib")
 
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 9090
@@ -20,7 +20,6 @@
 #include <tbb/concurrent_hash_map.h>
 
 #include "Packet.h"
-#include "Define.h"
 #include "OverLappedManager.h"
 #include "ConnServersManager.h"
 
@@ -62,7 +61,7 @@ public:
 		}
 	}
 
-	bool Init();
+	bool Init(ConnServersManager* connServersManager_);
 	uint16_t Insert(uint16_t userPk_, uint16_t userCenterObjNum, uint16_t userGroupNum_);
 	uint16_t CancelMatching(uint16_t userCenterObjNum_, uint16_t userGroupNum_);
 	bool CreateMatchThread();

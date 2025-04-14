@@ -18,6 +18,5 @@ void ConnServersManager::SetGameServerObjNum(uint16_t idx_, uint16_t gameServerO
 }
 
 ConnServer* ConnServersManager::GetGameServerObjNum(uint16_t idx_) {
-	std::cout << "게임 서버 오브 젝트 " << gameServerObjNums[idx_] << std::endl;
 	return connServers[gameServerObjNums[idx_]];
 }
