@@ -42,7 +42,7 @@ void RedisManager::RedisRun(const uint16_t RedisThreadCnt_) { // Connect Redis S
         connection_options.keep_alive = true;
 
         redis = std::make_unique<sw::redis::RedisCluster>(connection_options);
-        std::cout << "Redis Cluster Connect Success !" << std::endl;
+        std::cout << "Redis Cluster Connected" << std::endl;
 
         CreateRedisThread(RedisThreadCnt_);
     }
@@ -110,22 +110,22 @@ void RedisManager::ImChannelRequest(uint16_t connObjNum_, uint16_t packetSize_, 
     auto centerConn = reinterpret_cast<IM_CHANNEL_RESPONSE*>(pPacket_);
 
     if (!centerConn->isSuccess) {
-        std::cout << "Connected Fail to the central server" << std::endl;
+        std::cout << "Failed to Authenticate with Center Server" << std::endl;
         return;
     }
 
-    std::cout << "Connected to the central server" << std::endl;
+    std::cout << "Successfully Authenticated with Center Server" << std::endl;
 }
 
 void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto userConn = reinterpret_cast<USER_CONNECT_CHANNEL_REQUEST*>(pPacket_);
-    std::string key = "jwtcheck:{" + std::to_string(static_cast<uint16_t>(ServerType::ChannelServer02)) + "}";
+    std::string key = "jwtcheck:{" + std::to_string(static_cast<uint16_t>(ServerType::ChannelServer01)) + "}";
 
     USER_CONNECT_CHANNEL_RESPONSE ucReq;
     ucReq.PacketId = (uint16_t)PACKET_ID::USER_CONNECT_CHANNEL_RESPONSE;
     ucReq.PacketLength = sizeof(USER_CONNECT_CHANNEL_RESPONSE);
 
-    { // JWT 토큰 payload에 있는 아이디로 유저 체크
+    { // JWT token check
         auto tempToken = jwt::decode((std::string)userConn->userToken);
         auto tempId = tempToken.get_payload_claim("user_id");
 
@@ -152,12 +152,12 @@ void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char*
 
             ucReq.isSuccess = true;
             connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(USER_CONNECT_CHANNEL_RESPONSE), (char*)&ucReq);
-            std::cout << (std::string)userConn->userId << " Connect" << std::endl;
+            std::cout << (std::string)userConn->userId << " Authentication Successful" << std::endl;
         }
         else {
             ucReq.isSuccess = false;
             connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(USER_CONNECT_CHANNEL_RESPONSE), (char*)&ucReq);
-            std::cout << (std::string)userConn->userId << " JWT Check Fail" << std::endl;
+            std::cout << (std::string)userConn->userId << " Authentication Failed" << std::endl;
         }
     }
     catch (const sw::redis::Error& e) {
@@ -171,17 +171,22 @@ void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char*
 void RedisManager::UserDisConnect(uint16_t connObjNum_) {
     InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
-    channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_); // 해당 채널 인원 감소
+    channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_);
 
     USER_DISCONNECT_AT_CHANNEL_REQUEST userDisconnReqPacket;
     userDisconnReqPacket.PacketId = (uint16_t)PACKET_ID::USER_DISCONNECT_AT_CHANNEL_REQUEST;
     userDisconnReqPacket.PacketLength = sizeof(USER_DISCONNECT_AT_CHANNEL_REQUEST);
-    userDisconnReqPacket.channelServerNum = CHANNEL_NUM;
+    userDisconnReqPacket.channelServerNum = CHANNEL_SERVER_NUM;
 
     connUsersManager->FindUser(centerServerObjNum)->PushSendMsg(sizeof(USER_DISCONNECT_AT_CHANNEL_REQUEST), (char*)&userDisconnReqPacket);
 }
 
 void RedisManager::SendChannelUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
+
+    if (tempUser->GetChannel() != 0) channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_);
+    tempUser->SetChannel(0);
+
     CHANNEL_USER_COUNTS_RESPONSE chCntResPacket;
     chCntResPacket.PacketId = (uint16_t)PACKET_ID::CHANNEL_USER_COUNTS_RESPONSE;
     chCntResPacket.PacketLength = sizeof(CHANNEL_USER_COUNTS_RESPONSE);
@@ -214,36 +219,36 @@ void RedisManager::MoveChannel(uint16_t connObjNum_, uint16_t packetSize_, char*
     moveChRes.PacketId = (uint16_t)PACKET_ID::MOVE_CHANNEL_RESPONSE;
     moveChRes.PacketLength = sizeof(MOVE_CHANNEL_RESPONSE);
 
-    if (expUpReqPacket->channelNum == static_cast<uint16_t>(ChannelType::CH_021)) { // 유저가 요청한 채널 입장 가능 여부 체크
+    if (expUpReqPacket->channelNum == static_cast<uint16_t>(ChannelType::CH_011)) { // Check if the user can enter the requested channel
         if (channelManager->InsertChannel(1, connObjNum_, tempUser)) {
             moveChRes.isSuccess = true;
 
-            if (tempUser->GetChannel() != 0) channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_); // 유저가 속한 채널이 있었으면 해당 채널 수 감소
+            if (tempUser->GetChannel() != 0) channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_);
             tempUser->SetChannel(1);
 
-            std::cout << tempUser->GetId() << " " << static_cast<uint16_t>(ChannelType::CH_021) << "채널로 이동" << std::endl;
+            std::cout << "Move " << tempUser->GetId() << " to channel" << static_cast<uint16_t>(ChannelType::CH_021) << std::endl;
         }
         else moveChRes.isSuccess = false;
     }
-    else if (expUpReqPacket->channelNum == static_cast<uint16_t>(ChannelType::CH_022)) {
+    else if (expUpReqPacket->channelNum == static_cast<uint16_t>(ChannelType::CH_012)) {
         if (channelManager->InsertChannel(2, connObjNum_, tempUser)) {
             moveChRes.isSuccess = true;
 
             if (tempUser->GetChannel() != 0) channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_);
             tempUser->SetChannel(2);
 
-            std::cout << tempUser->GetId() << " " << static_cast<uint16_t>(ChannelType::CH_022) << "채널로 이동" << std::endl;
+            std::cout << "Move " << tempUser->GetId() << " to channel" << static_cast<uint16_t>(ChannelType::CH_022) << std::endl;
         }
         else moveChRes.isSuccess = false;
     }
-    else if (expUpReqPacket->channelNum == static_cast<uint16_t>(ChannelType::CH_023)) {
+    else if (expUpReqPacket->channelNum == static_cast<uint16_t>(ChannelType::CH_013)) {
         if (channelManager->InsertChannel(3, connObjNum_, tempUser)) {
             moveChRes.isSuccess = true;
 
             if (tempUser->GetChannel() != 0) channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_);
             tempUser->SetChannel(3);
 
-            std::cout << tempUser->GetId() << " " << static_cast<uint16_t>(ChannelType::CH_023) << "채널로 이동" << std::endl;
+            std::cout << "Move " << tempUser->GetId() << " to channel" << static_cast<uint16_t>(ChannelType::CH_023) << std::endl;
         }
         else moveChRes.isSuccess = false;
     }
@@ -492,22 +497,21 @@ void RedisManager::EnhanceEquipment(uint16_t connObjNum_, uint16_t packetSize_, 
                     std::string first = value.substr(0, i);
                     std::string second = value.substr(i + 1);
 
-                    // uint16_t로 변환
                     uint16_t f = static_cast<uint16_t>(std::stoi(first));
                     uint16_t s = static_cast<uint16_t>(std::stoi(second));
 
-                    std::cout << tempUser->GetId() << " 유저 " << enhanceProbabilities[s] << "% 확률 강화 시도" << std::endl;
+                    std::cout << tempUser->GetId() << " reinforcement attempt with " << enhanceProbabilities[s] << "% success rate" << std::endl;
 
-                    if (EquipmentEnhance(s)) { // Enhance Success
+                    if (EquipmentEnhance(s)) {
                         redis->hset(inventory_slot, std::to_string(enhEquipReqPacket->itemPosition),
-                            first + ":" + std::to_string(s + 1)); // 강화 성공
+                            first + ":" + std::to_string(s + 1)); // Reinforcement successful
                         enhEquipResPacket.isSuccess = true;
                         enhEquipResPacket.Enhancement = s + 1;
-                        std::cout << "강화 성공" << std::endl;
+                        std::cout << "Reinforcement successful" << std::endl;
                     }
-                    else { // Enhance Success
+                    else {
                         enhEquipResPacket.isSuccess = false;
-                        std::cout << "강화 실패" << std::endl;
+                        std::cout << "Reinforcement failed" << std::endl;
                     }
 
                     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(ENH_EQUIPMENT_RESPONSE), (char*)&enhEquipResPacket);
@@ -515,11 +519,11 @@ void RedisManager::EnhanceEquipment(uint16_t connObjNum_, uint16_t packetSize_, 
                 }
             }
 
-            // 잘못된 데이터를 받았을때
+            // When receiving invalid data
             enhEquipResPacket.isSuccess = false;
             connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(ENH_EQUIPMENT_RESPONSE), (char*)&enhEquipResPacket);
         }
-        else { // 레디스에 해당 장비를 못 찾았을때
+        else { // When the item cannot be found in Redis
             enhEquipResPacket.isSuccess = false;
             std::cout << "강화 실패" << std::endl;
             connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(ENH_EQUIPMENT_RESPONSE), (char*)&enhEquipResPacket);

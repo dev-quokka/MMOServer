@@ -3,8 +3,8 @@
 
 #include "Channel.h"
 
-constexpr int MAX_CHANNEL = 4; // 최대 채널 수 + 1
-constexpr int MAX_CHANNEL_USERS = 10; // 해당 채널 접속가능 유저 수
+constexpr int MAX_CHANNEL = 4; // Maximum number of channels + 1 (0 is not used)
+constexpr int MAX_CHANNEL_USERS = 10; // Maximum number of users per channel
 
 class ChannelManager {
 public:
@@ -13,5 +13,5 @@ public:
 	void LeaveChannel(uint16_t channelNum, uint16_t userObjNum_);
 	std::vector<uint16_t> GetChannels();
 private:
-	std::vector<Channel*> channels; // IDX 1부터 1채널
+	std::vector<Channel*> channels; // IDX - 1 ~ : Channel Number
 };

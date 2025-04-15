@@ -16,8 +16,8 @@ enum class ServerType : uint16_t {
 };
 
 enum class ChannelType : uint16_t {
-	CH_021 = 1, // 1서버 1 채널
-	CH_022 = 2, // 1서버 2 채널
-	CH_023 = 3, // 1서버 3 채널
+	CH_021 = 1, // 2-1 Channel
+	CH_022 = 2, // 2-2 Channel
+	CH_023 = 3, // 2-3 Channel
 
 };

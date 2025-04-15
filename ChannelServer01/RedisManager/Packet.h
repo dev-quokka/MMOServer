@@ -7,14 +7,12 @@
 #include <vector>
 #include <chrono>
 
-const uint16_t RANKING_USER_COUNT = 3; // 몇명씩 유저 랭킹 정보 가져올건지
-
 const int MAX_USER_ID_LEN = 32;
-const int MAX_SERVER_USERS = 128; // 서버 유저 수 전달 패킷
+const int MAX_SERVER_USERS = 128;
 const int MAX_JWT_TOKEN_LEN = 256;
 const int MAX_SCORE_SIZE = 512;
 
-const int CHANNEL_NUM = 1;
+constexpr int CHANNEL_SERVER_NUM = 1;
 
 struct DataPacket {
 	uint32_t dataSize;
@@ -53,7 +51,7 @@ struct IM_CHANNEL_RESPONSE : PACKET_HEADER {
 	bool isSuccess;
 };
 
-struct USER_DISCONNECT_REQUEST_PACKET : PACKET_HEADER {
+struct USER_DISCONNECT_AT_CHANNEL_REQUEST : PACKET_HEADER {
 	uint16_t channelServerNum;
 };
 
@@ -61,7 +59,7 @@ struct USER_DISCONNECT_REQUEST_PACKET : PACKET_HEADER {
 //  ---------------------------- CHANNEL SERVER  ----------------------------
 
 struct USER_CONNECT_CHANNEL_REQUEST : PACKET_HEADER {
-	char userToken[MAX_JWT_TOKEN_LEN + 1]; // userToken For User Check
+	char userToken[MAX_JWT_TOKEN_LEN + 1];
 	char userId[MAX_USER_ID_LEN + 1];
 };
 
@@ -82,14 +80,14 @@ struct MOVE_CHANNEL_REQUEST : PACKET_HEADER {
 	uint16_t channelNum;
 };
 
-struct MOVE_CHANNEL_RESPONSE : PACKET_HEADER { // 해당 채널 접속 가능한지 체크
+struct MOVE_CHANNEL_RESPONSE : PACKET_HEADER {
 	bool isSuccess;
 };
 
 //  ---------------------------- USER STATUS  ----------------------------
 
 struct EXP_UP_REQUEST : PACKET_HEADER {
-	short mobNum; // Number of Mob
+	short mobNum;
 };
 
 struct EXP_UP_RESPONSE : PACKET_HEADER {
@@ -100,10 +98,10 @@ struct EXP_UP_RESPONSE : PACKET_HEADER {
 //  ---------------------------- INVENTORY  ----------------------------
 
 struct ADD_ITEM_REQUEST : PACKET_HEADER {
-	uint16_t itemType; // (Max 3)
-	uint16_t itemPosition; // (Max 50)
-	uint16_t itemCount; // (Max 99)
-	uint16_t itemCode; // (Max 5000)
+	uint16_t itemType; 
+	uint16_t itemPosition;
+	uint16_t itemCount; 
+	uint16_t itemCode;
 };
 
 struct ADD_ITEM_RESPONSE : PACKET_HEADER {
@@ -111,8 +109,8 @@ struct ADD_ITEM_RESPONSE : PACKET_HEADER {
 };
 
 struct DEL_ITEM_REQUEST : PACKET_HEADER {
-	uint16_t itemType; // (Max 3)
-	uint16_t itemPosition; // (Max 50)
+	uint16_t itemType; 
+	uint16_t itemPosition; 
 };
 
 struct DEL_ITEM_RESPONSE : PACKET_HEADER {
@@ -120,10 +118,10 @@ struct DEL_ITEM_RESPONSE : PACKET_HEADER {
 };
 
 struct MOD_ITEM_REQUEST : PACKET_HEADER {
-	uint16_t itemType; // (Max 3)
-	uint16_t itemPosition; // (Max 50)
-	uint16_t itemCount; // (Max 99)
-	uint16_t itemCode; // (Max 5000)
+	uint16_t itemType; 
+	uint16_t itemPosition;
+	uint16_t itemCount;
+	uint16_t itemCode; 
 };
 
 struct MOD_ITEM_RESPONSE : PACKET_HEADER {
@@ -131,15 +129,15 @@ struct MOD_ITEM_RESPONSE : PACKET_HEADER {
 };
 
 struct MOV_ITEM_REQUEST : PACKET_HEADER {
-	uint16_t ItemType; // (Max 3)
+	uint16_t ItemType; 
 
-	uint16_t dragItemPos; // (Max 10)
+	uint16_t dragItemPos;
 	uint16_t dragItemCode;
-	uint16_t dragItemCount; // (Max 99)
+	uint16_t dragItemCount;
 
-	uint16_t targetItemPos; // (Max 10)
+	uint16_t targetItemPos; 
 	uint16_t targetItemCode;
-	uint16_t targetItemCount; // (Max 99)
+	uint16_t targetItemCount; 
 };
 
 struct MOV_ITEM_RESPONSE : PACKET_HEADER {
@@ -149,9 +147,9 @@ struct MOV_ITEM_RESPONSE : PACKET_HEADER {
 //  ---------------------------- INVENTORY:EQUIPMENT  ----------------------------
 
 struct ADD_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t itemPosition; // (Max 50)
-	uint16_t Enhancement; // (Max 20)
-	uint16_t itemCode; // (Max 5000)
+	uint16_t itemPosition; 
+	uint16_t Enhancement; 
+	uint16_t itemCode;
 };
 
 struct ADD_EQUIPMENT_RESPONSE : PACKET_HEADER {
@@ -159,7 +157,7 @@ struct ADD_EQUIPMENT_RESPONSE : PACKET_HEADER {
 };
 
 struct DEL_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t itemPosition; // (Max 50)
+	uint16_t itemPosition; 
 };
 
 struct DEL_EQUIPMENT_RESPONSE : PACKET_HEADER {
@@ -167,7 +165,7 @@ struct DEL_EQUIPMENT_RESPONSE : PACKET_HEADER {
 };
 
 struct ENH_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t itemPosition; // (Max 50)
+	uint16_t itemPosition; 
 };
 
 struct ENH_EQUIPMENT_RESPONSE : PACKET_HEADER {
@@ -176,11 +174,11 @@ struct ENH_EQUIPMENT_RESPONSE : PACKET_HEADER {
 };
 
 struct MOV_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t dragItemPos; // (Max 10)
+	uint16_t dragItemPos; 
 	uint16_t dragItemCode;
 	uint16_t dragItemEnhancement;
 
-	uint16_t targetItemPos; // (Max 10)
+	uint16_t targetItemPos;
 	uint16_t targetItemCode;
 	uint16_t targetItemEnhancement;
 };
@@ -191,10 +189,11 @@ struct MOV_EQUIPMENT_RESPONSE : PACKET_HEADER {
 
 
 enum class PACKET_ID : uint16_t {
+	//  ---------------------------- CHANNEL  ----------------------------
 	// SYSTEM (1501~)
 	IM_CHANNEL_REQUEST = 1501,
 	IM_CHANNEL_RESPONSE = 1502,
-	USER_DISCONNECT_REQUEST = 1503,
+	USER_DISCONNECT_AT_CHANNEL_REQUEST = 1503,
 	MOVE_CENTER_SERVER_REQUEST = 1504,
 	MOVE_CENTER_SERVER_RESPONSE = 1505,
 

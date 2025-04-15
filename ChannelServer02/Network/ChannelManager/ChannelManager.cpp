@@ -2,7 +2,7 @@
 
 bool ChannelManager::init() {
 	channels.resize(MAX_CHANNEL);
-	channels[0] = nullptr;// IDX 0은 사용하지 않음
+	channels[0] = nullptr;
 
 	for (int i = 1; i < MAX_CHANNEL; ++i) {
 		channels[i] = new Channel();
@@ -12,7 +12,7 @@ bool ChannelManager::init() {
 }
 
 bool ChannelManager::InsertChannel(uint16_t channelNum, uint16_t userObjNum_, InGameUser* user_) {
-	if (channels[channelNum]->GetUserCount() > MAX_CHANNEL_USERS) { // 해당 채널 유저 수 가득 차서 접속 불가능
+	if (channels[channelNum]->GetUserCount() > MAX_CHANNEL_USERS) { // Channel is full, return fail
 		return false;
 	}
 
@@ -20,7 +20,7 @@ bool ChannelManager::InsertChannel(uint16_t channelNum, uint16_t userObjNum_, In
 	return true;
 }
 
-void ChannelManager::LeaveChannel(uint16_t channelNum, uint16_t userObjNum_) {
+void ChannelManager::LeaveChannel(uint16_t channelNum, uint16_t userObjNum_) { // Decrease the user count in the channel if the user is in a channel
 	channels[channelNum]->RemoveUser(userObjNum_);
 }
 
