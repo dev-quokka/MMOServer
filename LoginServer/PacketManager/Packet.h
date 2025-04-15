@@ -7,10 +7,27 @@
 #include <vector>
 #include <chrono>
 
+#include "LoginUserData.h"
+
 const int MAX_USER_ID_LEN = 32;
 const int MAX_JWT_TOKEN_LEN = 256;
 const int MAX_SCORE_SIZE = 256;
-const int MAX_INVEN_SIZE = 512;
+
+struct DataPacket {
+	uint32_t dataSize;
+	uint16_t connObjNum;
+	DataPacket(uint32_t dataSize_, uint16_t connObjNum_) : dataSize(dataSize_), connObjNum(connObjNum_) {}
+	DataPacket() = default;
+};
+
+struct PacketInfo
+{
+	uint16_t packetId = 0;
+	uint16_t dataSize = 0;
+	uint16_t connObjNum = 0;
+	char* pData = nullptr;
+};
+
 
 struct PACKET_HEADER
 {
@@ -18,29 +35,6 @@ struct PACKET_HEADER
 	uint16_t PacketId;
 };
 
-struct USERINFO {
-	uint16_t level = 0;
-	unsigned int exp = 0;
-	unsigned int raidScore = 0;
-};
-
-struct EQUIPMENT {
-	uint16_t itemCode = 0;
-	uint16_t position = 0;
-	uint16_t enhance = 0;
-};
-
-struct CONSUMABLES {
-	uint16_t itemCode = 0;
-	uint16_t position = 0;
-	uint16_t count = 0;
-};
-
-struct MATERIALS {
-	uint16_t itemCode = 0;
-	uint16_t position = 0;
-	uint16_t count = 0;
-};
 
 struct RANKING {
 	uint16_t score = 0;
@@ -50,11 +44,11 @@ struct RANKING {
 //  ---------------------------- SYSTEM  ----------------------------
 
 
-struct IM_SESSION_REQUEST : PACKET_HEADER {
+struct IM_LOGIN_REQUEST : PACKET_HEADER {
 	char Token[MAX_JWT_TOKEN_LEN + 1];
 };
 
-struct IM_SESSION_RESPONSE : PACKET_HEADER {
+struct IM_LOGIN_RESPONSE : PACKET_HEADER {
 	bool isSuccess;
 };
 
@@ -69,7 +63,7 @@ struct SYNCRONIZE_LOGOUT_REQUEST : PACKET_HEADER {
 };
 
 
-//  ---------------------------- SESSION  ----------------------------
+//  ---------------------------- GATEWAY SERVER ----------------------------
 
 struct USER_GAMESTART_REQUEST : PACKET_HEADER {
 	char userId[MAX_USER_ID_LEN + 1];
@@ -93,7 +87,7 @@ struct EQUIPMENT_REQUEST : PACKET_HEADER {
 
 struct EQUIPMENT_RESPONSE : PACKET_HEADER {
 	uint16_t eqCount;
-	char Equipments[MAX_INVEN_SIZE + 1];
+	char Equipments[MAX_INVEN_SIZE+1];
 };
 
 struct CONSUMABLES_REQUEST : PACKET_HEADER {
@@ -102,7 +96,7 @@ struct CONSUMABLES_REQUEST : PACKET_HEADER {
 
 struct CONSUMABLES_RESPONSE : PACKET_HEADER {
 	uint16_t csCount;
-	char Consumables[MAX_INVEN_SIZE + 1];
+	char Consumables[MAX_INVEN_SIZE+1];
 };
 
 struct MATERIALS_REQUEST : PACKET_HEADER {
@@ -111,13 +105,13 @@ struct MATERIALS_REQUEST : PACKET_HEADER {
 
 struct MATERIALS_RESPONSE : PACKET_HEADER {
 	uint16_t mtCount;
-	char Materials[MAX_INVEN_SIZE + 1];
+	char Materials[MAX_INVEN_SIZE+1];
 };
 
 enum class PACKET_ID : uint16_t {
 	// SYSTEM (801~)
-	IM_SESSION_REQUEST = 801,
-	IM_SESSION_RESPONSE = 802,
+	IM_LOGIN_REQUEST = 801,
+	IM_LOGIN_RESPONSE = 802,
 
 	// USER LOGIN (811~)
 	USER_LOGIN_REQUEST = 811,
