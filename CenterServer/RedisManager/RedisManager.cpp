@@ -132,13 +132,15 @@ void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char*
     try {
         auto pk = static_cast<uint32_t>(std::stoul(*redis->hget(key, (std::string)userConn->userToken)));
         if (pk) {
-            std::string userInfokey = "userinfo:{" + std::to_string(pk) + "}";
+            std::string key = "userinfo:{" + std::to_string(pk) + "}";
             std::unordered_map<std::string, std::string> userData;
-            redis->hgetall(userInfokey, std::inserter(userData, userData.begin()));
+            redis->hgetall(key, std::inserter(userData, userData.begin()));
 
             connUsersManager->FindUser(connObjNum_)->SetPk(pk);
-            inGameUserManager->Set(connObjNum_, (std::string)userConn->userId, pk, std::stoul(userData["exp"]),
+            inGameUserManager->GetInGameUserByObjNum(connObjNum_)->Set((std::string)userConn->userId, pk, std::stoul(userData["exp"]),
                 static_cast<uint16_t>(std::stoul(userData["level"])), std::stoul(userData["raidScore"]));
+
+            redis->hset(key, "userstate", "online"); // Change user status to "offline"
 
             ucReq.isSuccess = true;
             connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(USER_CONNECT_RESPONSE_PACKET), (char*)&ucReq);
@@ -167,7 +169,8 @@ void RedisManager::Logout(uint16_t connObjNum_, uint16_t packetSize_, char* pPac
         syncLogoutReqPacket.PacketLength = sizeof(SYNCRONIZE_LOGOUT_REQUEST);
         syncLogoutReqPacket.userPk = tempUser->GetPk();
         connUsersManager->FindUser(GatewayServerObjNum)->PushSendMsg(sizeof(SYNCRONIZE_LOGOUT_REQUEST), (char*)&syncLogoutReqPacket);
-        std::cout << "유저 로그아웃 싱크로 메시지 전송" << std::endl;
+
+        redis->hset("userinfo:{" + std::to_string(tempUser->GetPk()) + "}", "userstate", "offline"); // Change user status to "offline"
     }
 }
 
@@ -180,7 +183,8 @@ void RedisManager::UserDisConnect(uint16_t connObjNum_) { // Abnormal Disconnect
         syncLogoutReqPacket.PacketLength = sizeof(SYNCRONIZE_LOGOUT_REQUEST);
         syncLogoutReqPacket.userPk = tempUser->GetPk();
         connUsersManager->FindUser(GatewayServerObjNum)->PushSendMsg(sizeof(SYNCRONIZE_LOGOUT_REQUEST), (char*)&syncLogoutReqPacket);
-        std::cout << "유저 디스커넥트 싱크로 메시지 전송" << std::endl;
+
+        redis->hset("userinfo:{" + std::to_string(tempUser->GetPk()) + "}", "userstate", "offline"); // Change user status to "offline"
     }
 }
 
@@ -287,6 +291,7 @@ void RedisManager::SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSiz
     std::memcpy(serverUserCountsResPacket.serverUserCnt, tempC, MAX_SERVER_USERS + 1);
 
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(RAID_RANKING_RESPONSE), (char*)&serverUserCountsResPacket);
+    redis->hset("userinfo:{" + std::to_string(inGameUserManager->GetInGameUserByObjNum(connObjNum_)->GetPk()) + "}", "userstate", "serverSwitching"); // Change user status to "serverSwitching"
 
     delete[] tempC;
 }
@@ -327,11 +332,13 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
         };
     }
 
+    auto tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
+
     // 채널 이동간 보안을 위한 JWT Token 생성
     std::string token = jwt::create()
         .set_issuer("Center_Server")
         .set_subject("Move_Server")
-        .set_payload_claim("user_id", jwt::claim(inGameUserManager->GetInGameUserByObjNum(connObjNum_)->GetId()))
+        .set_payload_claim("user_id", jwt::claim(tempUser->GetId()))
         .set_expires_at(std::chrono::system_clock::now() +
             std::chrono::seconds{ 300 })
         .sign(jwt::algorithm::hs256{ JWT_SECRET });
@@ -340,11 +347,10 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
 
     auto pipe = redis->pipeline(tag);
 
-    pipe.hset(key, token, std::to_string(inGameUserManager->GetInGameUserByObjNum(connObjNum_)->GetPk())) // 레디스 클러스터에 해당 Token을 key로 유저 PK 저장
+    pipe.hset(key, token, std::to_string(tempUser->GetPk())) // 레디스 클러스터에 해당 Token을 key로 유저 PK 저장
         .expire(key, 300);
 
     pipe.exec();
-
     strncpy_s(moveCHResPacket.serverToken, token.c_str(), 256);
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_SERVER_RESPONSE), (char*)&moveCHResPacket); // 유저에게 이동할 채널 정보와 JWT Token 전달
 }
@@ -375,6 +381,8 @@ void RedisManager::MatchStartResponse(uint16_t connObjNum_, uint16_t packetSize_
 
     if (matchSuccessReqPacket->isSuccess) {
         matchResPacket.insertSuccess = matchSuccessReqPacket->isSuccess;
+
+        redis->hset("userinfo:{" + std::to_string(tempUser->GetPk()) + "}", "userstate", "matching"); // // Change user status to "matching"
         std::cout << tempUser->GetId() << " " << tempUser->GetLevel() / 3 + 1 << " 그룹 Insert Success" << std::endl;
     }
     else {
@@ -406,13 +414,12 @@ void RedisManager::MatchingCancelResponse(uint16_t connObjNum_, uint16_t packetS
     matchCanResPacket.PacketLength = sizeof(MATCHING_CANCEL_RESPONSE);
     matchCanResPacket.isSuccess = matchCancelResPacket->isSuccess;
 
+    redis->hset("userinfo:{" + std::to_string(tempUser->GetPk()) + "}", "userstate", "online"); // Change user status to "online"
+
     connUsersManager->FindUser(matchCancelResPacket->userCenterObjNum)->PushSendMsg(sizeof(RAID_MATCHING_RESPONSE), (char*)&matchCanResPacket);
     std::cout << tempUser->GetId() << " Matching Cancel Success" << std::endl;
 }
 
-void RedisManager::MatchFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
-
-}
 
 void RedisManager::CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto matchSuccessReqPacket = reinterpret_cast<MATCHING_RESPONSE_FROM_GAME_SERVER*>(pPacket_);
@@ -469,6 +476,9 @@ void RedisManager::CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_,
         connUsersManager->FindUser(matchSuccessReqPacket->userCenterObjNum2)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&raidReadyReqPacket);
 
         pipe.exec();
+
+        redis->hset("userinfo:{" + std::to_string(inGameUserManager->GetInGameUserByObjNum(matchSuccessReqPacket->userCenterObjNum1)->GetPk()) + "}", "userstate", "inRaid"); // Change user status to "inRaid"
+        redis->hset("userinfo:{" + std::to_string(inGameUserManager->GetInGameUserByObjNum(matchSuccessReqPacket->userCenterObjNum2)->GetPk()) + "}", "userstate", "inRaid"); // Change user status to "inRaid"
     }
 }
 

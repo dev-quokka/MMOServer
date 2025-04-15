@@ -4,11 +4,10 @@
 #include <vector>  
 #include <string>
 #include <iostream>
+#include "UserStateEnum.h"
 
 class InGameUser {
 public:
-	InGameUser(std::vector<uint16_t> &expLimit_) : expLimit(expLimit_) {}
-
 	uint16_t GetLevel() {
 		return userLevel;
 	}
@@ -22,13 +21,16 @@ public:
 	}
 
 	void Reset() {
+		userId = "";
 		userLevel = 0;
 		userPk = 0;
 		userExp = 0;
+		raidScore = 0;
+		userState.store(1);
 	}
 
 	bool CheckMatching() {
-		return raidMatching.load();
+		return userState == static_cast<uint16_t>(UserState::raidMatching);
 	}
 
 	uint32_t GetPk() {
@@ -43,27 +45,9 @@ public:
 		return raidScore;
 	}
 
-	std::pair<uint16_t, unsigned int> ExpUp(short mobExp_) {
-		userExp += mobExp_;
-
-		uint16_t levelUpCnt = 0;
-
-		if (expLimit[userLevel] <= userExp) { // LEVEL UP
-			while (userExp >= expLimit[userLevel]) {
-				userLevel++;
-				levelUpCnt++;
-			}
-		}
-
-		return { levelUpCnt , userExp }; // Increase Level, Current Exp
-	}
-
 private:
 	// 40 bytes
 	std::string userId;
-
-	// 32 bytes
-	std::vector<uint16_t>& expLimit;
 
 	// 4 bytes
 	uint32_t userPk;
@@ -72,7 +56,5 @@ private:
 
 	// 2 bytes
 	uint16_t userLevel;
-
-	// 1 bytes
-	std::atomic<bool> raidMatching = false;
+	std::atomic<uint16_t> userState = 1; // // Initialize userState as 1 (indicating the user is offline)
 };
