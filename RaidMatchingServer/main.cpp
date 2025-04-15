@@ -7,25 +7,7 @@ constexpr uint16_t MATCHING_SERVER_PORT = 9131;
 constexpr uint16_t maxThreadCount = 1;
 
 int main() {
-    std::shared_ptr<sw::redis::RedisCluster> redis;
-    sw::redis::ConnectionOptions connection_options;
-
-    try {
-        connection_options.host = "127.0.0.1";  // Redis Cluster IP
-        connection_options.port = 7001;  // Redis Cluster Master Node Port
-        connection_options.socket_timeout = std::chrono::seconds(10);
-        connection_options.keep_alive = true;
-
-        // Connect to Redis Cluster
-        redis = std::make_shared<sw::redis::RedisCluster>(connection_options);
-        std::cout << "Redis Cluster Connect Success !" << std::endl;
-
-    }
-    catch (const  sw::redis::Error& err) {
-        std::cout << "Redis Error : " << err.what() << std::endl;
-    }
-
-    MatchingServer matchingServer;
+	MatchingServer matchingServer;
     matchingServer.Init(maxThreadCount, MATCHING_SERVER_PORT);
     matchingServer.StartWork();
 
@@ -40,5 +22,5 @@ int main() {
 
     matchingServer.ServerEnd();
 
-    return 0;
+	return 0;
 }

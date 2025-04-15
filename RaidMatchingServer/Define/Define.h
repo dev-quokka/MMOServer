@@ -21,9 +21,9 @@ enum class TaskType {
 struct OverlappedEx {
 	WSAOVERLAPPED wsaOverlapped;
 	// 16 bytes
-	WSABUF wsaBuf; // TCP Buffer
+	WSABUF wsaBuf;
 	// 4 bytes
-	TaskType taskType; // ACCPET, RECV, SEND, LASTSEND
+	TaskType taskType;
 	// 2 bytes
 	uint16_t connObjNum;
 };

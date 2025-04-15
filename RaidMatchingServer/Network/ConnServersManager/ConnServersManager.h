@@ -9,8 +9,8 @@
 class ConnServersManager {
 public:
     ConnServersManager(uint16_t maxClientCount_) {
-        connServers.resize(maxClientCount_, nullptr); // 중앙 서버 + 게임 서버 수 (0 : 중앙 서버)
-        gameServerObjNums.resize(2, 0); // 게임 서버 수 + 1 (0 사용 X)
+        connServers.resize(maxClientCount_, nullptr); // Total count of center server + game servers (0: center server)
+        gameServerObjNums.resize(2, 0); 	// Game server IDs start from 1 (index 0 is not used)
     }
     ~ConnServersManager() {
         for (int i = 0; i < connServers.size(); i++) {
@@ -21,7 +21,7 @@ public:
     void InsertUser(uint16_t connObjNum, ConnServer* connServer_); // Init ConnUsers
     ConnServer* FindUser(uint16_t connObjNum);
     bool CheckGameServerObjNum(uint16_t idx_);
-    void SetGameServerObjNum(uint16_t idx_, uint16_t gameServerObjNums_); // 게임 서버 고유 번호 설정
+    void SetGameServerObjNum(uint16_t idx_,uint16_t gameServerObjNums_); // Set unique ID for the Game Server
     ConnServer* GetGameServerObjNum(uint16_t idx_);
 
 private:

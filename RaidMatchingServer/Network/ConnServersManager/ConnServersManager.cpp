@@ -9,7 +9,7 @@ ConnServer* ConnServersManager::FindUser(uint16_t connObjNum_) {
 };
 
 bool ConnServersManager::CheckGameServerObjNum(uint16_t idx_) {
-	if (gameServerObjNums[idx_] != 0) return false; // 이미 서버 설정 되어 있으면 false
+	if (gameServerObjNums[idx_] != 0) return false;
 	return true;
 }
 

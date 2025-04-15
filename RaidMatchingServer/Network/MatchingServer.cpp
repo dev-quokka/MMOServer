@@ -2,18 +2,16 @@
 
 bool MatchingServer::Init(const uint16_t MaxThreadCnt_, int port_) {
     WSAData wsadata;
-    int check = 0;
-    MaxThreadCnt = MaxThreadCnt_;
+    MaxThreadCnt = MaxThreadCnt_; // Set the number of worker threads
 
-    check = WSAStartup(MAKEWORD(2, 2), &wsadata);
-    if (check) {
-        std::cout << "WSAStartup() Fail" << std::endl;
+    if (WSAStartup(MAKEWORD(2, 2), &wsadata)) {
+        std::cout << "Failed to WSAStartup" << std::endl;
         return false;
     }
 
     serverSkt = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, NULL, WSA_FLAG_OVERLAPPED);
     if (serverSkt == INVALID_SOCKET) {
-        std::cout << "Server Socket Make Fail" << std::endl;
+        std::cout << "Failed to Create Server Socket" << std::endl;
         return false;
     }
 
@@ -22,27 +20,25 @@ bool MatchingServer::Init(const uint16_t MaxThreadCnt_, int port_) {
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    check = bind(serverSkt, (SOCKADDR*)&addr, sizeof(addr));
-    if (check) {
-        std::cout << "bind Fail:" << WSAGetLastError() << std::endl;
+    if (bind(serverSkt, (SOCKADDR*)&addr, sizeof(addr))) {
+        std::cout << "Failed to Bind : " << WSAGetLastError() << std::endl;
         return false;
     }
 
-    check = listen(serverSkt, SOMAXCONN);
-    if (check) {
-        std::cout << "listen Fail" << std::endl;
+    if (listen(serverSkt, SOMAXCONN)) {
+        std::cout << "Failed to listen" << std::endl;
         return false;
     }
 
     IOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
     if (IOCPHandle == NULL) {
-        std::cout << "Iocp Handle Make Fail" << std::endl;
+        std::cout << "Failed to Create IOCP Handle" << std::endl;
         return false;
     }
 
     auto bIOCPHandle = CreateIoCompletionPort((HANDLE)serverSkt, IOCPHandle, (ULONG_PTR)this, 0);
     if (bIOCPHandle == nullptr) {
-        std::cout << "Iocp Handle Bind Fail" << std::endl;
+        std::cout << "Failed to Bind IOCP Handle" << std::endl;
         return false;
     }
 
@@ -64,7 +60,7 @@ bool MatchingServer::CenterServerConnect() {
     std::cout << "Connecting To Center Server" << std::endl;
 
     if (connect(centerObj->GetSocket(), (SOCKADDR*)&addr, sizeof(addr))) {
-        std::cout << "Center Server Connect Fail" << std::endl;
+        std::cout << "Failed to Connect to Center Server" << std::endl;
         return false;
     }
 
@@ -84,13 +80,11 @@ bool MatchingServer::CenterServerConnect() {
 bool MatchingServer::StartWork() {
     bool check = CreateWorkThread();
     if (!check) {
-        std::cout << "WorkThread 생성 실패" << std::endl;
         return false;
     }
 
     check = CreateAccepterThread();
     if (!check) {
-        std::cout << "CreateAccepterThread 생성 실패" << std::endl;
         return false;
     }
 
@@ -127,7 +121,7 @@ bool MatchingServer::CreateWorkThread() {
         }
     }
     catch (const std::system_error& e) {
-        std::cerr << "Create Work Thread Failed : " << e.what() << std::endl;
+        std::cerr << "Failed to Create Work Thread : " << e.what() << std::endl;
         return false;
     }
     return true;
@@ -143,7 +137,7 @@ bool MatchingServer::CreateAccepterThread() {
         }
     }
     catch (const std::system_error& e) {
-        std::cerr << "Create Accept Thread Failed : " << e.what() << std::endl;
+        std::cerr << "Failed to Create Accepter Thread : " << e.what() << std::endl;
         return false;
     }
 
@@ -176,18 +170,18 @@ void MatchingServer::WorkThread() {
 
         if (!gqSucces || (dwIoSize == 0 && overlappedEx->taskType != TaskType::ACCEPT)) { // Server Disconnect
             if (connObjNum == 0) {
-                std::cout << "Center Server Disconnect" << std::endl;
+                std::cout << "Center Server Disconnected" << std::endl;
             }
             continue;
         }
         if (overlappedEx->taskType == TaskType::ACCEPT) { // User Connect
             if (connServer->ServerRecv()) {
-                std::cout << "socket " << connServer->GetSocket() << " Connect Request" << std::endl;
+                std::cout << "socket " << connServer->GetSocket() << " Connection Request" << std::endl;
             }
             else { // Bind Fail
                 connServer->Reset(); // Reset ConnUser
                 AcceptQueue.push(connServer);
-                std::cout << "socket " << connServer->GetSocket() << " Connect Fail" << std::endl;
+                std::cout << "socket " << connServer->GetSocket() << " Connection Failed" << std::endl;
             }
         }
         else if (overlappedEx->taskType == TaskType::RECV) {
@@ -245,13 +239,13 @@ void MatchingServer::ServerEnd() {
         PostQueuedCompletionStatus(IOCPHandle, 0, 0, nullptr);
     }
 
-    for (int i = 0; i < workThreads.size(); i++) { // Work 쓰레드 종료
+    for (int i = 0; i < workThreads.size(); i++) { // Shutdown worker threads
         if (workThreads[i].joinable()) {
             workThreads[i].join();
         }
     }
 
-    for (int i = 0; i < acceptThreads.size(); i++) { // Accept 쓰레드 종료
+    for (int i = 0; i < acceptThreads.size(); i++) { // Shutdown accept threads
         if (acceptThreads[i].joinable()) {
             acceptThreads[i].join();
         }
@@ -265,7 +259,7 @@ void MatchingServer::ServerEnd() {
     closesocket(serverSkt);
     WSACleanup();
 
-    std::cout << "종료 5초 대기" << std::endl;
-    std::this_thread::sleep_for(std::chrono::seconds(5)); // 5초 대기
-    std::cout << "종료" << std::endl;
+    std::cout << "Wait 5 Seconds Before Shutdown" << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait 5 seconds before server shutdown
+    std::cout << "Game Server1 Shutdown" << std::endl;
 }

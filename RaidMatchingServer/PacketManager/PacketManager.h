@@ -13,12 +13,14 @@
 #include "ConnServersManager.h"
 #include "MatchingManager.h"
 
+constexpr int MAX_PACKET_SIZE = 128;
+
 class PacketManager {
 public:
     ~PacketManager() {
         redisRun = false;
 
-        for (int i = 0; i < redisThreads.size(); i++) { // End Redis Threads
+        for (int i = 0; i < redisThreads.size(); i++) { // Shutdown Redis Threads
             if (redisThreads[i].joinable()) {
                 redisThreads[i].join();
             }
@@ -40,17 +42,15 @@ private:
     void ServerDisConnect(uint16_t connObjNum_);
 
     // RAID
-    void MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 매치 대기열 삽입
-    void MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 매치 대기열 삽입
-    void MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 매칭 완료 중에 실패 (매칭이 성공하는 시점에 유저가 나갔거나, 취소를 먼저 눌렀을때)
+    void MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); 
 
     typedef void(PacketManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
 
     // 242 bytes
     sw::redis::ConnectionOptions connection_options;
-
-    // 136 bytes (병목현상 발생하면 lock_guard,mutex 사용 또는 lockfree::queue의 크기를 늘리는 방법으로 전환)
-    boost::lockfree::queue<DataPacket> procSktQueue{ 512 };
+    boost::lockfree::queue<DataPacket> procSktQueue{ MAX_PACKET_SIZE };
 
     // 80 bytes
     std::unordered_map<uint16_t, RECV_PACKET_FUNCTION> packetIDTable;

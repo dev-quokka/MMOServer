@@ -42,9 +42,9 @@ struct IM_MATCHING_RESPONSE : PACKET_HEADER {
 //  ---------------------------- MATCHING  ----------------------------
 
 struct MATCHING_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
-	uint16_t userPk; // 유저 pk
-	uint16_t userCenterObjNum; // 중앙 서버에서 사용하는 고유 번호
-	uint16_t userGroupNum; // 유저 그룹 번호
+	uint16_t userPk; 
+	uint16_t userCenterObjNum;
+	uint16_t userGroupNum;
 };
 
 struct MATCHING_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
@@ -52,7 +52,7 @@ struct MATCHING_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
 	bool isSuccess;
 };
 
-struct RAID_START_FAIL_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER { // 서버에서 매칭 서버로 전달
+struct RAID_START_FAIL_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
 	uint16_t roomNum;
 };
 
@@ -63,7 +63,7 @@ struct MATCHING_CANCEL_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
 
 struct MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
 	uint16_t userCenterObjNum;
-	bool isSuccess; // True : 취소 성공, Fail : 이미 매치 시작 or 예기치 못한 오류 (레디스 클러스터 상태로 확인)
+	bool isSuccess;
 };
 
 

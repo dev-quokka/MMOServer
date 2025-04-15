@@ -1,5 +1,4 @@
 #pragma once
-#pragma once
 #pragma comment(lib, "ws2_32.lib") 
 #pragma comment(lib,"mswsock.lib")
 
@@ -26,7 +25,6 @@
 #include "Packet.h"
 #include "Define.h"
 #include "ConnServer.h"
-
 #include "OverLappedManager.h"
 #include "ConnServersManager.h"
 #include "MatchingManager.h"
