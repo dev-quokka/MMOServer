@@ -91,7 +91,7 @@
 <br>
 
 - #### User Connect
-![Game Server Connect drawio](https://github.com/user-attachments/assets/0f726d5d-8282-4270-b0d4-b0ed3d378e5b)
+![Game Server Connect drawio](https://github.com/user-attachments/assets/efa77c95-aed4-487f-9d56-eb2d21af1d27)
 
 <br>
 
@@ -127,7 +127,8 @@
 <br>
 
 - #### User Logout or Disconnect
-![logout drawio](https://github.com/user-attachments/assets/4c122802-c7cc-44c6-8a26-91cdc4d72342)
+![logout drawio](https://github.com/user-attachments/assets/3428ac25-9ae1-4800-acb5-5b5cbc9dd620)
+
 
 
 <br>
