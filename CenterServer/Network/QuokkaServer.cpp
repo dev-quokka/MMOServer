@@ -2,18 +2,16 @@
 
 bool QuokkaServer::init(const uint16_t MaxThreadCnt_, int port_) {
     WSADATA wsadata;
-    int check = 0;
-    MaxThreadCnt = MaxThreadCnt_; // 워크 스레드 개수 설정
+    MaxThreadCnt = MaxThreadCnt_; // Set the number of worker threads
 
-    check = WSAStartup(MAKEWORD(2, 2), &wsadata);
-    if (check) {
-        std::cout << "WSAStartup 실패" << std::endl;
+    if (WSAStartup(MAKEWORD(2, 2), &wsadata)) {
+        std::cout << "Failed to WSAStartup" << std::endl;
         return false;
     }
 
     serverSkt = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, NULL, WSA_FLAG_OVERLAPPED);
     if (serverSkt == INVALID_SOCKET) {
-        std::cout << "Server Socket 생성 실패" << std::endl;
+        std::cout << "Failed to Create Server Socket" << std::endl;
         return false;
     }
 
@@ -22,27 +20,25 @@ bool QuokkaServer::init(const uint16_t MaxThreadCnt_, int port_) {
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    check = bind(serverSkt, (SOCKADDR*)&addr, sizeof(addr));
-    if (check) {
-        std::cout << "bind 함수 실패:" << WSAGetLastError() <<std::endl;
+    if (bind(serverSkt, (SOCKADDR*)&addr, sizeof(addr))) {
+        std::cout << "Failed to Bind :" << WSAGetLastError() << std::endl;
         return false;
     }
 
-    check = listen(serverSkt, SOMAXCONN);
-    if (check) {
-        std::cout << "listen 함수 실패" << std::endl;
+    if (listen(serverSkt, SOMAXCONN)) {
+        std::cout << "Failed to listen" << std::endl;
         return false;
     }
 
     sIOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, MaxThreadCnt);
     if (sIOCPHandle == NULL) {
-        std::cout << "iocp 핸들 생성 실패" << std::endl;
+        std::cout << "Failed to Create IOCP Handle" << std::endl;
         return false;
     }
 
     auto bIOCPHandle = CreateIoCompletionPort((HANDLE)serverSkt, sIOCPHandle, (uint32_t)0, 0);
     if (bIOCPHandle == nullptr) {
-        std::cout << "iocp 핸들 바인드 실패" << std::endl;
+        std::cout << "Failed to Bind IOCP Handle" << std::endl;
         return false;
     }
 
@@ -53,37 +49,32 @@ bool QuokkaServer::init(const uint16_t MaxThreadCnt_, int port_) {
 }
 
 bool QuokkaServer::StartWork() {
-
-    bool check = CreateWorkThread();
-    if (!check) {
-        std::cout << "WorkThread 생성 실패" << std::endl;
+    if (!CreateWorkThread()) {
         return false;
     }
 
-    check = CreateAccepterThread();
-    if (!check) {
-        std::cout << "CreateAccepterThread 생성 실패" << std::endl;
+    if (!CreateAccepterThread()) {
         return false;
-    } 
+    }
 
     connUsersManager = new ConnUsersManager(maxClientCount);
     inGameUserManager = new InGameUserManager;
     redisManager = new RedisManager;
 
-    for (int i = 0; i < maxClientCount; i++) { // Make ConnUsers Queue
+    for (int i = 0; i < maxClientCount; i++) { // Create a user object
         ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE,i, sIOCPHandle, overLappedManager);
 
-        AcceptQueue.push(connUser); // Push ConnUser
-        connUsersManager->InsertUser(i, connUser); // Init ConnUsers
+        AcceptQueue.push(connUser);
+        connUsersManager->InsertUser(i, connUser);
     }
 
-    for (int i = maxClientCount; i < maxClientCount*2; i++) { // Make Waitting Users Queue
+    for (int i = maxClientCount; i < maxClientCount*2; i++) { // Create a waiting user object
         ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE, i, sIOCPHandle, overLappedManager);
 
-        WaittingQueue.push(connUser); // Push ConnUser
+        WaittingQueue.push(connUser);
     }
 
-    redisManager->init(MaxThreadCnt);// Run MySQL && Run Redis Threads (The number of Clsuter Master Nodes + 1)
+    redisManager->init(MaxThreadCnt);// Run Redis Threads (The number of Clsuter Master Nodes + 1)
     inGameUserManager->Init(maxClientCount);
     redisManager->SetManager(connUsersManager, inGameUserManager);
 
@@ -92,21 +83,35 @@ bool QuokkaServer::StartWork() {
 
 bool QuokkaServer::CreateWorkThread() {
     WorkRun = true;
-    auto threadCnt = MaxThreadCnt; // core
-    for (int i = 0; i < threadCnt; i++) {
-        workThreads.emplace_back([this]() { WorkThread(); });
+
+    try {
+        auto threadCnt = MaxThreadCnt;
+        for (int i = 0; i < threadCnt; i++) {
+            workThreads.emplace_back([this]() { WorkThread(); });
+        }
     }
-    std::cout << "WorkThread Start" << std::endl;
+    catch (const std::system_error& e) {
+        std::cerr << "Failed to Create Work Threads : " << e.what() << std::endl;
+        return false;
+    }
+
     return true;
 }
 
 bool QuokkaServer::CreateAccepterThread() {
     AccepterRun = true;
-    auto threadCnt = MaxThreadCnt/4+1; // (core/4)
-    for (int i = 0; i < threadCnt; i++) {
-        acceptThreads.emplace_back([this]() { AccepterThread(); });
+
+    try {
+        auto threadCnt = MaxThreadCnt / 4 + 1;
+        for (int i = 0; i < threadCnt; i++) {
+            workThreads.emplace_back([this]() { AccepterThread(); });
+        }
     }
-    std::cout << "AcceptThread Start" << std::endl;
+    catch (const std::system_error& e) {
+        std::cerr << "Failed to Create Accepter Threads : " << e.what() << std::endl;
+        return false;
+    }
+
     return true;
 }
 
@@ -125,18 +130,18 @@ void QuokkaServer::WorkThread() {
             INFINITE
         );
 
-        if (gqSucces && dwIoSize == 0 && lpOverlapped == NULL) { // Server End Request
+        if (gqSucces && dwIoSize == 0 && lpOverlapped == NULL) {
             WorkRun = false;
             continue;
         }
 
-        auto overlappedTCP = (OverlappedTCP*)lpOverlapped;
-        uint16_t connObjNum = overlappedTCP->connObjNum;
+        auto overlappedEx = (OverlappedEx*)lpOverlapped;
+        uint16_t connObjNum = overlappedEx->connObjNum;
         connUser = connUsersManager->FindUser(connObjNum);
 
-        if (!gqSucces || (dwIoSize == 0 && overlappedTCP->taskType != TaskType::ACCEPT)) { // User Disconnect
-            std::cout << "socket " << connUser->GetSocket() << " Disconnect" << std::endl;
-            
+        if (!gqSucces || (dwIoSize == 0 && overlappedEx->taskType != TaskType::ACCEPT)) { // User Disconnected
+            std::cout << "socket " << connUser->GetSocket() << " Disconnected" << std::endl;
+
             redisManager->Disconnect(connObjNum);
             inGameUserManager->Reset(connObjNum);
             connUser->Reset(); // Reset 
@@ -145,35 +150,35 @@ void QuokkaServer::WorkThread() {
             continue;
         }
 
-        if (overlappedTCP->taskType == TaskType::ACCEPT) { // User Connect
+        if (overlappedEx->taskType == TaskType::ACCEPT) { // User Connect
                 if (connUser->ConnUserRecv()) {
-                    std::cout << "socket " << connUser->GetSocket() << " Connect Requset" << std::endl;
+                    std::cout << "socket " << connUser->GetSocket() << " Connection Requset" << std::endl;
                     UserCnt.fetch_add(1); // UserCnt +1
                 }
                 else { // Bind Fail
                     connUser->Reset(); // Reset ConnUser
                     AcceptQueue.push(connUser);
-                    std::cout << "socket " << connUser->GetSocket() << " ConnectFail" << std::endl;
+                    std::cout << "socket " << connUser->GetSocket() << " Connection Fail" << std::endl;
                 }
         }
-        else if (overlappedTCP->taskType == TaskType::RECV) {
-            redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedTCP->wsaBuf.buf); // Proccess In Redismanager
+        else if (overlappedEx->taskType == TaskType::RECV) {
+            redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
             connUser->ConnUserRecv(); // Wsarecv Again
-            overLappedManager->returnOvLap(overlappedTCP);
+            overLappedManager->returnOvLap(overlappedEx);
         }
-        else if (overlappedTCP->taskType == TaskType::NEWRECV) {
-            redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedTCP->wsaBuf.buf); // Proccess In Redismanager
+        else if (overlappedEx->taskType == TaskType::NEWRECV) {
+            redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
             connUser->ConnUserRecv(); // Wsarecv Again
-            delete[] overlappedTCP->wsaBuf.buf;
-            delete overlappedTCP;
+            delete[] overlappedEx->wsaBuf.buf;
+            delete overlappedEx;
         }
-        else if (overlappedTCP->taskType == TaskType::SEND) {
-            overLappedManager->returnOvLap(overlappedTCP);
+        else if (overlappedEx->taskType == TaskType::SEND) {
+            overLappedManager->returnOvLap(overlappedEx);
             connUser->SendComplete();
         }
-        else if (overlappedTCP->taskType == TaskType::NEWSEND) {
-            delete[] overlappedTCP->wsaBuf.buf;
-            delete overlappedTCP;
+        else if (overlappedEx->taskType == TaskType::NEWSEND) {
+            delete[] overlappedEx->wsaBuf.buf;
+            delete overlappedEx;
             connUser->SendComplete();
         }
     }
@@ -216,7 +221,7 @@ void QuokkaServer::ServerEnd() {
             workThreads[i].join();
         }
     }
-    for (int i = 0; i < acceptThreads.size(); i++) { // Accept 쓰레드 종료
+    for (int i = 0; i < acceptThreads.size(); i++) { // Shutdown worker threads
         if (acceptThreads[i].joinable()) { 
             acceptThreads[i].join();
         }
@@ -224,7 +229,7 @@ void QuokkaServer::ServerEnd() {
 
     ConnUser* connUser;
 
-    while (WaittingQueue.pop(connUser)) { // 접속 대기큐 유저 객체 삭제
+    while (WaittingQueue.pop(connUser)) { // Shutdown accept threads
         closesocket(connUser->GetSocket());
         delete connUser;
     }
@@ -236,8 +241,9 @@ void QuokkaServer::ServerEnd() {
     closesocket(serverSkt);
     WSACleanup();
 
-    std::cout << "종료 5초 대기" << std::endl;
-    std::this_thread::sleep_for(std::chrono::seconds(5)); // 5초 대기
-    std::cout << "종료" << std::endl;
+
+    std::cout << "Wait 5 Seconds Before Shutdown" << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait 5 seconds before server shutdown
+    std::cout << "Game Server1 Shutdown" << std::endl;
 }
 

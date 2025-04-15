@@ -2,9 +2,9 @@
 #include <iostream>
 #include <cstdint>
 
-const uint16_t PORT = 9090;
-const uint16_t maxThreadCount = 1;
-const uint16_t maxClientCount = 10;
+constexpr uint16_t PORT = 9090;
+constexpr uint16_t maxThreadCount = 1;
+constexpr uint16_t maxClientCount = 30; // User objects allocated for average Center Server load + additional allocation for connected servers 
 
 int main() {
     QuokkaServer server(maxClientCount);

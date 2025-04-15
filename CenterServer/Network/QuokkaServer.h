@@ -1,4 +1,7 @@
 #pragma once
+#pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "mswsock.lib")
+
 #include <winsock2.h>
 #include <windows.h>
 #include <cstdint>
@@ -14,14 +17,10 @@
 
 #include "Define.h"
 #include "ConnUser.h"
-
 #include "OverLappedManager.h"
 #include "ConnUsersManager.h"
 #include "InGameUserManager.h"
 #include "RedisManager.h"
-
-#pragma comment(lib, "ws2_32.lib") // 소켓 프로그래밍용
-#pragma comment(lib, "mswsock.lib") // AcceptEx 사용
 
 class QuokkaServer {
 public:
@@ -56,7 +55,7 @@ private:
     RedisManager* redisManager;
 
     // 4 bytes
-    std::atomic<uint16_t> UserCnt = 0; //Check Current UserCnt
+    std::atomic<uint16_t> UserCnt = 0;
 
     // 2 bytes
     uint16_t MaxThreadCnt = 0;

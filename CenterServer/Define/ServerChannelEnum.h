@@ -2,17 +2,9 @@
 #include <cstdint>
 #include <string>
 
-// ---------------------------- MYSQL  ----------------------------
-// 유저의 현재 접속 중인와 서버, 채널 번호
-
-//CenterServer = 1, 0
-//ChannelServer01 = 10~, 1~
-//ChannelServer02 = 20~, 2~
-
-
 //  ---------------------------- SERVER INFO  ----------------------------
 
-enum class ServerType : uint16_t { // 중앙 서버만 사용하는 번호
+enum class ServerType : uint16_t {
 	// Channel Server (11~)
 	ChannelServer01 = 1,
 	ChannelServer02 = 2,
@@ -26,8 +18,8 @@ enum class ServerType : uint16_t { // 중앙 서버만 사용하는 번호
 };
 
 enum class ChannelServerType : uint16_t {
-	CH_01 = 1, // 1서버
-	CH_02 = 2, // 2서버
+	CH_01 = 1, // Channe Server1
+	CH_02 = 2, // Channe Server2
 };
 
 struct ServerAddress {

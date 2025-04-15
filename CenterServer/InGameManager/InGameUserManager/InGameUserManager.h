@@ -1,12 +1,12 @@
 #pragma once
-#include "InGameUser.h"
-
 #include <vector>
 #include <string>
 #include <cstdint>
 #include <ws2tcpip.h>
 #include <utility>
 #include <iostream>
+
+#include "InGameUser.h"
 
 class InGameUserManager {
 public:

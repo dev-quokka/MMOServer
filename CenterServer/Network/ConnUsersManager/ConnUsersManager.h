@@ -19,6 +19,5 @@ public:
     ConnUser* FindUser(uint16_t connObjNum);
 
 private:
-    // 576 bytes
     std::vector<ConnUser*> ConnUsers; // ConnUsers Obj
 };
