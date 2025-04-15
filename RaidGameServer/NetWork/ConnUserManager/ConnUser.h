@@ -21,10 +21,9 @@ public:
 		}
 
 		auto tIOCPHandle = CreateIoCompletionPort((HANDLE)userSkt, sIOCPHandle_, (ULONG_PTR)0, 0);
-
 		if (tIOCPHandle == INVALID_HANDLE_VALUE)
 		{
-			std::cout << "reateIoCompletionPort()함수 실패 :" << GetLastError() << std::endl;
+			std::cout << "reateIoCompletionPort Fail :" << GetLastError() << std::endl;
 		}
 
 		circularBuffer = std::make_unique<CircularBuffer>(bufferSize_);
@@ -35,7 +34,7 @@ public:
 	}
 
 public:
-	bool IsConn() { // check connection status
+	bool IsConn() { // Check connection status
 		return isConn;
 	}
 
@@ -60,11 +59,11 @@ public:
 		return userRaidServerObjNum;
 	}
 
-	bool WriteRecvData(const char* data_, uint32_t size_) {
+	bool WriteRecvData(const char* data_, uint32_t size_) { // Set recvdata in circular buffer 
 		return circularBuffer->Write(data_, size_);
 	}
 
-	PacketInfo ReadRecvData(char* readData_, uint32_t size_) { // readData_는 값을 불러오기 위한 빈 값
+	PacketInfo ReadRecvData(char* readData_, uint32_t size_) { // Get recvdata in circular buffer 
 		CopyMemory(readData, readData_, size_);
 
 		if (circularBuffer->Read(readData, size_)) {
@@ -80,30 +79,26 @@ public:
 		}
 	}
 
-	void Reset() {
+	void Reset() { // Reset connuser object socket
 		isConn = false;
 		shutdown(userSkt, SD_BOTH);
 		closesocket(userSkt);
-		//memset(acceptBuf, 0, sizeof(acceptBuf));
-		//acceptOvlap = {};
-		userSkt = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_IP, NULL, 0, WSA_FLAG_OVERLAPPED);
 
+		userSkt = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_IP, NULL, 0, WSA_FLAG_OVERLAPPED);
 		if (userSkt == INVALID_SOCKET) {
 			std::cout << "Client socket Error : " << GetLastError() << std::endl;
 		}
 
 		auto tIOCPHandle = CreateIoCompletionPort((HANDLE)userSkt, sIOCPHandle, (ULONG_PTR)0, 0);
-
 		if (tIOCPHandle == INVALID_HANDLE_VALUE)
 		{
-			std::cout << "reateIoCompletionPort()함수 실패 :" << GetLastError() << std::endl;
+			std::cout << "reateIoCompletionPort Fail :" << GetLastError() << std::endl;
 		}
 
 	}
 
 	bool PostAccept(SOCKET ServerSkt_) {
 		acceptOvlap = {};
-
 		acceptOvlap.taskType = TaskType::ACCEPT;
 		acceptOvlap.connObjNum = connObjNum;
 		acceptOvlap.wsaBuf.buf = nullptr;
@@ -122,10 +117,10 @@ public:
 		return true;
 	}
 
-	bool ConnUserRecv() {
+	bool ConnUserRecv() { 
 		OverlappedEx* tempOvLap = (overLappedManager->getOvLap());
 
-		if (tempOvLap == nullptr) { // 오버랩 풀에 여분 없으면 새로 오버랩 생성
+		if (tempOvLap == nullptr) { // Allocate new overlap if pool is empty
 			OverlappedEx* overlappedEx = new OverlappedEx;
 			ZeroMemory(overlappedEx, sizeof(OverlappedEx));
 			overlappedEx->wsaBuf.len = MAX_RECV_SIZE;
@@ -147,7 +142,7 @@ public:
 
 		if (tempR == SOCKET_ERROR && (WSAGetLastError() != ERROR_IO_PENDING))
 		{
-			std::cout << userSkt << " WSARecv() Fail : " << WSAGetLastError() << std::endl;
+			std::cout << userSkt << " WSARecv Fail : " << WSAGetLastError() << std::endl;
 			return false;
 		}
 
@@ -158,7 +153,7 @@ public:
 
 		OverlappedEx* tempOvLap = overLappedManager->getOvLap();
 
-		if (tempOvLap == nullptr) { // 오버랩 풀에 여분 없으면 새로 오버랩 생성
+		if (tempOvLap == nullptr) { // Allocate new overlap if pool is empty
 			OverlappedEx* overlappedEx = new OverlappedEx;
 			ZeroMemory(overlappedEx, sizeof(OverlappedEx));
 			overlappedEx->wsaBuf.len = MAX_RECV_SIZE;
@@ -195,7 +190,6 @@ public:
 	}
 
 private:
-
 	void ProcSend() {
 		OverlappedEx* overlappedEx;
 

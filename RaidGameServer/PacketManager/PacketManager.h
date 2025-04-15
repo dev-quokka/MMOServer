@@ -22,7 +22,7 @@ public:
     ~PacketManager() {
         packetRun = false;
 
-        for (int i = 0; i < packetThreads.size(); i++) { // End Redis Threads
+        for (int i = 0; i < packetThreads.size(); i++) { // Shutdown Redis Threads
             if (packetThreads[i].joinable()) {
                 packetThreads[i].join();
             }
@@ -31,7 +31,7 @@ public:
 
     void init(const uint16_t packetThreadCnt_);
     void SetManager(ConnUsersManager* connUsersManager_, RoomManager* roomManager_);
-    void PushPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_); // Push Packet
+    void PushPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_);
     void Disconnect(uint16_t connObjNum_);
 
 private:
@@ -39,13 +39,13 @@ private:
     void PacketRun(const uint16_t packetThreadCnt_);
     void PacketThread();
 
-    void MakeRoom(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 매칭 서버에서 레이드 시작 요청 들어오면 방 생성
-    void UserDisConnect(uint16_t connObjNum_); // Send Message To Center Server
+    void MakeRoom(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void UserDisConnect(uint16_t connObjNum_);
 
     //SYSTEM
-    void ImGameResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // Game Server Socket Check
+    void ImGameResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void ImGameResponsefromMatchingServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); // 해당 서버로 유저 접속 요청 From Center Server
+    void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
     void RaidTeamInfo(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void RaidHit(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
@@ -58,7 +58,7 @@ private:
     // 242 bytes
     sw::redis::ConnectionOptions connection_options;
 
-    // 136 bytes (병목현상 발생하면 lock_guard,mutex 사용 또는 lockfree::queue의 크기를 늘리는 방법으로 전환)
+    // 136 bytes
     boost::lockfree::queue<DataPacket> procSktQueue{ 512 };
 
     // 80 bytes
@@ -66,7 +66,7 @@ private:
 
     // 32 bytes
     std::vector<std::thread> packetThreads;
-    std::vector<int> mapProbabilities = { 30, 30, 40 }; // 방 생성시 맵 확률 설정
+    std::vector<int> mapProbabilities = { 30, 30, 40 }; // Map probabilities on room creation
 
     // 16 bytes
     std::unique_ptr<sw::redis::RedisCluster> redis;

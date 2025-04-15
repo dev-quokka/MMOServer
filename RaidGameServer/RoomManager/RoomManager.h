@@ -16,11 +16,11 @@
 
 #include "Room.h"
 
-constexpr uint16_t TICK_RATE = 5; // 1초에 몇번씩 보낼건지
-constexpr int UDP_PORT = 50001;
+constexpr uint16_t TICK_RATE = 5; // Tick interval
+constexpr int UDP_PORT = 50001; // Gameserver1 Udp Port
 constexpr uint16_t MAX_ROOM = 10;
 
-struct EndTimeComp {
+struct EndTimeComp { // Timeout checker for created game rooms
 	bool operator()(Room* r1, Room* r2) const {
 		return r1->GetEndTime() > r2->GetEndTime();
 	}
@@ -51,14 +51,6 @@ public:
 	void DeleteRoom(uint16_t roomNum_);
 
 	void DeleteMob(Room* room_);
-
-	// Tick Rate Test 1 (vector) 방이 적을때는 2번보다 성능 좋을것으로 예상
-	//bool CreateTickRateThread1();
-	//void TickRateThread1();
-
-	// Tick Rate Test 2 (lockfree_queue) 안전하지만 성능 저하 예상 (지속적인 pop, push)
-	//bool CreateTickRateThread2();
-	//void TickRateThread2();
 
 private:
 	// 80 bytes

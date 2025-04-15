@@ -2,9 +2,8 @@
 
 bool RoomManager::init() {
     udpSkt = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-
     if (udpSkt == INVALID_SOCKET) {
-        std::cout << "Server Socket 생성 실패" << std::endl;
+        std::cout << "Failed to Create UDP Socket" << std::endl;
         return false;
     }
 
@@ -14,54 +13,68 @@ bool RoomManager::init() {
     serverUdpAddr.sin_port = htons(UDP_PORT);
 
     if (bind(udpSkt, (sockaddr*)&serverUdpAddr, sizeof(serverUdpAddr))) {
-        std::cout << "bind 함수 실패:" << WSAGetLastError() << std::endl;
+        std::cout << "Failed to Bind UDP Socket:" << WSAGetLastError() << std::endl;
         return false;
     }
 
-    if (!CreateTimeCheckThread()) {
-        std::cout << "TimeCheckThread Fail" << std::endl;
-        return false;
-    }
+	if (!CreateTimeCheckThread()) {
+		return false;
+	}
 
-    if (!CreateTickRateThread()) {
-        std::cout << "TickRateThread Fail" << std::endl;
-        return false;
-    }
+	if (!CreateTickRateThread()) {
+		return false;
+	}
 
-    return true;
+	return true;
 }
 
 bool RoomManager::CreateTimeCheckThread() {
     timeChekcRun = true;
-    timeCheckThread = std::thread([this]() {TimeCheckThread(); });
-    std::cout << "TimeCheckThread Start" << std::endl;
+
+    try {
+        timeCheckThread = std::thread([this]() { TimeCheckThread(); });
+    }
+    catch (const std::system_error& e) {
+        std::cerr << "Failed to Create TimeCheck Thread : " << e.what() << std::endl;
+        return false;
+    }
+
     return true;
 }
 
 bool RoomManager::CreateTickRateThread() {
     tickRateRun = true;
-    tickRateThread = std::thread([this]() {TickRateThread(); });
-    std::cout << "TickRateThread Start" << std::endl;
+
+    try {
+        tickRateThread = std::thread([this]() { TickRateThread(); });
+    }
+    catch (const std::system_error& e) {
+        std::cerr << "Failed to Create TickRate Thread : " << e.what() << std::endl;
+        return false;
+    }
+
     return true;
 }
 
 void RoomManager::TickRateThread() {
-    auto tickRate = std::chrono::milliseconds(1000 / TICK_RATE);
+    auto tickRate = std::chrono::milliseconds(1000 / TICK_RATE); // Set tick interval
 
-    while (tickRateRun) {
-        auto timeCheck = std::chrono::steady_clock::now() + tickRate;
+    while (tickRateRun) { 
+        auto timeCheck = std::chrono::steady_clock::now() + tickRate; 
 
-        if (roomMap.empty()) {
+        if (roomMap.empty()) { // No active room
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             continue;
         }
 
-        for (auto iter = roomMap.begin(); iter != roomMap.end(); iter++) { // 게임 중인 방에 틱 레이트 동기화 메시지 전송
+        for (auto iter = roomMap.begin(); iter != roomMap.end(); iter++) { // Send synchronization data
             iter->second->SendSyncMsg();
         }
 
-        while (timeCheck > std::chrono::steady_clock::now()) { // 틱레이트 까지 대기
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        auto currentTime = std::chrono::steady_clock::now();
+
+        while (timeCheck > currentTime) {  // Sleep for the remaining time until the next tick
+            std::this_thread::sleep_for(timeCheck - currentTime); 
         }
     }
 }
@@ -88,13 +101,13 @@ void RoomManager::DeleteRoom(uint16_t roomNum_) {
     roomMap.erase(roomNum_);
 }
 
-void RoomManager::DeleteMob(Room* room_) { // 몹 직접 죽였을때
-    if (room_->TimeOverCheck()) { // 타임아웃 체크되서 이미 endRoomCheckSet에서 삭제 됬을때 (방 삭제만 처리)
+void RoomManager::DeleteMob(Room* room_) { // Raid mob defeated
+    if (room_->TimeOverCheck()) { // The room was already removed due to a timeout check
         DeleteRoom(room_->GetRoomNum());
         return;
     }
 
-    { // 타임아웃전에 몹을 잡아서 endRoomCheckSet 직접 삭제
+    { // Raid Mob defeated before timeout
         std::lock_guard<std::mutex> guard(mDeleteRoom);
         for (auto iter = endRoomCheckSet.begin(); iter != endRoomCheckSet.end(); iter++) {
             if (*iter == room_) {
@@ -105,26 +118,25 @@ void RoomManager::DeleteMob(Room* room_) { // 몹 직접 죽였을때
         }
     }
 
-    DeleteRoom(room_->GetRoomNum());
+    DeleteRoom(room_->GetRoomNum()); 
 }
 
 void RoomManager::TimeCheckThread() {
     std::chrono::steady_clock::time_point now;
     Room* room_;
     while (timeChekcRun) {
-        if (!endRoomCheckSet.empty()) { // Room Exist
+        if (!endRoomCheckSet.empty()) { // Active room exists
             room_ = (*endRoomCheckSet.begin());
-            if (room_->GetEndTime() <= std::chrono::steady_clock::now()) {
-                std::cout << "타임 아웃. 레이드 종료" << std::endl;
-                room_->TimeOver();
+            if (room_->GetEndTime() <= std::chrono::steady_clock::now()) { // Timeout occurred
+                std::cout << "Time out. Raid ended Room : " << room_->GetRoomNum() <<std::endl;
+                room_->TimeOver(); 
                 endRoomCheckSet.erase(endRoomCheckSet.begin());
             }
-            else {
-                std::cout << "종료대기" << std::endl;
+            else { // Game in progress
                 std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             }
         }
-        else { // Room Not Exist
+        else { // No active room
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         }
     }

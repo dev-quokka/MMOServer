@@ -3,17 +3,17 @@
 bool GameServer1::init(const uint16_t MaxThreadCnt_, int port_) {
     WSADATA wsadata;
     int check = 0;
-    MaxThreadCnt = MaxThreadCnt_; // 워크 스레드 개수 설정
+    MaxThreadCnt = MaxThreadCnt_; // Set the number of worker threads
 
     check = WSAStartup(MAKEWORD(2, 2), &wsadata);
     if (check) {
-        std::cout << "WSAStartup 실패" << std::endl;
+        std::cout << "Failed to WSAStartup" << std::endl;
         return false;
     }
 
     serverSkt = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, NULL, WSA_FLAG_OVERLAPPED);
     if (serverSkt == INVALID_SOCKET) {
-        std::cout << "Server Socket 생성 실패" << std::endl;
+        std::cout << "Failed to Create Server Socket" << std::endl;
         return false;
     }
 
@@ -22,27 +22,25 @@ bool GameServer1::init(const uint16_t MaxThreadCnt_, int port_) {
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    check = bind(serverSkt, (SOCKADDR*)&addr, sizeof(addr));
-    if (check) {
-        std::cout << "bind 함수 실패:" << WSAGetLastError() << std::endl;
+    if (bind(serverSkt, (SOCKADDR*)&addr, sizeof(addr))) {
+        std::cout << " Failed to Bind :" << WSAGetLastError() << std::endl;
         return false;
     }
 
-    check = listen(serverSkt, SOMAXCONN);
-    if (check) {
-        std::cout << "listen 함수 실패" << std::endl;
+    if (listen(serverSkt, SOMAXCONN)) {
+        std::cout << "Failed to listen" << std::endl;
         return false;
     }
 
     sIOCPHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, MaxThreadCnt);
     if (sIOCPHandle == NULL) {
-        std::cout << "iocp 핸들 생성 실패" << std::endl;
+        std::cout << "Failed to Create IOCP Handle" << std::endl;
         return false;
     }
 
     auto bIOCPHandle = CreateIoCompletionPort((HANDLE)serverSkt, sIOCPHandle, (uint32_t)0, 0);
     if (bIOCPHandle == nullptr) {
-        std::cout << "iocp 핸들 바인드 실패" << std::endl;
+        std::cout << "Failed to Bind IOCP Handle" << std::endl;
         return false;
     }
 
@@ -61,10 +59,10 @@ bool GameServer1::CenterServerConnect() {
     addr.sin_port = htons(CENTER_SERVER_PORT);
     inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr.s_addr);
 
-    std::cout << "Connecting To Center Server" << std::endl;
+    std::cout << "Connecting to Center Server" << std::endl;
 
     if (connect(centerObj->GetSocket(), (SOCKADDR*)&addr, sizeof(addr))) {
-        std::cout << "Center Server Connect Fail" << std::endl;
+        std::cout << "Failed to Connect to Center Server" << std::endl;
         return false;
     }
 
@@ -91,12 +89,13 @@ bool GameServer1::MatchingServerConnect() {
     addr.sin_port = htons(MATCHING_SERVER_PORT);
     inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr.s_addr);
 
-    std::cout << "Connecting To Matching Server" << std::endl;
+    std::cout << "Connecting to Matching Server" << std::endl;
 
     if (connect(matchingObj->GetSocket(), (SOCKADDR*)&addr, sizeof(addr))) {
-        std::cout << "Matching Server Connect Fail" << std::endl;
+        std::cout << "Failed to Connect to Matching Server" << std::endl;
         return false;
     }
+
     std::cout << "Matching Server Connected" << std::endl;
 
     matchingObj->ConnUserRecv();
@@ -114,13 +113,13 @@ bool GameServer1::MatchingServerConnect() {
 bool GameServer1::StartWork() {
     bool check = CreateWorkThread();
     if (!check) {
-        std::cout << "WorkThread 생성 실패" << std::endl;
+        std::cout << "Failed to Create Work Thread" << std::endl;
         return false;
     }
 
     check = CreateAccepterThread();
     if (!check) {
-        std::cout << "CreateAccepterThread 생성 실패" << std::endl;
+        std::cout << "Failed to Create Accepter Thread" << std::endl;
         return false;
     }
 
@@ -150,27 +149,36 @@ bool GameServer1::StartWork() {
     MatchingServerConnect();
     CenterServerConnect();
 
-    std::cout << "StartWork 성공" << std::endl;
     return true;
 }
 
 bool GameServer1::CreateWorkThread() {
     WorkRun = true;
-    auto threadCnt = MaxThreadCnt; // core
-    for (int i = 0; i < threadCnt; i++) {
-        workThreads.emplace_back([this]() { WorkThread(); });
+    try {
+        auto threadCnt = MaxThreadCnt;
+        for (int i = 0; i < threadCnt; i++) {
+            workThreads.emplace_back([this]() { WorkThread(); });
+        }
     }
-    std::cout << "WorkThread Start" << std::endl;
+    catch (const std::system_error& e) {
+        std::cerr << "Failed to Create Work Threads: " << e.what() << std::endl;
+        return false;
+    }
     return true;
 }
 
 bool GameServer1::CreateAccepterThread() {
     AccepterRun = true;
-    auto threadCnt = MaxThreadCnt / 4 + 1; // (core/4)
-    for (int i = 0; i < threadCnt; i++) {
-        acceptThreads.emplace_back([this]() { AccepterThread(); });
+    try {
+        auto threadCnt = MaxThreadCnt / 4 + 1;
+        for (int i = 0; i < threadCnt; i++) {
+            workThreads.emplace_back([this]() { AccepterThread(); });
+        }
     }
-    std::cout << "AcceptThread Start" << std::endl;
+    catch (const std::system_error& e) {
+        std::cerr << "Failed to Create Accepter Threads: " << e.what() << std::endl;
+        return false;
+    }
     return true;
 }
 
@@ -222,15 +230,15 @@ void GameServer1::WorkThread() {
             connUser->ConnUserRecv(); // Wsarecv Again
             overLappedManager->returnOvLap(overlappedEx);
         }
+        else if (overlappedEx->taskType == TaskType::SEND) {
+            overLappedManager->returnOvLap(overlappedEx);
+            connUser->SendComplete();
+        }
         else if (overlappedEx->taskType == TaskType::NEWRECV) {
             packetManager->PushPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
             connUser->ConnUserRecv(); // Wsarecv Again
             delete[] overlappedEx->wsaBuf.buf;
             delete overlappedEx;
-        }
-        else if (overlappedEx->taskType == TaskType::SEND) {
-            overLappedManager->returnOvLap(overlappedEx);
-            connUser->SendComplete();
         }
         else if (overlappedEx->taskType == TaskType::NEWSEND) {
             delete[] overlappedEx->wsaBuf.buf;
@@ -272,12 +280,12 @@ void GameServer1::ServerEnd() {
         PostQueuedCompletionStatus(sIOCPHandle, 0, 0, nullptr);
     }
 
-    for (int i = 0; i < workThreads.size(); i++) { // Work 쓰레드 종료
+    for (int i = 0; i < workThreads.size(); i++) { // Shutdown worker threads
         if (workThreads[i].joinable()) {
             workThreads[i].join();
         }
     }
-    for (int i = 0; i < acceptThreads.size(); i++) { // Accept 쓰레드 종료
+    for (int i = 0; i < acceptThreads.size(); i++) { // Shutdown accept threads
         if (acceptThreads[i].joinable()) {
             acceptThreads[i].join();
         }
@@ -291,8 +299,8 @@ void GameServer1::ServerEnd() {
     closesocket(serverSkt);
     WSACleanup();
 
-    std::cout << "종료 5초 대기" << std::endl;
-    std::this_thread::sleep_for(std::chrono::seconds(5)); // 5초 대기
-    std::cout << "종료" << std::endl;
+    std::cout << "Wait 5 Seconds Before Shutdown" << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait 5 seconds before server shutdown
+    std::cout << "Game Server1 Shutdown" << std::endl;
 }
 
