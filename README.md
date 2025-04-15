@@ -25,7 +25,7 @@
     - 레이드 랭킹 시스템 구현
 
   #### 4. 유저 시스템
-    - Gateway Server에서 생성된 JWT 토큰 검증을 통해 접속 요청 유저를 이중 확인하여 보안성 강화
+    - Login Server에서 생성된 JWT 토큰 검증을 통해 접속 요청 유저를 이중 확인하여 보안성 강화
     - 경험치 증가, 레벨업 알고리즘 구현
 
 <br> 
@@ -36,6 +36,8 @@
    - 레이드 매칭 요청 수신 및 매칭 완료 후 게임 서버 주소 전달
    - 레이드 랭킹 조회
    - 서버 이동 시 JWT 토큰 생성 및 발급을 통한 보안 강화
+   - 유저 핵심 데이터 MySQL 데이터베이스에 실시간 동기화
+   - 유저 로그아웃 시 Redis Cluster → MySQL 데이터 일괄 동기화 (Batch Update)
 
 <br> 
 
@@ -47,9 +49,8 @@
 
 <br> 
 
-### ㅇGateway Server - User Authentication & Connection Game Server For Syncronization
-   - 유저 게임 시작 시 MySQL → Redis Cluster 데이터 로드
-   - 유저 로그아웃 시 Redis Cluster → MySQL 데이터 일괄 동기화 (Batch Update)
+### ㅇLogin Server - User Authentication & Connection Game Server For Syncronization
+   - 유저 게임 시작 요청 시 MySQL → Redis Cluster 데이터 로드
    - JWT 토큰을 활용한 유저 인증 보안 강화
 
 <br> 
@@ -69,7 +70,7 @@
 <br> 
 
 ### ㅇClient
-   - 게임 시작시 Gateway Server에서 JWT 토큰을 발급 받아 Game Server에 인증 요청
+   - 게임 시작 요청시 Login Server에서 JWT 토큰을 발급 받아 Game Server에 인증 요청
    - 보안을 강화하기 위해 클라이언트의 연산 처리를 최소화하는 설계를 적용
 
 <br> 
@@ -84,7 +85,7 @@
 
 ## [Flow Chart]
 - #### MMO Server
-![MMO SERVER Flow Chart 2 drawio](https://github.com/user-attachments/assets/49bf5da6-f458-4844-97d4-891410e1dcd6)
+![MMO SERVER Flow Chart 2 drawio](https://github.com/user-attachments/assets/d120a145-c85a-43ad-8bd4-54975ce93d78)
 
 
 <br>
@@ -156,13 +157,12 @@
 
 
 1. 유저가 게임 시작을 누르면, 로그인 정보를 Gateway Server로 전송합니다.
-2. Gateway Server는 유저의 게임 시작 요청을 수신하면, MySQL에서 유저 정보와 인벤토리 데이터를 가져와 Redis Cluster에 로드합니다.
+2. Login Server는 유저의 게임 시작 요청을 수신하면, MySQL에서 유저 정보와 인벤토리 데이터를 가져와 Redis Cluster에 로드합니다.
 3. 모든 데이터를 Redis Cluster에 정상적으로 로드한 후, JWT 토큰을 생성합니다.
 4. 생성된 JWT 토큰을 Redis Cluster에 저장하고, 동시에 유저에게 전송합니다.
 5. 유저는 전달받은 JWT 토큰으로 중앙 서버에 접속 요청을 전송합니다.
 6. 중앙 서버는 Redis Cluster에 저장된 JWT 토큰과 유저가 전송한 토큰을 비교하여, 일치하는 경우 접속을 허가합니다.
-7. 유저가 로그아웃하면, 중앙 서버는 Gateway Server에 유저 PK와 함께 로그아웃 신호를 전송합니다.
-8. Gateway Server는 수신한 유저 PK를 기반으로, Redis Cluster에 저장된 유저 데이터를 MySQL과 동기화합니다.
+7. 유저가 로그아웃하면, 중앙 서버는 Redis Cluster에 저장된 유저 데이터를 MySQL과 동기화합니다.
 
 <br>
 
