@@ -46,10 +46,10 @@ private:
     void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void Logout(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void UserDisConnect(uint16_t connObjNum_);
-    void ImSessionRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); 
-    void ImChannelRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    void ImMatchingRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    void ImGameRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void LoginServerRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); 
+    void ChannelServerRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void MatchingServerRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void GameServerRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 

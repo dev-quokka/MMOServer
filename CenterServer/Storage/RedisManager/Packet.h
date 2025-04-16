@@ -56,38 +56,6 @@ struct USER_LOGOUT_REQUEST_PACKET : PACKET_HEADER {
 
 };
 
-struct IM_SESSION_REQUEST : PACKET_HEADER {
-	char Token[MAX_JWT_TOKEN_LEN + 1];
-};
-
-struct IM_SESSION_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
-};
-
-struct IM_CHANNEL_REQUEST : PACKET_HEADER {
-	uint16_t channelServerNum;
-};
-
-struct IM_CHANNEL_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
-};
-
-struct IM_MATCHING_REQUEST : PACKET_HEADER {
-
-};
-
-struct IM_MATCHING_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
-};
-
-struct IM_GAME_REQUEST : PACKET_HEADER {
-	uint16_t gameServerNum;
-};
-
-struct IM_GAME_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
-};
-
 struct SYNCRONIZE_LEVEL_REQUEST : PACKET_HEADER {
 	uint16_t level;
 	uint16_t userPk;
@@ -130,27 +98,26 @@ struct RAID_END_REQUEST_TO_GAME_SERVER : PACKET_HEADER {
 };
 
 
-//  ---------------------------- RAID  ----------------------------
+//  ---------------------------- LOGIN SERVER  ----------------------------
 
-struct RAID_MATCHING_REQUEST : PACKET_HEADER {
+struct LOGIN_SERVER_CONNECT_REQUEST : PACKET_HEADER {
 
 };
 
-struct RAID_MATCHING_RESPONSE : PACKET_HEADER {
-	bool insertSuccess;
-};
-
-struct RAID_RANKING_REQUEST : PACKET_HEADER {
-	uint16_t startRank;
-};
-
-struct RAID_RANKING_RESPONSE : PACKET_HEADER {
-	uint16_t rkCount;
-	char reqScore[MAX_SCORE_SIZE + 1];
+struct LOGIN_SERVER_CONNECT_RESPONSE : PACKET_HEADER {
+	bool isSuccess;
 };
 
 
 //  ---------------------------- CHANNEL SERVER  ----------------------------
+
+struct CHANNEL_SERVER_CONNECT_REQUEST : PACKET_HEADER {
+	uint16_t channelServerNum;
+};
+
+struct CHANNEL_SERVER_CONNECT_RESPONSE : PACKET_HEADER {
+	bool isSuccess;
+};
 
 struct USER_DISCONNECT_AT_CHANNEL_REQUEST : PACKET_HEADER {
 	uint16_t channelServerNum;
@@ -158,6 +125,14 @@ struct USER_DISCONNECT_AT_CHANNEL_REQUEST : PACKET_HEADER {
 
 
 //  ---------------------------- MATCHING SERVER  ----------------------------
+
+struct MATCHING_SERVER_CONNECT_REQUEST : PACKET_HEADER {
+
+};
+
+struct MATCHING_SERVER_CONNECT_RESPONSE : PACKET_HEADER {
+	bool isSuccess;
+};
 
 struct MATCHING_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
 	uint16_t userPk;
@@ -199,7 +174,23 @@ struct MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
 };
 
 
-//  ---------------------------- RAID SERVER  ----------------------------
+//  ---------------------------- RAID GAME SERVER  ----------------------------
+
+struct RAID_SERVER_CONNECT_REQUEST : PACKET_HEADER {
+	uint16_t gameServerNum;
+};
+
+struct RAID_SERVER_CONNECT_RESPONSE : PACKET_HEADER {
+	bool isSuccess;
+};
+
+struct RAID_MATCHING_REQUEST : PACKET_HEADER {
+
+};
+
+struct RAID_MATCHING_RESPONSE : PACKET_HEADER {
+	bool insertSuccess;
+};
 
 struct MATCHING_RESPONSE_FROM_GAME_SERVER : PACKET_HEADER {
 	uint16_t userCenterObjNum1;
@@ -212,6 +203,15 @@ struct MATCHING_RESPONSE_FROM_GAME_SERVER : PACKET_HEADER {
 struct RAID_END_REQUEST_TO_CENTER_SERVER : PACKET_HEADER {
 	uint16_t gameServerNum;
 	uint16_t roomNum;
+};
+
+struct RAID_RANKING_REQUEST : PACKET_HEADER {
+	uint16_t startRank;
+};
+
+struct RAID_RANKING_RESPONSE : PACKET_HEADER {
+	uint16_t rkCount;
+	char reqScore[MAX_SCORE_SIZE + 1];
 };
 
 
@@ -241,12 +241,11 @@ enum class PACKET_ID : uint16_t {
 	RAID_RANKING_REQUEST = 55, 
 	RAID_RANKING_RESPONSE = 56,
 
-
-	//  ---------------------------- SESSION (801~)  ----------------------------
+	//  ---------------------------- LOGIN (801~)  ----------------------------
 
 	// SYSTEM (801~)
-	IM_SESSION_REQUEST = 801,
-	IM_SESSION_RESPONSE = 802,
+	LOGIN_SERVER_CONNECT_REQUEST = 801,
+	LOGIN_SERVER_CONNECT_RESPONSE = 802,
 
 	// USER LOGIN (811~)
 	USER_LOGIN_REQUEST = 811,
@@ -270,8 +269,8 @@ enum class PACKET_ID : uint16_t {
 	//  ---------------------------- CHANNEL (1501~)  ----------------------------
 	
 	// SYSTEM (1501~)
-	IM_CHANNEL_REQUEST = 1501,
-	IM_CHANNEL_RESPONSE = 1502,
+	CHANNEL_SERVER_CONNECT_REQUEST = 1501,
+	CHANNEL_SERVER_CONNECT_RESPONSE = 1502,
 	USER_DISCONNECT_AT_CHANNEL_REQUEST = 1503,
 	MOVE_CENTER_SERVER_REQUEST = 1504,
 	MOVE_CENTER_SERVER_RESPONSE = 1505,
@@ -306,8 +305,8 @@ enum class PACKET_ID : uint16_t {
 	//  ---------------------------- MATCHING (5001~)  ----------------------------
 	
 	//SYSTEM (5001~)
-	IM_MATCHING_REQUEST = 5001,
-	IM_MATCHING_RESPONSE = 5002,
+	MATCHING_SERVER_CONNECT_REQUEST = 5001,
+	MATCHING_SERVER_CONNECT_RESPONSE = 5002,
 
 	//RAID(5011~)
 	MATCHING_REQUEST_TO_MATCHING_SERVER = 5011,
@@ -321,8 +320,8 @@ enum class PACKET_ID : uint16_t {
 
 	//  ---------------------------- RAID(8001~)  ----------------------------
 	
-	IM_GAME_REQUEST = 8001,
-	IM_GAME_RESPONSE = 8002,
+	RAID_SERVER_CONNECT_REQUEST = 8001,
+	RAID_SERVER_CONNECT_RESPONSE = 8002,
 
 	MATCHING_RESPONSE_FROM_GAME_SERVER = 8012,
 
