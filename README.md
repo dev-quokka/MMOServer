@@ -135,6 +135,26 @@
 <br>
 
 ## [Test Output]
+- #### User Connect & Logout & Syncronization
+![User Connect   Logout   Syncronization](https://github.com/user-attachments/assets/97c207a0-864a-4b1a-8206-8164c79321bc)
+
+
+1. 유저가 게임 시작을 누르면, 로그인 정보를 Login Server로 전송합니다.
+   
+2. Login Server는 유저의 게임 시작 요청을 수신하면, MySQL에서 유저 정보와 인벤토리 데이터를 가져와 Redis Cluster에 로드합니다.
+
+3. 모든 데이터를 Redis Cluster에 정상적으로 로드한 후, JWT 토큰을 생성합니다.
+
+4. 생성된 JWT 토큰을 Redis Cluster에 저장하고, 동시에 유저에게 전송합니다.
+
+5. 유저는 전달받은 JWT 토큰으로 중앙 서버에 접속 요청을 전송합니다.
+
+6. 중앙 서버는 Redis Cluster에 저장된 JWT 토큰과 유저가 전송한 토큰을 비교하여, 일치하는 경우 접속을 허가합니다.
+
+7. 유저가 로그아웃하면, 중앙 서버는 Redis Cluster에 저장된 유저 데이터를 MySQL과 동기화합니다.
+
+<br> 
+
 - #### Server & Channel Transition
 ![Server   Channel Transition](https://github.com/user-attachments/assets/358ab894-4f9f-4c68-bcc5-b1ceb29d346d)
 
@@ -150,20 +170,6 @@
 5. 유저는 중앙 서버의 유저 수 감소 처리가 완료될 수 있도록 1초 동안 대기합니다.
 
 6. 채널 및 서버 이동 중에도 유저 수를 지속적으로 동기화합니다.
-
-<br> 
-
-- #### User Connect & Logout & Syncronization
-![User Login   Logout](https://github.com/user-attachments/assets/2504378e-88c6-4b3f-a2bc-20cb1ab4981f)
-
-
-1. 유저가 게임 시작을 누르면, 로그인 정보를 Gateway Server로 전송합니다.
-2. Login Server는 유저의 게임 시작 요청을 수신하면, MySQL에서 유저 정보와 인벤토리 데이터를 가져와 Redis Cluster에 로드합니다.
-3. 모든 데이터를 Redis Cluster에 정상적으로 로드한 후, JWT 토큰을 생성합니다.
-4. 생성된 JWT 토큰을 Redis Cluster에 저장하고, 동시에 유저에게 전송합니다.
-5. 유저는 전달받은 JWT 토큰으로 중앙 서버에 접속 요청을 전송합니다.
-6. 중앙 서버는 Redis Cluster에 저장된 JWT 토큰과 유저가 전송한 토큰을 비교하여, 일치하는 경우 접속을 허가합니다.
-7. 유저가 로그아웃하면, 중앙 서버는 Redis Cluster에 저장된 유저 데이터를 MySQL과 동기화합니다.
 
 <br>
 
