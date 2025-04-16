@@ -15,6 +15,7 @@
 #include "ConnUsersManager.h"
 #include "MySQLManager.h"
 
+const std::string JWT_SECRET = "quokka_lover";
 constexpr int MAX_LOGIN_PACKET_SIZE = 128;
 
 class PacketManager {
@@ -32,13 +33,11 @@ public:
     void init(const uint16_t packetThreadCnt_);
     void SetManager(ConnUsersManager* connUsersManager_);
     void PushPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_);
-    void Disconnect(uint16_t connObjNum_);
 
 private:
     bool CreatePacketThread(const uint16_t packetThreadCnt_);
     void PacketRun(const uint16_t packetThreadCnt_);
     void PacketThread();
-    void UserDisConnect(uint16_t connObjNum_);
 
     //SYSTEM
     void ImLoginResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);

@@ -8,7 +8,7 @@ void PacketManager::init(const uint16_t packetThreadCnt_) {
     packetIDTable = std::unordered_map<uint16_t, RECV_PACKET_FUNCTION>();
 
     // SYSTEM
-    packetIDTable[(UINT16)PACKET_ID::IM_LOGIN_RESPONSE] = &PacketManager::ImLoginResponse;
+    packetIDTable[(UINT16)PACKET_ID::LOGIN_SERVER_CONNECT_RESPONSE] = &PacketManager::ImLoginResponse;
 
     packetIDTable[(UINT16)PACKET_ID::USERINFO_REQUEST] = &PacketManager::GetUserInfo;
     packetIDTable[(UINT16)PACKET_ID::EQUIPMENT_REQUEST] = &PacketManager::GetEquipment;
@@ -40,10 +40,6 @@ void PacketManager::PacketRun(const uint16_t packetThreadCnt_) { // Connect Redi
     }
 }
 
-void PacketManager::Disconnect(uint16_t connObjNum_) {
-    UserDisConnect(connObjNum_);
-}
-
 void PacketManager::SetManager(ConnUsersManager* connUsersManager_) {
     connUsersManager = connUsersManager_;
 }
@@ -51,9 +47,16 @@ void PacketManager::SetManager(ConnUsersManager* connUsersManager_) {
 bool PacketManager::CreatePacketThread(const uint16_t packetThreadCnt_) {
     packetRun = true;
 
-    for (int i = 0; i < packetThreadCnt_; i++) {
-        packetThreads.emplace_back(std::thread([this]() {PacketThread(); }));
+    try {
+        for (int i = 0; i < packetThreadCnt_; i++) {
+            packetThreads.emplace_back(std::thread([this]() { PacketThread(); }));
+        }
     }
+    catch (const std::system_error& e) {
+        std::cerr << "Create Redis Thread Failed : " << e.what() << std::endl;
+        return false;
+    }
+
     return true;
 }
 
@@ -87,7 +90,7 @@ void PacketManager::PushPacket(const uint16_t connObjNum_, const uint32_t size_,
 //  ---------------------------- SYSTEM  ----------------------------
 
 void PacketManager::ImLoginResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
-    auto centerConn = reinterpret_cast<IM_LOGIN_RESPONSE*>(pPacket_);
+    auto centerConn = reinterpret_cast<LOGIN_SERVER_CONNECT_RESPONSE*>(pPacket_);
 
     if (!centerConn->isSuccess) {
         std::cout << "Failed to Authenticate with Center Server" << std::endl;
@@ -97,17 +100,13 @@ void PacketManager::ImLoginResponse(uint16_t connObjNum_, uint16_t packetSize_, 
     std::cout << "Successfully Authenticated with Center Server" << std::endl;
 }
 
-void PacketManager::UserDisConnect(uint16_t connObjNum_) {
-
-}
-
 void PacketManager::GetUserInfo(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto uiReq = reinterpret_cast<USERINFO_REQUEST*>(pPacket_);
     auto tempUser = connUsersManager->FindUser(connObjNum_);
 
     std::pair<uint32_t, USERINFO> userInfoPk = mySQLManager->GetUserInfoById(uiReq->userId);
 
-    if (userInfoPk.first == 0) { // 0번 pk를 받으면 실패
+    if (userInfoPk.first == 100) { // Return value 100 indicates failure
         std::cout << "GetUserInfo Fail" << std::endl;
         return;
     }
@@ -119,7 +118,7 @@ void PacketManager::GetUserInfo(uint16_t connObjNum_, uint16_t packetSize_, char
     uiRes.PacketLength = sizeof(USERINFO_RESPONSE);
     uiRes.UserInfo = userInfoPk.second;
 
-    std::cout << "유저 정보 게임 서버에 업로드 성공" << std::endl;
+    std::cout << "Successfully uploaded user data to the redis cluster" << std::endl;
 
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(USERINFO_RESPONSE), (char*)&uiRes);
 }
@@ -130,8 +129,8 @@ void PacketManager::GetEquipment(uint16_t connObjNum_, uint16_t packetSize_, cha
 
     std::pair<uint16_t, char*> eq = mySQLManager->GetUserEquipByPk(std::to_string(tempUser->GetPk()));
 
-    if (eq.first == 100) { // 100을 받으면 인벤토리 Get 실패
-        std::cout << "GetUserEquip Fail" << std::endl;
+    if (eq.first == 100) {  // Return value 100 indicates failure
+        std::cout << "Fail to GetUserEquip()" << std::endl;
         return;
     }
 
@@ -141,7 +140,7 @@ void PacketManager::GetEquipment(uint16_t connObjNum_, uint16_t packetSize_, cha
     eqSend.eqCount = eq.first;
     std::memcpy(eqSend.Equipments, eq.second, MAX_INVEN_SIZE + 1);
 
-    std::cout << "유저 장비 게임 서버에 아이템 업로드 성공" << std::endl;
+    std::cout << "Successfully uploaded user's equipment to the game server" << std::endl;
 
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(EQUIPMENT_RESPONSE), (char*)&eqSend);
 }
@@ -162,7 +161,8 @@ void PacketManager::GetConsumables(uint16_t connObjNum_, uint16_t packetSize_, c
     csSend.PacketLength = sizeof(CONSUMABLES_RESPONSE);
     csSend.csCount = es.first;
     std::memcpy(csSend.Consumables, es.second, MAX_INVEN_SIZE + 1);
-    std::cout << "유저 소비 아이템 게임 서버에 업로드 성공" << std::endl;
+
+    std::cout << "Successfully uploaded user's consumable to the game server" << std::endl;
 
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(CONSUMABLES_RESPONSE), (char*)&csSend);
 }
@@ -183,7 +183,8 @@ void PacketManager::GetMaterials(uint16_t connObjNum_, uint16_t packetSize_, cha
     mtSend.PacketLength = sizeof(MATERIALS_RESPONSE);
     mtSend.mtCount = em.first;
     std::memcpy(mtSend.Materials, em.second, MAX_INVEN_SIZE + 1);
-    std::cout << "유저 재료 아이템 게임 서버에 업로드 성공" << std::endl;
+
+    std::cout << "Successfully uploaded user's material to the game server" << std::endl;
 
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MATERIALS_RESPONSE), (char*)&mtSend);
 }

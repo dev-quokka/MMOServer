@@ -1,29 +1,31 @@
 #pragma once
 #include <iostream>
+
+#include "LoginServer.h"
 #include "MySQLManager.h"
 
 const int PORT = 9501;
 const uint16_t maxThreadCount = 1;
 
 int main() {
-    GameServer1 gameServer1;
+    LoginServer loginServer;
 
-    if (!gameServer1.init(maxThreadCount, PORT)) {
+    if (!loginServer.init(maxThreadCount, PORT)) {
         return 0;
     }
 
-    gameServer1.StartWork();
+    loginServer.StartWork();
 
-    std::cout << "=== GAME SERVER 1 START ===" << std::endl;
-    std::cout << "=== If You Want Exit, Write game1 ===" << std::endl;
+    std::cout << "=== LOGIN SERVER 1 START ===" << std::endl;
+    std::cout << "=== If You Want Exit, Write login ===" << std::endl;
     std::string k = "";
 
     while (1) {
         std::cin >> k;
-        if (k == "game1") break;
+        if (k == "login") break;
     }
 
-    gameServer1.ServerEnd();
+    loginServer.ServerEnd();
 
     return 0;
 }

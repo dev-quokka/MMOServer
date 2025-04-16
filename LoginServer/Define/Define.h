@@ -5,11 +5,10 @@
 #include <ws2tcpip.h>
 #include <mswsock.h>
 #include <cstdint>
+#include <string>
 
 const uint32_t MAX_RECV_SIZE = 1024; // Set Max Socket Buf
 const uint32_t MAX_CIRCLE_SIZE = 1024;
-
-std::string JWT_SECRET = "quokka_lover";
 
 //  ---------------------------- SYSTEM  ----------------------------
 

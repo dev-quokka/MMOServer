@@ -1,7 +1,8 @@
 #pragma once
 #include <cstdint>
 
-const int MAX_INVEN_SIZE = 512;
+const uint16_t MAX_INVEN_SIZE = 512;
+const uint16_t INVENTORY_SIZE = 11; // 10개면 +1해서 11개로 해두기
 
 struct USERINFO {
 	unsigned int raidScore = 0;

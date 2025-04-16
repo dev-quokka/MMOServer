@@ -68,11 +68,11 @@ bool LoginServer::CenterServerConnect() {
 
     centerObj->ConnUserRecv();
 
-    IM_LOGIN_REQUEST imReq;
-    imReq.PacketId = (UINT16)PACKET_ID::IM_LOGIN_REQUEST;
-    imReq.PacketLength = sizeof(IM_LOGIN_REQUEST);
+    LOGIN_SERVER_CONNECT_REQUEST imReq;
+    imReq.PacketId = (UINT16)PACKET_ID::LOGIN_SERVER_CONNECT_REQUEST;
+    imReq.PacketLength = sizeof(LOGIN_SERVER_CONNECT_REQUEST);
 
-    centerObj->PushSendMsg(sizeof(IM_LOGIN_REQUEST), (char*)&imReq);
+    centerObj->PushSendMsg(sizeof(LOGIN_SERVER_CONNECT_REQUEST), (char*)&imReq);
 
     return true;
 }
@@ -169,7 +169,12 @@ void LoginServer::WorkThread() {
         if (!gqSucces || (dwIoSize == 0 && overlappedEx->taskType != TaskType::ACCEPT)) { // User Disconnect
             std::cout << "socket " << connUser->GetSocket() << " Disconnected" << std::endl;
 
-            packetManager->Disconnect(connObjNum);
+            if (connObjNum == 0) { // Auto shutdown if the center server is disconnected
+                std::cout << "Center Server Disconnected" << std::endl;
+                ServerEnd();
+                exit(0);
+            }
+
             connUser->Reset(); // Reset 
             AcceptQueue.push(connUser);
             continue;
