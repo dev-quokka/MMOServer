@@ -4,7 +4,7 @@
 #include "LoginServer.h"
 #include "MySQLManager.h"
 
-const int PORT = 9501;
+const int PORT = 9091;
 const uint16_t maxThreadCount = 1;
 
 int main() {
@@ -16,7 +16,7 @@ int main() {
 
     loginServer.StartWork();
 
-    std::cout << "=== LOGIN SERVER 1 START ===" << std::endl;
+    std::cout << "=== LOGIN SERVER START ===" << std::endl;
     std::cout << "=== If You Want Exit, Write login ===" << std::endl;
     std::string k = "";
 

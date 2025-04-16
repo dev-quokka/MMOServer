@@ -23,15 +23,16 @@ bool MySQLManager::SetRankingInRedis() {
 
 	MysqlResult = mysql_query(ConnPtr, Query);
 	if (mysql_query(ConnPtr, Query) != 0) {
-		std::cerr << "Query Failed(MySQL) : " << mysql_error(ConnPtr) << std::endl;
+		std::cerr << "(MySQL) Query Failed : " << mysql_error(ConnPtr) << std::endl;
 		return false;
 	}
 
 	Result = mysql_store_result(ConnPtr);
 	if (Result == nullptr) {
-		std::cerr << "Failed to store result(MySQL) : " << mysql_error(ConnPtr) << std::endl;
+		std::cerr << "(MySQL) Failed to store result : " << mysql_error(ConnPtr) << std::endl;
 		return false;
 	}
+
 	auto pipe = redis->pipeline("ranking");
 
 	if (MysqlResult == 0) {
@@ -50,7 +51,7 @@ bool MySQLManager::SetRankingInRedis() {
 			return false;
 		}
 		catch (...) { // MySQL or Unknown Error
-			std::cerr << "Ranking load failed(MySQL or Unknown Error)" << std::endl;
+			std::cerr << "(MySQL or Unknown Error) Ranking load failed" << std::endl;
 			return false;
 		}
 
@@ -59,7 +60,6 @@ bool MySQLManager::SetRankingInRedis() {
 
 	return false;
 }
-
 
 std::pair<uint32_t, USERINFO> MySQLManager::GetUserInfoById(std::string userId_) {
 	std::string query_s =
@@ -73,15 +73,16 @@ std::pair<uint32_t, USERINFO> MySQLManager::GetUserInfoById(std::string userId_)
 
 	MysqlResult = mysql_query(ConnPtr, Query);
 	if (MysqlResult != 0) {
-		std::cerr << "[MySQL ERROR] Query Failed: " << mysql_error(ConnPtr) << std::endl;
+		std::cerr << "(MySQL) Query Failed: " << mysql_error(ConnPtr) << std::endl;
 		return { 100, userInfo };
 	}
 
 	if (MysqlResult == 0) {
 		try {
+
 			Result = mysql_store_result(ConnPtr);
 			if (Result == nullptr) {
-				std::cerr << "Failed to store result(MySQL) : " << mysql_error(ConnPtr) << std::endl;
+				std::cerr << "(MySQL) Failed to store result : " << mysql_error(ConnPtr) << std::endl;
 				return { 100, userInfo };
 			}
 
@@ -112,17 +113,16 @@ std::pair<uint32_t, USERINFO> MySQLManager::GetUserInfoById(std::string userId_)
 		}
 		catch (const sw::redis::Error& e) { // Redis Error
 			std::cerr << "Redis error : " << e.what() << std::endl;
-			return { 100, userInfo };
+			return { pk_, userInfo };
 		}
 		catch (...) { // MySQL or Unknown Error
-			std::cerr << "Failed to Load Equipment(MySQL or Unknown Error)" << std::endl;
-			return { 100, userInfo };
+			std::cerr << "(MySQL or Unknown Error) Failed to Load UserInfo" << std::endl;
+			return { pk_, userInfo };
 		}
-
 		return { pk_, userInfo };
 	}
 
-	return { 100, userInfo };
+	return { pk_, userInfo };
 }
 
 std::pair<uint16_t, char*> MySQLManager::GetUserEquipByPk(std::string userPk_) {
@@ -134,7 +134,7 @@ std::pair<uint16_t, char*> MySQLManager::GetUserEquipByPk(std::string userPk_) {
 
 	MysqlResult = mysql_query(ConnPtr, Query);
 	if (MysqlResult != 0) {
-		std::cerr << "[MySQL ERROR] Query Failed: " << mysql_error(ConnPtr) << std::endl;
+		std::cerr << "(MySQL) Query Failed: " << mysql_error(ConnPtr) << std::endl;
 		return { 100, nullptr };
 	}
 
@@ -151,7 +151,7 @@ std::pair<uint16_t, char*> MySQLManager::GetUserEquipByPk(std::string userPk_) {
 		try {
 			Result = mysql_store_result(ConnPtr);
 			if (Result == nullptr) {
-				std::cerr << "Failed to store result(MySQL) : " << mysql_error(ConnPtr) << std::endl;
+				std::cerr << "(MySQL) Failed to store result : " << mysql_error(ConnPtr) << std::endl;
 				return { 100, nullptr };
 			}
 
@@ -178,15 +178,15 @@ std::pair<uint16_t, char*> MySQLManager::GetUserEquipByPk(std::string userPk_) {
 			return { 100, nullptr };
 		}
 		catch (...) { // MySQL or Unknown Error
-			std::cerr << "Failed to Load Equipment(MySQL or Unknown Error)" << std::endl;
+			std::cerr << "(MySQL or Unknown Error) Failed to Load Equipment" << std::endl;
 			delete[] tempC;
 			return { 100, nullptr };
 		}
 
-		delete[] tempC;
 		return { cnt, tempC };
 	}
 
+	delete[] tempC;
 	return { 100, nullptr };
 }
 
@@ -198,7 +198,7 @@ std::pair<uint16_t, char*> MySQLManager::GetUserConsumablesByPk(std::string user
 
 	MysqlResult = mysql_query(ConnPtr, Query);
 	if (MysqlResult != 0) {
-		std::cerr << "[MySQL ERROR] Query Failed: " << mysql_error(ConnPtr) << std::endl;
+		std::cerr << "(MySQL) Query Failed: " << mysql_error(ConnPtr) << std::endl;
 		return { 100, nullptr };
 	}
 
@@ -215,7 +215,7 @@ std::pair<uint16_t, char*> MySQLManager::GetUserConsumablesByPk(std::string user
 		try {
 			Result = mysql_store_result(ConnPtr);
 			if (Result == nullptr) {
-				std::cerr << "Failed to store result(MySQL) : " << mysql_error(ConnPtr) << std::endl;
+				std::cerr << "(MySQL) Failed to store result : " << mysql_error(ConnPtr) << std::endl;
 				return { 100, nullptr };
 			}
 
@@ -241,15 +241,15 @@ std::pair<uint16_t, char*> MySQLManager::GetUserConsumablesByPk(std::string user
 			return { 100, nullptr };
 		}
 		catch (...) { // MySQL or Unknown Error
-			std::cerr << "Failed to Load Equipment(MySQL or Unknown Error)" << std::endl;
+			std::cerr << "(MySQL or Unknown Error) Failed to Load Consumables" << std::endl;
 			delete[] tempC;
 			return { 100, nullptr };
 		}
 
-		delete[] tempC;
 		return { cnt, tempC };
 	}
 
+	delete[] tempC;
 	return { 100, nullptr };
 }
 
@@ -263,7 +263,7 @@ std::pair<uint16_t, char*> MySQLManager::GetUserMaterialsByPk(std::string userPk
 
 	MysqlResult = mysql_query(ConnPtr, Query);
 	if (MysqlResult != 0) {
-		std::cerr << "[MySQL ERROR] Query Failed: " << mysql_error(ConnPtr) << std::endl;
+		std::cerr << "(MySQL) Query Failed: " << mysql_error(ConnPtr) << std::endl;
 		return { 100, nullptr };
 	}
 
@@ -281,7 +281,7 @@ std::pair<uint16_t, char*> MySQLManager::GetUserMaterialsByPk(std::string userPk
 		try {
 			Result = mysql_store_result(ConnPtr);
 			if (Result == nullptr) {
-				std::cerr << "Failed to store result(MySQL) : " << mysql_error(ConnPtr) << std::endl;
+				std::cerr << "(MySQL) Failed to store result : " << mysql_error(ConnPtr) << std::endl;
 				return { 100, nullptr };
 			}
 
@@ -308,14 +308,14 @@ std::pair<uint16_t, char*> MySQLManager::GetUserMaterialsByPk(std::string userPk
 			return { 100, nullptr };
 		}
 		catch (...) { // MySQL or Unknown Error
-			std::cerr << "Failed to Load Equipment(MySQL or Unknown Error)" << std::endl;
+			std::cerr << "(MySQL or Unknown Error) Failed to Load Materials" << std::endl;
 			delete[] tempC;
 			return { 100, nullptr };
 		}
 
-		delete[] tempC;
 		return { cnt, tempC };
 	}
 
+	delete[] tempC;
 	return { 100, nullptr };
 }

@@ -38,7 +38,7 @@ struct PACKET_HEADER
 
 struct RANKING {
 	uint16_t score = 0;
-	char userId[MAX_USER_ID_LEN + 1] = {};
+	char userId[MAX_USER_ID_LEN + 1];
 };
 
 //  ---------------------------- SYSTEM  ----------------------------
@@ -92,9 +92,13 @@ struct RAID_READY_REQUEST : PACKET_HEADER {
 	uint16_t roomNum;
 };
 
-struct RAID_END_REQUEST_TO_GAME_SERVER : PACKET_HEADER {
-	uint16_t gameServerNum;
-	uint16_t roomNum;
+struct RAID_RANKING_REQUEST : PACKET_HEADER {
+	uint16_t startRank;
+};
+
+struct RAID_RANKING_RESPONSE : PACKET_HEADER {
+	uint16_t rkCount;
+	char reqScore[MAX_SCORE_SIZE + 1];
 };
 
 
@@ -205,15 +209,11 @@ struct RAID_END_REQUEST_TO_CENTER_SERVER : PACKET_HEADER {
 	uint16_t roomNum;
 };
 
-struct RAID_RANKING_REQUEST : PACKET_HEADER {
-	uint16_t startRank;
+struct SYNC_HIGHSCORE_REQUEST : PACKET_HEADER {
+	char userId[MAX_USER_ID_LEN + 1];
+	unsigned int userScore;
+	uint16_t userPk;
 };
-
-struct RAID_RANKING_RESPONSE : PACKET_HEADER {
-	uint16_t rkCount;
-	char reqScore[MAX_SCORE_SIZE + 1];
-};
-
 
 enum class PACKET_ID : uint16_t {
 
@@ -221,8 +221,8 @@ enum class PACKET_ID : uint16_t {
 	// SYSTEM (1~)
 	USER_CONNECT_REQUEST = 1,
 	USER_CONNECT_RESPONSE = 2,
-	USER_LOGOUT_REQUEST = 3, 
-	USER_FULL_REQUEST = 6, 
+	USER_LOGOUT_REQUEST = 3,
+	USER_FULL_REQUEST = 6,
 	WAITTING_NUMBER_REQUSET = 7,
 	SERVER_USER_COUNTS_REQUEST = 8,
 	SERVER_USER_COUNTS_RESPONSE = 9,
@@ -238,7 +238,7 @@ enum class PACKET_ID : uint16_t {
 
 	RAID_END_REQUEST_TO_GAME_SERVER = 52,
 
-	RAID_RANKING_REQUEST = 55, 
+	RAID_RANKING_REQUEST = 55,
 	RAID_RANKING_RESPONSE = 56,
 
 	//  ---------------------------- LOGIN (801~)  ----------------------------
@@ -267,7 +267,7 @@ enum class PACKET_ID : uint16_t {
 	SYNCRONIZE_DISCONNECT_REQUEST = 853,
 
 	//  ---------------------------- CHANNEL (1501~)  ----------------------------
-	
+
 	// SYSTEM (1501~)
 	CHANNEL_SERVER_CONNECT_REQUEST = 1501,
 	CHANNEL_SERVER_CONNECT_RESPONSE = 1502,
@@ -303,7 +303,7 @@ enum class PACKET_ID : uint16_t {
 
 
 	//  ---------------------------- MATCHING (5001~)  ----------------------------
-	
+
 	//SYSTEM (5001~)
 	MATCHING_SERVER_CONNECT_REQUEST = 5001,
 	MATCHING_SERVER_CONNECT_RESPONSE = 5002,
@@ -319,12 +319,11 @@ enum class PACKET_ID : uint16_t {
 
 
 	//  ---------------------------- RAID(8001~)  ----------------------------
-	
+
 	RAID_SERVER_CONNECT_REQUEST = 8001,
 	RAID_SERVER_CONNECT_RESPONSE = 8002,
 
 	MATCHING_RESPONSE_FROM_GAME_SERVER = 8012,
 
-	RAID_END_REQUEST_TO_CENTER_SERVER = 8102,
-
+	SYNC_HIGHSCORE_REQUEST = 8091,
 };

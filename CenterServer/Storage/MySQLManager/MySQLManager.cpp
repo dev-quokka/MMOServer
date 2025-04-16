@@ -14,6 +14,14 @@ bool MySQLManager::init() {
     return true;
 }
 
+bool MySQLManager::LogoutSync(uint16_t userPk_, USERINFO userInfo_, std::vector<EQUIPMENT> userEquip_, std::vector<CONSUMABLES> userConsum_, std::vector<MATERIALS> userMat_) {
+    SyncUserInfo(userPk_, userInfo_);
+    SyncEquipment(userPk_, userEquip_);
+    SyncConsumables(userPk_, userConsum_);
+    SyncMaterials(userPk_, userMat_);
+    return true;
+}
+
 bool MySQLManager::SyncUserInfo(uint16_t userPk_, USERINFO userInfo_) {
     try {
         std::string query_s = "UPDATE USERS left join Ranking r on USERS.name = r.name SET USERS.name = '" +
@@ -26,7 +34,6 @@ bool MySQLManager::SyncUserInfo(uint16_t userPk_, USERINFO userInfo_) {
         const char* Query = query_s.c_str();
 
         MysqlResult = mysql_query(ConnPtr, Query);
-
         if (MysqlResult != 0) {
             std::cerr << "MySQL UPDATE Error: " << mysql_error(ConnPtr) << std::endl;
             return false;
@@ -37,6 +44,7 @@ bool MySQLManager::SyncUserInfo(uint16_t userPk_, USERINFO userInfo_) {
         return false;
     }
 
+    std::cout << "Successfully Synchronized UserInfo with MySQL" << std::endl;
     return true;
 }
 
@@ -68,7 +76,6 @@ bool MySQLManager::SyncEquipment(uint16_t userPk_, std::vector<EQUIPMENT> userEq
         where << ");";
 
         query_s << item_code_case.str() << enhancement_case.str() << where.str();
-
         if (mysql_query(ConnPtr, query_s.str().c_str()) != 0) {
             std::cerr << "MySQL Batch UPDATE Error: " << mysql_error(ConnPtr) << std::endl;
             return false;
@@ -79,6 +86,7 @@ bool MySQLManager::SyncEquipment(uint16_t userPk_, std::vector<EQUIPMENT> userEq
         return false;
     }
 
+    std::cout << "Successfully Synchronized Equipment with MySQL" << std::endl;
     return true;
 }
 
@@ -109,7 +117,6 @@ bool MySQLManager::SyncConsumables(uint16_t userPk_, std::vector<CONSUMABLES> us
         where << ");";
 
         query_s << item_code_case.str() << count_case.str() << where.str();
-
         if (mysql_query(ConnPtr, query_s.str().c_str()) != 0) {
             std::cerr << "CONSUMABLE UPDATE Error: " << mysql_error(ConnPtr) << std::endl;
             return false;
@@ -120,6 +127,7 @@ bool MySQLManager::SyncConsumables(uint16_t userPk_, std::vector<CONSUMABLES> us
         return false;
     }
 
+    std::cout << "Successfully Synchronized Consumables with MySQL" << std::endl;
     return true;
 }
 
@@ -150,7 +158,6 @@ bool MySQLManager::SyncMaterials(uint16_t userPk_, std::vector<MATERIALS> userMa
         where << ");";
 
         query_s << item_code_case.str() << count_case.str() << where.str();
-
         if (mysql_query(ConnPtr, query_s.str().c_str()) != 0) {
             std::cerr << "MATERIALS UPDATE Error: " << mysql_error(ConnPtr) << std::endl;
             return false;
@@ -161,10 +168,11 @@ bool MySQLManager::SyncMaterials(uint16_t userPk_, std::vector<MATERIALS> userMa
         return false;
     }
 
+    std::cout << "Successfully Synchronized Materials with MySQL" << std::endl;
     return true;
 }
 
-bool MySQLManager::SyncUserHighScore(uint16_t userPk_, unsigned int userScore_, std::string userId_) {
+bool MySQLManager::SyncUserRaidScore(uint16_t userPk_, unsigned int userScore_, std::string userId_) {
     try {
         std::string query_s = "UPDATE Raking set score = "
             + std::to_string(userScore_) + ", where id = " + userId_;
@@ -172,11 +180,11 @@ bool MySQLManager::SyncUserHighScore(uint16_t userPk_, unsigned int userScore_, 
         const char* Query = query_s.c_str();
 
         MysqlResult = mysql_query(ConnPtr, Query);
-
         if (MysqlResult != 0) {
             std::cerr << "MySQL UPDATE Error: " << mysql_error(ConnPtr) << std::endl;
             return false;
         }
+
     }
     catch (...) { // MySQL or Unknown Error
         std::cerr << "Failed to Sync userPk : " << userPk_ << " Raid Score : " << userScore_ << "(MySQL or Unknown Error)" << std::endl;

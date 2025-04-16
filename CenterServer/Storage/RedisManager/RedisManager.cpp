@@ -17,7 +17,6 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
     packetIDTable[(uint16_t)PACKET_ID::USER_LOGOUT_REQUEST] = &RedisManager::Logout;
     packetIDTable[(uint16_t)PACKET_ID::SERVER_USER_COUNTS_REQUEST] = &RedisManager::SendServerUserCounts;
     packetIDTable[(uint16_t)PACKET_ID::MOVE_SERVER_REQUEST] = &RedisManager::MoveServer;
-    packetIDTable[(uint16_t)PACKET_ID::RAID_END_REQUEST_TO_CENTER_SERVER] = &RedisManager::RaidEnd;
 
     // SESSION
     packetIDTable[(uint16_t)PACKET_ID::LOGIN_SERVER_CONNECT_REQUEST] = &RedisManager::LoginServerConnectRequest;
@@ -44,6 +43,7 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
     raidGameServerObjNums.resize(2, 0); // Raid Game Server ID start from 1 (index 0 is not used)
 
     RedisRun(RedisThreadCnt_);
+
     channelServersManager = new ChannelServersManager;
     channelServersManager->init();
 }
@@ -55,8 +55,11 @@ void RedisManager::RedisRun(const uint16_t RedisThreadCnt_) { // Connect Redis S
         connection_options.socket_timeout = std::chrono::seconds(10);
         connection_options.keep_alive = true;
 
-        redis = std::make_unique<sw::redis::RedisCluster>(connection_options);
+        redis = std::make_shared<sw::redis::RedisCluster>(connection_options);
         std::cout << "Redis Cluster Connected" << std::endl;
+
+        mySQLManager = new MySQLManager;
+        mySQLManager->init();
 
         CreateRedisThread(RedisThreadCnt_);
     }
@@ -91,9 +94,9 @@ bool RedisManager::CreateRedisThread(const uint16_t RedisThreadCnt_) {
 }
 
 void RedisManager::RedisThread() {
-    DataPacket tempD(0,0);
+    DataPacket tempD(0, 0);
     ConnUser* TempConnUser = nullptr;
-    char tempData[1024] = {0};
+    char tempData[1024] = { 0 };
 
     while (redisRun) {
         if (procSktQueue.pop(tempD)) {
@@ -110,9 +113,135 @@ void RedisManager::RedisThread() {
 
 void RedisManager::PushRedisPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_) {
     ConnUser* TempConnUser = connUsersManager->FindUser(connObjNum_);
-    TempConnUser->WriteRecvData(recvData_,size_); // Push Data in Circualr Buffer
+    TempConnUser->WriteRecvData(recvData_, size_); // Push Data in Circualr Buffer
     DataPacket tempD(size_, connObjNum_);
     procSktQueue.push(tempD);
+}
+
+
+//  ---------------------------- SYNCRONIZATION  ----------------------------
+
+USERINFO RedisManager::GetUpdatedUserInfo(uint16_t userPk_) {
+    std::string userInfokey = "userinfo:{" + std::to_string(userPk_) + "}";
+    std::unordered_map<std::string, std::string> userData;
+
+    USERINFO tempUser;
+
+    try {
+        redis->hgetall(userInfokey, std::inserter(userData, userData.begin()));
+    }
+    catch (const sw::redis::Error& e) {
+        std::cerr << "Failed to Get userPk : " << userPk_ << " Infos" << std::endl;
+        return tempUser;
+    }
+
+    tempUser.userId = userData["userId"];
+    tempUser.raidScore = std::stoul(userData["raidScore"]);
+    tempUser.exp = std::stoul(userData["exp"]);
+    tempUser.level = static_cast<uint16_t>(std::stoi(userData["level"]));
+
+    return tempUser;
+}
+
+std::vector<EQUIPMENT> RedisManager::GetUpdatedEquipment(uint16_t userPk_) {
+    std::string eqSlot = "equipment:{" + std::to_string(userPk_) + "}";
+    std::unordered_map<std::string, std::string> equipments;
+    redis->hgetall(eqSlot, std::inserter(equipments, equipments.begin()));
+
+    std::vector<EQUIPMENT> tempEqv;
+
+    for (auto& [key, value] : equipments) {
+        size_t div = value.find(':');
+        if (div == std::string::npos) {
+            std::cerr << "Invalid data format in Redis for position: " << key << std::endl;
+            continue;
+        }
+
+        try {
+            EQUIPMENT eq;
+            eq.position = static_cast<uint16_t>(std::stoi(key));
+            eq.itemCode = static_cast<uint16_t>(std::stoi(value.substr(0, div)));
+            eq.enhance = static_cast<uint16_t>(std::stoi(value.substr(div + 1)));
+
+            tempEqv.emplace_back(eq);
+        }
+        catch (...) {
+            std::cerr << "(Equipment) Failed to parse position :" << key << ", code:enhance : " << value << std::endl;
+            continue;
+        }
+    }
+
+    return tempEqv;
+}
+
+std::vector<CONSUMABLES> RedisManager::GetUpdatedConsumables(uint16_t userPk_) {
+    std::string csSlot = "consumables:{" + std::to_string(userPk_) + "}";
+    std::unordered_map<std::string, std::string> consumables;
+    redis->hgetall(csSlot, std::inserter(consumables, consumables.begin()));
+
+    std::vector<CONSUMABLES> tempCsv;
+
+    for (auto& [key, value] : consumables) {
+        size_t div = value.find(':');
+        if (div == std::string::npos) {
+            std::cerr << "Invalid data format in Redis for position: " << key << std::endl;
+            continue;
+        }
+
+        try {
+            CONSUMABLES cs;
+            cs.position = static_cast<uint16_t>(std::stoi(key));
+            cs.itemCode = static_cast<uint16_t>(std::stoi(value.substr(0, div)));
+            cs.count = static_cast<uint16_t>(std::stoi(value.substr(div + 1)));
+
+            tempCsv.emplace_back(cs);
+        }
+        catch (...) {
+            std::cerr << "(Consumable) Failed to parse position :" << key << ", code:enhance : " << value << std::endl;
+            continue;
+        }
+    }
+
+    return tempCsv;
+}
+
+std::vector<MATERIALS> RedisManager::GetUpdatedMaterials(uint16_t userPk_) {
+    std::string mtSlot = "materials:{" + std::to_string(userPk_) + "}";
+    std::unordered_map<std::string, std::string> materials;
+
+
+    redis->hgetall(mtSlot, std::inserter(materials, materials.begin()));
+
+    std::vector<MATERIALS> tempMtv;
+
+    for (auto& [key, value] : materials) {
+        MATERIALS cs;
+
+        if (value == "") { // Skip if the inventory slot is empty
+            tempMtv.emplace_back(cs);
+            continue;
+        }
+
+        size_t div = value.find(':');
+        if (div == std::string::npos) {
+            std::cerr << "Invalid data format in Redis for position : " << key << std::endl;
+            continue;
+        }
+
+        try {
+            cs.position = static_cast<uint16_t>(std::stoi(key));
+            cs.itemCode = static_cast<uint16_t>(std::stoi(value.substr(0, div)));
+            cs.count = static_cast<uint16_t>(std::stoi(value.substr(div + 1)));
+
+            tempMtv.emplace_back(cs);
+        }
+        catch (...) {
+            std::cerr << "(Material) Failed to parse position :" << key << ", code:enhance : " << value << std::endl;
+            continue;
+        }
+    }
+
+    return tempMtv;
 }
 
 // ============================== PACKET ==============================
@@ -126,6 +255,7 @@ void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char*
     USER_CONNECT_RESPONSE_PACKET ucReq;
     ucReq.PacketId = (uint16_t)PACKET_ID::USER_CONNECT_RESPONSE;
     ucReq.PacketLength = sizeof(USER_CONNECT_RESPONSE_PACKET);
+
     try {
         auto pk = static_cast<uint32_t>(std::stoul(*redis->hget(key, (std::string)userConn->userToken)));
         if (pk) {
@@ -135,7 +265,7 @@ void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char*
 
             connUsersManager->FindUser(connObjNum_)->SetPk(pk);
             inGameUserManager->GetInGameUserByObjNum(connObjNum_)->Set((std::string)userConn->userId, pk, std::stoul(userData["exp"]),
-            static_cast<uint16_t>(std::stoul(userData["level"])), std::stoul(userData["raidScore"]));
+                static_cast<uint16_t>(std::stoul(userData["level"])), std::stoul(userData["raidScore"]));
 
             redis->hset(key, "userstate", "online"); // Change user status to "offline"
 
@@ -159,30 +289,34 @@ void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char*
 }
 
 void RedisManager::Logout(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) { // Normal Disconnect
-    InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
+    auto tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
+    auto tempPk = tempUser->GetPk();
 
     {  // Send User PK to the Session Server for Synchronization with MySQL
         SYNCRONIZE_LOGOUT_REQUEST syncLogoutReqPacket;
         syncLogoutReqPacket.PacketId = (uint16_t)PACKET_ID::SYNCRONIZE_LOGOUT_REQUEST;
         syncLogoutReqPacket.PacketLength = sizeof(SYNCRONIZE_LOGOUT_REQUEST);
-        syncLogoutReqPacket.userPk = tempUser->GetPk();
+        syncLogoutReqPacket.userPk = tempPk;
         connUsersManager->FindUser(GatewayServerObjNum)->PushSendMsg(sizeof(SYNCRONIZE_LOGOUT_REQUEST), (char*)&syncLogoutReqPacket);
-        
-        redis->hset("userinfo:{" + std::to_string(tempUser->GetPk()) + "}", "userstate", "offline"); // Change user status to "offline"
+
+        mySQLManager->LogoutSync(tempPk, GetUpdatedUserInfo(tempPk), GetUpdatedEquipment(tempPk), GetUpdatedConsumables(tempPk), GetUpdatedMaterials(tempPk));
+        redis->hset("userinfo:{" + std::to_string(tempPk) + "}", "userstate", "offline"); // Change user status to "offline"
     }
 }
 
 void RedisManager::UserDisConnect(uint16_t connObjNum_) { // Abnormal Disconnect
-    InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
+    auto tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
+    auto tempPk = tempUser->GetPk();
 
     {  // Send User PK to the Session Server for Synchronization with MySQL
         SYNCRONIZE_LOGOUT_REQUEST syncLogoutReqPacket;
         syncLogoutReqPacket.PacketId = (uint16_t)PACKET_ID::SYNCRONIZE_LOGOUT_REQUEST;
         syncLogoutReqPacket.PacketLength = sizeof(SYNCRONIZE_LOGOUT_REQUEST);
-        syncLogoutReqPacket.userPk = tempUser->GetPk();
+        syncLogoutReqPacket.userPk = tempPk;
         connUsersManager->FindUser(GatewayServerObjNum)->PushSendMsg(sizeof(SYNCRONIZE_LOGOUT_REQUEST), (char*)&syncLogoutReqPacket);
 
-        redis->hset("userinfo:{" + std::to_string(tempUser->GetPk()) + "}", "userstate", "offline"); // Change user status to "offline"
+        mySQLManager->LogoutSync(tempPk, GetUpdatedUserInfo(tempPk), GetUpdatedEquipment(tempPk), GetUpdatedConsumables(tempPk), GetUpdatedMaterials(tempPk));
+        redis->hset("userinfo:{" + std::to_string(tempPk) + "}", "userstate", "offline"); // Change user status to "offline"
     }
 }
 
@@ -226,7 +360,7 @@ void RedisManager::MatchingServerConnectRequest(uint16_t connObjNum_, uint16_t p
 
     connUsersManager->FindUser(connObjNum_)->SetPk(0);
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MATCHING_SERVER_CONNECT_RESPONSE), (char*)&imMRes);
-    std::cout << "Matching Server Authentication Successful"<< std::endl;
+    std::cout << "Matching Server Authentication Successful" << std::endl;
 }
 
 void RedisManager::GameServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
@@ -245,7 +379,7 @@ void RedisManager::GameServerConnectRequest(uint16_t connObjNum_, uint16_t packe
 }
 
 void RedisManager::SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
-	SERVER_USER_COUNTS_RESPONSE serverUserCountsResPacket;
+    SERVER_USER_COUNTS_RESPONSE serverUserCountsResPacket;
     serverUserCountsResPacket.PacketId = (uint16_t)PACKET_ID::SERVER_USER_COUNTS_RESPONSE;
     serverUserCountsResPacket.PacketLength = sizeof(SERVER_USER_COUNTS_RESPONSE);
     auto tempV = channelServersManager->GetServerCounts();
@@ -255,7 +389,7 @@ void RedisManager::SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSiz
     uint16_t cnt = tempV.size();
 
     for (int i = 1; i < cnt; i++) {
-		uint16_t userCount = tempV[i];
+        uint16_t userCount = tempV[i];
         memcpy(tc, (char*)&userCount, sizeof(uint16_t));
         tc += sizeof(uint16_t);
     }
@@ -265,7 +399,7 @@ void RedisManager::SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSiz
 
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(RAID_RANKING_RESPONSE), (char*)&serverUserCountsResPacket);
     redis->hset("userinfo:{" + std::to_string(inGameUserManager->GetInGameUserByObjNum(connObjNum_)->GetPk()) + "}", "userstate", "serverSwitching"); // Change user status to "serverSwitching"
-    
+
     delete[] tempC;
 }
 
@@ -282,7 +416,7 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
     if (MoveCHReqPacket->serverNum == 1) {
         moveCHResPacket.PacketId = (uint16_t)PACKET_ID::MOVE_SERVER_RESPONSE;
         moveCHResPacket.PacketLength = sizeof(MOVE_SERVER_RESPONSE);
-		moveCHResPacket.port = ServerAddressMap[ServerType::ChannelServer01].port;
+        moveCHResPacket.port = ServerAddressMap[ServerType::ChannelServer01].port;
         strncpy_s(moveCHResPacket.ip, ServerAddressMap[ServerType::ChannelServer01].ip.c_str(), 256);
         tag = "{" + std::to_string(static_cast<uint16_t>(ServerType::ChannelServer01)) + "}";
 
@@ -291,8 +425,8 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
             connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_SERVER_RESPONSE), (char*)&moveCHResPacket);
         };
 
-	}
-	else if (MoveCHReqPacket->serverNum == 2) {
+    }
+    else if (MoveCHReqPacket->serverNum == 2) {
         moveCHResPacket.PacketId = (uint16_t)PACKET_ID::MOVE_SERVER_RESPONSE;
         moveCHResPacket.PacketLength = sizeof(MOVE_SERVER_RESPONSE);
         moveCHResPacket.port = ServerAddressMap[ServerType::ChannelServer02].port;
@@ -303,7 +437,7 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
             moveCHResPacket.port = 0;
             connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_SERVER_RESPONSE), (char*)&moveCHResPacket);
         };
-	}
+    }
 
     auto tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
@@ -331,15 +465,15 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
 
 //  ---------------------------- RAID  ----------------------------
 
-void RedisManager::MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) { 
+void RedisManager::MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
     MATCHING_REQUEST_TO_MATCHING_SERVER matchReqPacket;
     matchReqPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_REQUEST_TO_MATCHING_SERVER;
     matchReqPacket.PacketLength = sizeof(MATCHING_REQUEST_TO_MATCHING_SERVER);
     matchReqPacket.userPk = tempUser->GetPk();
-	matchReqPacket.userCenterObjNum = connObjNum_;
-    matchReqPacket.userGroupNum = tempUser->GetLevel()/3 + 1;
+    matchReqPacket.userCenterObjNum = connObjNum_;
+    matchReqPacket.userGroupNum = tempUser->GetLevel() / 3 + 1;
 
     connUsersManager->FindUser(MatchingServerObjNum)->PushSendMsg(sizeof(MATCHING_REQUEST_TO_MATCHING_SERVER), (char*)&matchReqPacket);
 }
@@ -356,7 +490,7 @@ void RedisManager::MatchStartResponse(uint16_t connObjNum_, uint16_t packetSize_
         matchResPacket.insertSuccess = matchSuccessReqPacket->isSuccess;
 
         redis->hset("userinfo:{" + std::to_string(tempUser->GetPk()) + "}", "userstate", "matching"); // // Change user status to "matching"
-        std::cout << tempUser->GetId() << " " << tempUser->GetLevel() / 3 + 1 <<  "group matching successful" << std::endl;
+        std::cout << tempUser->GetId() << " " << tempUser->GetLevel() / 3 + 1 << "group matching successful" << std::endl;
     }
     else {
         matchResPacket.insertSuccess = matchSuccessReqPacket->isSuccess;
@@ -455,20 +589,10 @@ void RedisManager::CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_,
     }
 }
 
-void RedisManager::MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+void RedisManager::SyncUserRaidScore(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    auto delEquipReqPacket = reinterpret_cast<SYNC_HIGHSCORE_REQUEST*>(pPacket_);
 
-}
-
-void RedisManager::RaidEnd(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
-    auto RaidEndPacket = reinterpret_cast<RAID_END_REQUEST_TO_CENTER_SERVER*>(pPacket_);
-
-    RAID_END_REQUEST_TO_GAME_SERVER raidEndReqPacket;
-    raidEndReqPacket.PacketId = (uint16_t)PACKET_ID::RAID_END_REQUEST_TO_GAME_SERVER;
-    raidEndReqPacket.PacketLength = sizeof(RAID_END_REQUEST_TO_GAME_SERVER);
-    raidEndReqPacket.roomNum = RaidEndPacket->roomNum;
-    raidEndReqPacket.gameServerNum = RaidEndPacket->gameServerNum;
-
-    connUsersManager->FindUser(MatchingServerObjNum)->PushSendMsg(sizeof(RAID_RANKING_RESPONSE), (char*)&raidEndReqPacket); // Send the terminated room number to the matching server
+    mySQLManager->SyncUserRaidScore(delEquipReqPacket->userPk, delEquipReqPacket->userScore, std::string(delEquipReqPacket->userId));
 }
 
 void RedisManager::GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
@@ -482,7 +606,7 @@ void RedisManager::GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* 
     std::vector<std::pair<std::string, double>> scores;
     try {
 
-        redis->zrevrange("ranking", delEquipReqPacket->startRank, 
+        redis->zrevrange("ranking", delEquipReqPacket->startRank,
             delEquipReqPacket->startRank + RANKING_USER_COUNT, std::back_inserter(scores));
 
         char* tempC = new char[MAX_SCORE_SIZE + 1];

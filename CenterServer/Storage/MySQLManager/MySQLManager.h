@@ -20,11 +20,13 @@ public:
 	bool init();
 
 	// SYNCRONIZATION
+	bool LogoutSync(uint16_t userPk_, USERINFO userInfo_, std::vector<EQUIPMENT> userEquip_, std::vector<CONSUMABLES> userConsum_, std::vector<MATERIALS> userMat_);
+
 	bool SyncUserInfo(uint16_t userPk_, USERINFO userInfo_);
 	bool SyncEquipment(uint16_t userPk_, std::vector<EQUIPMENT> userEquip_);
 	bool SyncConsumables(uint16_t userPk_, std::vector<CONSUMABLES> userConsum_);
 	bool SyncMaterials(uint16_t userPk_, std::vector<MATERIALS> userMat_);
-	bool SyncUserHighScore(uint16_t userPk_, unsigned int userScore_, std::string userId_);
+	bool SyncUserRaidScore(uint16_t userPk_, unsigned int userScore_, std::string userId_);
 
 private:
 	MYSQL Conn;

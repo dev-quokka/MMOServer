@@ -100,17 +100,20 @@ void PacketManager::ImLoginResponse(uint16_t connObjNum_, uint16_t packetSize_, 
     std::cout << "Successfully Authenticated with Center Server" << std::endl;
 }
 
+
+
 void PacketManager::GetUserInfo(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto uiReq = reinterpret_cast<USERINFO_REQUEST*>(pPacket_);
     auto tempUser = connUsersManager->FindUser(connObjNum_);
 
-    std::pair<uint32_t, USERINFO> userInfoPk = mySQLManager->GetUserInfoById(uiReq->userId);
+    std::pair<uint32_t, USERINFO> userInfoPk = mySQLManager->GetUserInfoById(std::string(uiReq->userId));
 
-    if (userInfoPk.first == 100) { // Return value 100 indicates failure
+    if (userInfoPk.second.level == 0) { // Return value 0 indicates failure
         std::cout << "GetUserInfo Fail" << std::endl;
         return;
     }
 
+    std::cout << userInfoPk.second.level << std::endl;
     tempUser->SetPk(userInfoPk.first);
 
     USERINFO_RESPONSE uiRes;
@@ -118,7 +121,7 @@ void PacketManager::GetUserInfo(uint16_t connObjNum_, uint16_t packetSize_, char
     uiRes.PacketLength = sizeof(USERINFO_RESPONSE);
     uiRes.UserInfo = userInfoPk.second;
 
-    std::cout << "Successfully uploaded user data to the redis cluster" << std::endl;
+    std::cout << "Successfully uploaded UserInfo to the redis cluster" << std::endl;
 
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(USERINFO_RESPONSE), (char*)&uiRes);
 }
@@ -140,18 +143,20 @@ void PacketManager::GetEquipment(uint16_t connObjNum_, uint16_t packetSize_, cha
     eqSend.eqCount = eq.first;
     std::memcpy(eqSend.Equipments, eq.second, MAX_INVEN_SIZE + 1);
 
-    std::cout << "Successfully uploaded user's equipment to the game server" << std::endl;
+    std::cout << "Successfully uploaded user's Equipment to the game server" << std::endl;
 
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(EQUIPMENT_RESPONSE), (char*)&eqSend);
+
+    delete[] eq.second;
 }
 
 void PacketManager::GetConsumables(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto ugReq = reinterpret_cast<CONSUMABLES_REQUEST*>(pPacket_);
     auto tempUser = connUsersManager->FindUser(connObjNum_);
 
-    std::pair<uint16_t, char*> es = mySQLManager->GetUserConsumablesByPk(std::to_string(tempUser->GetPk()));
+    std::pair<uint16_t, char*> cs = mySQLManager->GetUserConsumablesByPk(std::to_string(tempUser->GetPk()));
 
-    if (es.first == 100) {
+    if (cs.first == 100) {
         std::cout << "GetUserConsumables Fail" << std::endl;
         return;
     }
@@ -159,21 +164,23 @@ void PacketManager::GetConsumables(uint16_t connObjNum_, uint16_t packetSize_, c
     CONSUMABLES_RESPONSE csSend;
     csSend.PacketId = (UINT16)PACKET_ID::CONSUMABLES_RESPONSE;
     csSend.PacketLength = sizeof(CONSUMABLES_RESPONSE);
-    csSend.csCount = es.first;
-    std::memcpy(csSend.Consumables, es.second, MAX_INVEN_SIZE + 1);
+    csSend.csCount = cs.first;
+    std::memcpy(csSend.Consumables, cs.second, MAX_INVEN_SIZE + 1);
 
-    std::cout << "Successfully uploaded user's consumable to the game server" << std::endl;
+    std::cout << "Successfully uploaded user's Consumable to the game server" << std::endl;
 
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(CONSUMABLES_RESPONSE), (char*)&csSend);
+
+    delete[] cs.second;
 }
 
 void PacketManager::GetMaterials(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto ugReq = reinterpret_cast<MATERIALS_REQUEST*>(pPacket_);
     auto tempUser = connUsersManager->FindUser(connObjNum_);
 
-    std::pair<uint16_t, char*> em = mySQLManager->GetUserMaterialsByPk(std::to_string(tempUser->GetPk()));
+    std::pair<uint16_t, char*> mt = mySQLManager->GetUserMaterialsByPk(std::to_string(tempUser->GetPk()));
 
-    if (em.first == 100) {
+    if (mt.first == 100) {
         std::cout << "GetUserMaterials Fail" << std::endl;
         return;
     }
@@ -181,12 +188,14 @@ void PacketManager::GetMaterials(uint16_t connObjNum_, uint16_t packetSize_, cha
     MATERIALS_RESPONSE mtSend;
     mtSend.PacketId = (UINT16)PACKET_ID::MATERIALS_RESPONSE;
     mtSend.PacketLength = sizeof(MATERIALS_RESPONSE);
-    mtSend.mtCount = em.first;
-    std::memcpy(mtSend.Materials, em.second, MAX_INVEN_SIZE + 1);
+    mtSend.mtCount = mt.first;
+    std::memcpy(mtSend.Materials, mt.second, MAX_INVEN_SIZE + 1);
 
-    std::cout << "Successfully uploaded user's material to the game server" << std::endl;
+    std::cout << "Successfully uploaded user's Material to the game server" << std::endl;
 
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MATERIALS_RESPONSE), (char*)&mtSend);
+
+    delete[] mt.second;
 }
 
 void PacketManager::GameStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
