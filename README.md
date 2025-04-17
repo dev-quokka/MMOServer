@@ -11,7 +11,7 @@
     - 동적 할당 최소화를 위한 객체 풀 설계 적용
     - 대량 데이터 송수신 시 vector 대신 char*형 활용으로 성능 최적화
     - atomic, boost::lockfree_queue, tbb::concurrent_hash_map 등을 활용하여 mutex 사용 최소화
-    - Redis 통신 시 try-catch 문 적용으로 예외 처리 강화
+    - try-catch 문 적용으로 예외 처리 강화
     - MySQL 동기화가 필요한 데이터는 Gateway Server를 통해 처리하여 부하 분산
 
   #### 2. 인벤토리 (장비, 소비, 재료)
