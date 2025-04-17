@@ -28,18 +28,16 @@ struct PACKET_HEADER
 	uint16_t PacketId;
 };
 
-//  ---------------------------- SYSTEM  ----------------------------
 
-struct IM_MATCHING_REQUEST : PACKET_HEADER {
+// ======================= MATCHING SERVER =======================
+
+struct MATCHING_SERVER_CONNECT_REQUEST : PACKET_HEADER {
 
 };
 
-struct IM_MATCHING_RESPONSE : PACKET_HEADER {
+struct MATCHING_SERVER_CONNECT_RESPONSE : PACKET_HEADER {
 	bool isSuccess;
 };
-
-
-//  ---------------------------- MATCHING  ----------------------------
 
 struct MATCHING_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
 	uint16_t userPk; 
@@ -67,28 +65,27 @@ struct MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
 };
 
 
-//  ---------------------------- RAID  ----------------------------
+// ======================= RAID GAME SERVER =======================
 
-struct MATCHING_SERVER_CONNECT_REQUEST : PACKET_HEADER {
+struct MATCHING_SERVER_CONNECT_REQUEST_FROM_RAID_SERVER : PACKET_HEADER {
 	uint16_t gameServerNum;
 };
 
-struct MATCHING_SERVER_CONNECT_RESPONSE : PACKET_HEADER {
+struct MATCHING_SERVER_CONNECT_RESPONSE_TO_RAID_SERVER : PACKET_HEADER {
 	bool isSuccess;
 };
 
 struct MATCHING_REQUEST_TO_GAME_SERVER : PACKET_HEADER {
-	uint16_t userPk1;
-	uint16_t userPk2;
-	uint16_t userCenterObjNum1;
-	uint16_t userCenterObjNum2;
+	uint16_t userPk;
+	uint16_t userCenterObjNum;
 	uint16_t roomNum;
 };
 
+
 enum class PACKET_ID : uint16_t {
 	//SYSTEM (5001~)
-	IM_MATCHING_REQUEST = 5001,
-	IM_MATCHING_RESPONSE = 5002,
+	MATCHING_SERVER_CONNECT_REQUEST = 5001,
+	MATCHING_SERVER_CONNECT_RESPONSE = 5002,
 
 	//RAID(5011~)
 	MATCHING_REQUEST_TO_MATCHING_SERVER = 5011,
@@ -100,8 +97,8 @@ enum class PACKET_ID : uint16_t {
 
 
 	//  ---------------------------- GAME(8001~)  ----------------------------
-	MATCHING_SERVER_CONNECT_REQUEST = 8003,
-	MATCHING_SERVER_CONNECT_RESPONSE = 8004,
+	MATCHING_SERVER_CONNECT_REQUEST_FROM_RAID_SERVER = 8003,
+	MATCHING_SERVER_CONNECT_RESPONSE_TO_RAID_SERVER = 8004,
 
 	MATCHING_REQUEST_TO_GAME_SERVER = 8011,
 
