@@ -7,11 +7,10 @@
 #include <vector>
 #include <chrono>
 
-#include "LoginUserData.h"
+#include "UserSyncData.h"
 
-const int MAX_USER_ID_LEN = 32;
-const int MAX_JWT_TOKEN_LEN = 256;
-const int MAX_SCORE_SIZE = 256;
+constexpr uint16_t MAX_JWT_TOKEN_LEN = 256;
+constexpr uint16_t MAX_SCORE_SIZE = 512;
 
 struct DataPacket {
 	uint32_t dataSize;
@@ -28,21 +27,13 @@ struct PacketInfo
 	char* pData = nullptr;
 };
 
-
 struct PACKET_HEADER
 {
 	uint16_t PacketLength;
 	uint16_t PacketId;
 };
 
-
-struct RANKING {
-	uint16_t score = 0;
-	char userId[MAX_USER_ID_LEN + 1] = {};
-};
-
-//  ---------------------------- SYSTEM  ----------------------------
-
+// ======================= LOGIN SERVER =======================
 
 struct LOGIN_SERVER_CONNECT_REQUEST : PACKET_HEADER {
 	char Token[MAX_JWT_TOKEN_LEN + 1];
@@ -61,9 +52,6 @@ struct SYNCRONIZE_LEVEL_REQUEST : PACKET_HEADER {
 struct SYNCRONIZE_LOGOUT_REQUEST : PACKET_HEADER {
 	uint16_t userPk;
 };
-
-
-//  ---------------------------- GATEWAY SERVER ----------------------------
 
 struct USER_GAMESTART_REQUEST : PACKET_HEADER {
 	char userId[MAX_USER_ID_LEN + 1];
@@ -108,7 +96,11 @@ struct MATERIALS_RESPONSE : PACKET_HEADER {
 	char Materials[MAX_INVEN_SIZE+1];
 };
 
+
 enum class PACKET_ID : uint16_t {
+
+	// ======================= LOGIN SERVER (801~ ) =======================
+	
 	// SYSTEM (801~)
 	LOGIN_SERVER_CONNECT_REQUEST = 801,
 	LOGIN_SERVER_CONNECT_RESPONSE = 802,

@@ -1,5 +1,7 @@
 #include "LoginServer.h"
 
+// ====================== INITIALIZATION =======================
+
 bool LoginServer::init(const uint16_t MaxThreadCnt_, int port_) {
     WSADATA wsadata;
     MaxThreadCnt = MaxThreadCnt_; // Set the number of worker threads
@@ -48,6 +50,71 @@ bool LoginServer::init(const uint16_t MaxThreadCnt_, int port_) {
     return true;
 }
 
+bool LoginServer::StartWork() {
+    if (!CreateWorkThread()) {
+        return false;
+    }
+
+    if (!CreateAccepterThread()) {
+        return false;
+    }
+
+    connUsersManager = new ConnUsersManager(MAX_USERS_OBJECT);
+    redisManager = new RedisManager;
+
+    // 0 : Center Server
+    ConnUser* centerConnUser = new ConnUser(MAX_CIRCLE_SIZE, 0, sIOCPHandle, overLappedManager);
+    connUsersManager->InsertUser(0, centerConnUser);
+
+    for (int i = 1; i < MAX_USERS_OBJECT; i++) { // Make ConnUsers Queue
+        ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE, i, sIOCPHandle, overLappedManager);
+
+        AcceptQueue.push(connUser); // Push ConnUser
+        connUsersManager->InsertUser(i, connUser); // Init ConnUsers
+    }
+
+    redisManager->init(MaxThreadCnt);
+    redisManager->SetManager(connUsersManager);
+
+    CenterServerConnect();
+
+    return true;
+}
+
+void LoginServer::ServerEnd() {
+    WorkRun = false;
+    AccepterRun = false;
+
+    for (int i = 0; i < workThreads.size(); i++) {
+        PostQueuedCompletionStatus(sIOCPHandle, 0, 0, nullptr);
+    }
+
+    for (int i = 0; i < workThreads.size(); i++) { // Shutdown worker threads
+        if (workThreads[i].joinable()) {
+            workThreads[i].join();
+        }
+    }
+    for (int i = 0; i < acceptThreads.size(); i++) { // Shutdown accept threads
+        if (acceptThreads[i].joinable()) {
+            acceptThreads[i].join();
+        }
+    }
+
+    delete redisManager;
+    delete connUsersManager;
+
+    CloseHandle(sIOCPHandle);
+    closesocket(serverSkt);
+    WSACleanup();
+
+    std::cout << "Wait 5 Seconds Before Shutdown" << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait 5 seconds before server shutdown
+    std::cout << "Game Server1 Shutdown" << std::endl;
+}
+
+
+// ======================== CONNECTION =========================
+
 bool LoginServer::CenterServerConnect() {
     auto centerObj = connUsersManager->FindUser(0);
 
@@ -77,36 +144,8 @@ bool LoginServer::CenterServerConnect() {
     return true;
 }
 
-bool LoginServer::StartWork() {
-    if (!CreateWorkThread()) {
-        return false;
-    }
 
-    if (!CreateAccepterThread()) {
-        return false;
-    }
-
-    connUsersManager = new ConnUsersManager(MAX_USERS_OBJECT);
-    packetManager = new PacketManager;
-
-    // 0 : Center Server
-    ConnUser* centerConnUser = new ConnUser(MAX_CIRCLE_SIZE, 0, sIOCPHandle, overLappedManager);
-    connUsersManager->InsertUser(0, centerConnUser);
-
-    for (int i = 1; i < MAX_USERS_OBJECT; i++) { // Make ConnUsers Queue
-        ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE, i, sIOCPHandle, overLappedManager);
-
-        AcceptQueue.push(connUser); // Push ConnUser
-        connUsersManager->InsertUser(i, connUser); // Init ConnUsers
-    }
-
-    packetManager->init(MaxThreadCnt);
-    packetManager->SetManager(connUsersManager);
-
-    CenterServerConnect();
-
-    return true;
-}
+// ===================== THREAD MANAGEMENT =====================
 
 bool LoginServer::CreateWorkThread() {
     WorkRun = true;
@@ -191,7 +230,7 @@ void LoginServer::WorkThread() {
             }
         }
         else if (overlappedEx->taskType == TaskType::RECV) {
-            packetManager->PushPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
+            redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
             connUser->ConnUserRecv(); // Wsarecv Again
             overLappedManager->returnOvLap(overlappedEx);
         }
@@ -200,7 +239,7 @@ void LoginServer::WorkThread() {
             connUser->SendComplete();
         }
         else if (overlappedEx->taskType == TaskType::NEWRECV) {
-            packetManager->PushPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
+            redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
             connUser->ConnUserRecv(); // Wsarecv Again
             delete[] overlappedEx->wsaBuf.buf;
             delete overlappedEx;
@@ -236,35 +275,3 @@ void LoginServer::AccepterThread() {
         }
     }
 }
-
-void LoginServer::ServerEnd() {
-    WorkRun = false;
-    AccepterRun = false;
-
-    for (int i = 0; i < workThreads.size(); i++) {
-        PostQueuedCompletionStatus(sIOCPHandle, 0, 0, nullptr);
-    }
-
-    for (int i = 0; i < workThreads.size(); i++) { // Shutdown worker threads
-        if (workThreads[i].joinable()) {
-            workThreads[i].join();
-        }
-    }
-    for (int i = 0; i < acceptThreads.size(); i++) { // Shutdown accept threads
-        if (acceptThreads[i].joinable()) {
-            acceptThreads[i].join();
-        }
-    }
-
-    delete packetManager;
-    delete connUsersManager;
-
-    CloseHandle(sIOCPHandle);
-    closesocket(serverSkt);
-    WSACleanup();
-
-    std::cout << "Wait 5 Seconds Before Shutdown" << std::endl;
-    std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait 5 seconds before server shutdown
-    std::cout << "Game Server1 Shutdown" << std::endl;
-}
-

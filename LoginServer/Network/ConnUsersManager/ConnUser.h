@@ -34,12 +34,10 @@ public:
 	}
 
 public:
+	// ======================= IDENTIFICATION =======================
+
 	bool IsConn() { // Check connection status
 		return isConn;
-	}
-
-	SOCKET GetSocket() {
-		return userSkt;
 	}
 
 	void SetPk(uint16_t userPk_) {
@@ -53,6 +51,13 @@ public:
 	uint16_t GetObjNum() {
 		return connObjNum;
 	}
+
+	SOCKET GetSocket() {
+		return userSkt;
+	}
+
+
+	// ======================= CIRCULAR BUFFER =======================
 
 	bool WriteRecvData(const char* data_, uint32_t size_) { // Set recvdata in circular buffer 
 		return circularBuffer->Write(data_, size_);
@@ -92,6 +97,9 @@ public:
 
 	}
 
+
+	// ======================= ACCEPT =======================
+
 	bool PostAccept(SOCKET ServerSkt_) {
 		acceptOvlap = {};
 		acceptOvlap.taskType = TaskType::ACCEPT;
@@ -111,6 +119,9 @@ public:
 
 		return true;
 	}
+
+
+	// ======================= RECV =======================
 
 	bool ConnUserRecv() {
 		OverlappedEx* tempOvLap = (overLappedManager->getOvLap());
@@ -143,6 +154,9 @@ public:
 
 		return true;
 	}
+
+
+	// ======================= SEND =======================
 
 	void PushSendMsg(const uint32_t dataSize_, char* sendMsg) {
 

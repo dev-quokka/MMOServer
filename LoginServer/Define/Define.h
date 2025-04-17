@@ -5,12 +5,12 @@
 #include <ws2tcpip.h>
 #include <mswsock.h>
 #include <cstdint>
-#include <string>
 
-const uint32_t MAX_RECV_SIZE = 1024; // Set Max Socket Buf
+const uint32_t MAX_RECV_SIZE = 1024; // Set Max Recv Buf
 const uint32_t MAX_CIRCLE_SIZE = 1024;
 
-//  ---------------------------- SYSTEM  ----------------------------
+
+// ======================= IOCP EXTENDED OVERLAPPED STRUCT =======================
 
 enum class TaskType {
 	ACCEPT,
@@ -22,10 +22,13 @@ enum class TaskType {
 
 struct OverlappedEx {
 	WSAOVERLAPPED wsaOverlapped;
+
 	// 16 bytes
 	WSABUF wsaBuf;
+
 	// 4 bytes
 	TaskType taskType;
+
 	// 2 bytes
 	uint16_t connObjNum;
 };

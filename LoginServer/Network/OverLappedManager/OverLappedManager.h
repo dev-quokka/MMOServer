@@ -16,9 +16,14 @@ public:
 		}
 	}
 
+	// ======================= INITIALIZATION =======================
 	void init();
+
+
+	// ================= OVERLAPPED POOL MANAGEMENT =================
 	OverlappedEx* getOvLap();
 	void returnOvLap(OverlappedEx* overlappedEx_); // Reset object
+
 
 private:
 	boost::lockfree::queue<OverlappedEx*> ovLapPool{ OVERLAPPED_TCP_QUEUE_SIZE };

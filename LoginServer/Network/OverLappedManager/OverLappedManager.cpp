@@ -1,5 +1,7 @@
 #include "OverLappedManager.h"
 
+// ====================== INITIALIZATION ======================
+
 void OverLappedManager::init() {
 	for (int i = 0; i < OVERLAPPED_TCP_QUEUE_SIZE; i++) {
 		OverlappedEx* overlappedEx = new OverlappedEx;
@@ -8,8 +10,12 @@ void OverLappedManager::init() {
 	}
 }
 
+
+// ================= OVERLAPPED POOL MANAGEMENT ================
+
 OverlappedEx* OverLappedManager::getOvLap() {
 	OverlappedEx* overlappedEx;
+
 	if (ovLapPool.pop(overlappedEx)) {
 		return overlappedEx;
 	}

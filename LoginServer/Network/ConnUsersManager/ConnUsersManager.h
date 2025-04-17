@@ -15,6 +15,9 @@ public:
         }
     }
 
+
+    // ================== CONNECTION USER MANAGEMENT ==================
+
     void InsertUser(uint16_t connObjNum, ConnUser* connUser); // Init ConnUsers
     ConnUser* FindUser(uint16_t connObjNum);
 

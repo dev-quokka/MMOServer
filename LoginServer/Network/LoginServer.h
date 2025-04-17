@@ -20,7 +20,7 @@
 #include "ConnUser.h"
 #include "OverLappedManager.h"
 #include "ConnUsersManager.h"
-#include "PacketManager.h"
+#include "RedisManager.h"
 
 constexpr uint16_t MAX_USERS_OBJECT = 13; // User objects allocated for average Gmae Server1 load + additional allocation for connected servers 
 
@@ -29,12 +29,18 @@ constexpr uint16_t MAX_USERS_OBJECT = 13; // User objects allocated for average 
 
 class LoginServer {
 public:
+
+    // ====================== INITIALIZATION =======================
     bool init(const uint16_t MaxThreadCnt_, int port_);
-    bool CenterServerConnect();
     bool StartWork();
     void ServerEnd();
 
+
+    // ======================== CONNECTION =========================
+    bool CenterServerConnect();
+
 private:
+    // ===================== THREAD MANAGEMENT =====================
     bool CreateWorkThread();
     bool CreateAccepterThread();
 
@@ -54,7 +60,7 @@ private:
 
     OverLappedManager* overLappedManager;
     ConnUsersManager* connUsersManager;
-    PacketManager* packetManager;
+    RedisManager* redisManager;
 
     // 2 bytes
     uint16_t MaxThreadCnt = 0;
