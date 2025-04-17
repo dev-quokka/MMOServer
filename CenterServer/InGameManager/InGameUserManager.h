@@ -1,4 +1,5 @@
 #pragma once
+
 #include <vector>
 #include <string>
 #include <cstdint>
@@ -16,9 +17,13 @@ public:
 		}
 	}
 
+	// =================== INITIALIZATION ===================
 	void Init(uint16_t maxClientCount_);
-	InGameUser* GetInGameUserByObjNum(uint16_t connObjNum_);
 	void Reset(uint16_t connObjNum_);
+
+
+	// =================== USER ACCESS ===================
+	InGameUser* GetInGameUserByObjNum(uint16_t connObjNum_);
 
 private:
 	std::vector<InGameUser*> inGmaeUsers;

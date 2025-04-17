@@ -1,5 +1,7 @@
 #include "QuokkaServer.h"
 
+// ====================== INITIALIZATION =======================
+
 bool QuokkaServer::init(const uint16_t MaxThreadCnt_, int port_) {
     WSADATA wsadata;
     MaxThreadCnt = MaxThreadCnt_; // Set the number of worker threads
@@ -80,6 +82,49 @@ bool QuokkaServer::StartWork() {
 
     return true;
 }
+
+
+void QuokkaServer::ServerEnd() {
+    WorkRun = false;
+    AccepterRun = false;
+
+    for (int i = 0; i < workThreads.size(); i++) {
+        PostQueuedCompletionStatus(sIOCPHandle, 0, 0, nullptr);
+    }
+
+    for (int i = 0; i < workThreads.size(); i++) { // Shutdown worker threads
+        if (workThreads[i].joinable()) {
+            workThreads[i].join();
+        }
+    }
+    for (int i = 0; i < acceptThreads.size(); i++) { // Shutdown accept threads
+        if (acceptThreads[i].joinable()) {
+            acceptThreads[i].join();
+        }
+    }
+
+    ConnUser* connUser;
+
+    while (WaittingQueue.pop(connUser)) {
+        closesocket(connUser->GetSocket());
+        delete connUser;
+    }
+
+    delete redisManager;
+    delete connUsersManager;
+    delete inGameUserManager;
+
+    CloseHandle(sIOCPHandle);
+    closesocket(serverSkt);
+    WSACleanup();
+
+    std::cout << "Wait 5 Seconds Before Shutdown" << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait 5 seconds before server shutdown
+    std::cout << "Game Server1 Shutdown" << std::endl;
+}
+
+
+// ===================== THREAD MANAGEMENT =====================
 
 bool QuokkaServer::CreateWorkThread() {
     WorkRun = true;
@@ -193,57 +238,21 @@ void QuokkaServer::AccepterThread() {
                 AcceptQueue.push(connUser);
             }
         }
-        else { // AcceptQueue empty
+        else { // AcceptQueue empty, check waittingQueue
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
             //while (AccepterRun) {
             //    if (WaittingQueue.pop(connUser)) { // WaittingQueue not empty
             //        WaittingQueue.push(connUser);
             //    }
             //    else { // WaittingQueue empty
-            //        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            //        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             //        break;
             //    }
             //}
+
         }
     }
 }
 
-void QuokkaServer::ServerEnd() {
-    WorkRun = false;
-    AccepterRun = false;
-
-    for (int i = 0; i < workThreads.size(); i++) {
-        PostQueuedCompletionStatus(sIOCPHandle, 0, 0, nullptr);
-    }
-
-    for (int i = 0; i < workThreads.size(); i++) { // Work 쓰레드 종료
-        if (workThreads[i].joinable()) {
-            workThreads[i].join();
-        }
-    }
-    for (int i = 0; i < acceptThreads.size(); i++) { // Shutdown worker threads
-        if (acceptThreads[i].joinable()) { 
-            acceptThreads[i].join();
-        }
-    }
-
-    ConnUser* connUser;
-
-    while (WaittingQueue.pop(connUser)) { // Shutdown accept threads
-        closesocket(connUser->GetSocket());
-        delete connUser;
-    }
-
-    delete redisManager;
-    delete connUsersManager;
-    delete inGameUserManager;
-    CloseHandle(sIOCPHandle); 
-    closesocket(serverSkt);
-    WSACleanup();
-
-
-    std::cout << "Wait 5 Seconds Before Shutdown" << std::endl;
-    std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait 5 seconds before server shutdown
-    std::cout << "Game Server1 Shutdown" << std::endl;
-}
 

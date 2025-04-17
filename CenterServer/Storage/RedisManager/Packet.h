@@ -7,13 +7,13 @@
 #include <vector>
 #include <chrono>
 
-constexpr uint16_t RANKING_USER_COUNT = 3; // Number of users to display per ranking page
+constexpr uint16_t MAX_IP_LEN = 32;
+constexpr uint16_t MAX_USER_ID_LEN = 32;
+constexpr uint16_t MAX_SERVER_USERS = 128;
+constexpr uint16_t MAX_JWT_TOKEN_LEN = 256;
+constexpr uint16_t MAX_SCORE_SIZE = 512;
 
-constexpr int MAX_IP_LEN = 32;
-constexpr int MAX_USER_ID_LEN = 32;
-constexpr int MAX_SERVER_USERS = 128;
-constexpr int MAX_JWT_TOKEN_LEN = 256;
-constexpr int MAX_SCORE_SIZE = 512;
+constexpr uint16_t RANKING_USER_COUNT = 3; // Number of users to display per ranking page
 
 struct DataPacket {
 	uint32_t dataSize;
@@ -41,7 +41,8 @@ struct RANKING {
 	char userId[MAX_USER_ID_LEN + 1];
 };
 
-//  ---------------------------- SYSTEM  ----------------------------
+
+// ======================= CENTER SERVER =======================
 
 struct USER_CONNECT_REQUEST_PACKET : PACKET_HEADER {
 	char userToken[MAX_JWT_TOKEN_LEN + 1];
@@ -92,6 +93,11 @@ struct RAID_READY_REQUEST : PACKET_HEADER {
 	uint16_t roomNum;
 };
 
+struct RAID_READY_FAIL : PACKET_HEADER {
+	uint16_t userCenterObjNum;
+	uint16_t roomNum;
+};
+
 struct RAID_RANKING_REQUEST : PACKET_HEADER {
 	uint16_t startRank;
 };
@@ -102,7 +108,7 @@ struct RAID_RANKING_RESPONSE : PACKET_HEADER {
 };
 
 
-//  ---------------------------- LOGIN SERVER  ----------------------------
+// ======================= LOGIN SERVER =======================
 
 struct LOGIN_SERVER_CONNECT_REQUEST : PACKET_HEADER {
 
@@ -113,7 +119,7 @@ struct LOGIN_SERVER_CONNECT_RESPONSE : PACKET_HEADER {
 };
 
 
-//  ---------------------------- CHANNEL SERVER  ----------------------------
+// ======================= CHANNEL SERVER =======================
 
 struct CHANNEL_SERVER_CONNECT_REQUEST : PACKET_HEADER {
 	uint16_t channelServerNum;
@@ -128,7 +134,7 @@ struct USER_DISCONNECT_AT_CHANNEL_REQUEST : PACKET_HEADER {
 };
 
 
-//  ---------------------------- MATCHING SERVER  ----------------------------
+// ======================= MATCHING SERVER =======================
 
 struct MATCHING_SERVER_CONNECT_REQUEST : PACKET_HEADER {
 
@@ -150,9 +156,8 @@ struct MATCHING_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
 };
 
 struct MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER : PACKET_HEADER {
+	uint16_t userCenterObjNum;
 	uint16_t roomNum;
-	uint16_t userCenterObjNum1;
-	uint16_t userCenterObjNum2;
 };
 
 struct RAID_START_FAIL_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
@@ -178,7 +183,7 @@ struct MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
 };
 
 
-//  ---------------------------- RAID GAME SERVER  ----------------------------
+// ======================= RAID GAME SERVER =======================
 
 struct RAID_SERVER_CONNECT_REQUEST : PACKET_HEADER {
 	uint16_t gameServerNum;
@@ -197,10 +202,8 @@ struct RAID_MATCHING_RESPONSE : PACKET_HEADER {
 };
 
 struct MATCHING_RESPONSE_FROM_GAME_SERVER : PACKET_HEADER {
-	uint16_t userCenterObjNum1;
-	uint16_t userCenterObjNum2;
-	uint16_t userRaidServerObjNum1;
-	uint16_t userRaidServerObjNum2;
+	uint16_t userCenterObjNum;
+	uint16_t userRaidServerObjNum;
 	uint16_t roomNum;
 };
 
@@ -217,12 +220,13 @@ struct SYNC_HIGHSCORE_REQUEST : PACKET_HEADER {
 
 enum class PACKET_ID : uint16_t {
 
-	//  ---------------------------- CENTER (1~)  ----------------------------
+	// ======================= CENTER SERVER (1~ ) =======================
+	
 	// SYSTEM (1~)
 	USER_CONNECT_REQUEST = 1,
 	USER_CONNECT_RESPONSE = 2,
-	USER_LOGOUT_REQUEST = 3,
-	USER_FULL_REQUEST = 6,
+	USER_LOGOUT_REQUEST = 3, 
+	USER_FULL_REQUEST = 6, 
 	WAITTING_NUMBER_REQUSET = 7,
 	SERVER_USER_COUNTS_REQUEST = 8,
 	SERVER_USER_COUNTS_RESPONSE = 9,
@@ -235,13 +239,15 @@ enum class PACKET_ID : uint16_t {
 	MATCHING_CANCEL_REQUEST = 47,
 	MATCHING_CANCEL_RESPONSE = 48,
 	RAID_READY_REQUEST = 49,
+	RAID_READY_FAIL = 50,
 
 	RAID_END_REQUEST_TO_GAME_SERVER = 52,
 
-	RAID_RANKING_REQUEST = 55,
+	RAID_RANKING_REQUEST = 55, 
 	RAID_RANKING_RESPONSE = 56,
 
-	//  ---------------------------- LOGIN (801~)  ----------------------------
+
+	// ======================= LOGIN SERVER (801~ ) =======================
 
 	// SYSTEM (801~)
 	LOGIN_SERVER_CONNECT_REQUEST = 801,
@@ -266,8 +272,9 @@ enum class PACKET_ID : uint16_t {
 	SYNCRONIZE_LOGOUT_REQUEST = 852,
 	SYNCRONIZE_DISCONNECT_REQUEST = 853,
 
-	//  ---------------------------- CHANNEL (1501~)  ----------------------------
 
+	// ======================= CHANNEL SERVER (1501~ ) =======================
+	
 	// SYSTEM (1501~)
 	CHANNEL_SERVER_CONNECT_REQUEST = 1501,
 	CHANNEL_SERVER_CONNECT_RESPONSE = 1502,
@@ -302,8 +309,8 @@ enum class PACKET_ID : uint16_t {
 	MOV_EQUIPMENT_RESPONSE = 1540,
 
 
-	//  ---------------------------- MATCHING (5001~)  ----------------------------
-
+	// ======================= MATCHING SERVER (5001~ ) =======================
+	
 	//SYSTEM (5001~)
 	MATCHING_SERVER_CONNECT_REQUEST = 5001,
 	MATCHING_SERVER_CONNECT_RESPONSE = 5002,
@@ -318,8 +325,8 @@ enum class PACKET_ID : uint16_t {
 	MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER = 5022,
 
 
-	//  ---------------------------- RAID(8001~)  ----------------------------
-
+	// ======================= RAID GAME SERVER (8001~ ) =======================
+	
 	RAID_SERVER_CONNECT_REQUEST = 8001,
 	RAID_SERVER_CONNECT_RESPONSE = 8002,
 

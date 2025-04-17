@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <string>
 
-//  ---------------------------- SERVER INFO  ----------------------------
+//  =========================== SERVER INFO  ===========================
 
 enum class ServerType : uint16_t {
 	// Center Server (0)

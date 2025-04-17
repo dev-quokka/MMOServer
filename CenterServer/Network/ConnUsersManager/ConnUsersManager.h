@@ -15,8 +15,12 @@ public:
         }
     }
 
-    void InsertUser(uint16_t connObjNum, ConnUser* connUser); // Init ConnUsers
+
+    // ================== CONNECTION USER MANAGEMENT ==================
+
+    void InsertUser(uint16_t connObjNum, ConnUser* connUser);
     ConnUser* FindUser(uint16_t connObjNum);
+
 
 private:
     std::vector<ConnUser*> ConnUsers; // ConnUsers Obj

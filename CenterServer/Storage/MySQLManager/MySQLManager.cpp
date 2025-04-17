@@ -1,5 +1,7 @@
 #include "MySQLManager.h"
 
+// ====================== INITIALIZATION =======================
+
 bool MySQLManager::init() {
     mysql_init(&Conn);
 
@@ -13,6 +15,9 @@ bool MySQLManager::init() {
     std::cout << "Mysql Connect Success" << std::endl;
     return true;
 }
+
+
+// ======================= SYNCRONIZATION =======================
 
 bool MySQLManager::LogoutSync(uint16_t userPk_, USERINFO userInfo_, std::vector<EQUIPMENT> userEquip_, std::vector<CONSUMABLES> userConsum_, std::vector<MATERIALS> userMat_) {
     SyncUserInfo(userPk_, userInfo_);
@@ -48,7 +53,7 @@ bool MySQLManager::SyncUserInfo(uint16_t userPk_, USERINFO userInfo_) {
     return true;
 }
 
-bool MySQLManager::SyncEquipment(uint16_t userPk_, std::vector<EQUIPMENT> userEquip_) {
+bool MySQLManager::SyncEquipment(uint16_t userPk_, std::vector<EQUIPMENT> userEquip_) {    
     try {
         std::ostringstream query_s;
         query_s << "UPDATE Equipment SET ";

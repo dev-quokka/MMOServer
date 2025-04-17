@@ -26,16 +26,19 @@ class QuokkaServer {
 public:
     QuokkaServer(uint16_t maxClientCount_) : maxClientCount(maxClientCount_), AcceptQueue(maxClientCount_), WaittingQueue(maxClientCount_) {}
 
+    // ====================== INITIALIZATION =======================
     bool init(const uint16_t MaxThreadCnt_, int port_);
     bool StartWork();
     void ServerEnd();
 
 private:
+    // ===================== THREAD MANAGEMENT =====================
     bool CreateWorkThread();
     bool CreateAccepterThread();
 
     void WorkThread(); // IOCP Complete Event Thread
     void AccepterThread(); // Accept req Thread
+
 
     // 136 bytes 
     boost::lockfree::queue<ConnUser*> AcceptQueue; // For Aceept User Queue

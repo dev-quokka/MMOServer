@@ -17,9 +17,11 @@ public:
 		std::cout << "MySQL End" << std::endl;
 	}
 
+	// ====================== INITIALIZATION =======================
 	bool init();
 
-	// SYNCRONIZATION
+
+	// ======================= SYNCRONIZATION =======================
 	bool LogoutSync(uint16_t userPk_, USERINFO userInfo_, std::vector<EQUIPMENT> userEquip_, std::vector<CONSUMABLES> userConsum_, std::vector<MATERIALS> userMat_);
 
 	bool SyncUserInfo(uint16_t userPk_, USERINFO userInfo_);
