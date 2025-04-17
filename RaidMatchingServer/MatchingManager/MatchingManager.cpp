@@ -94,7 +94,6 @@ void MatchingManager::MatchingThread(uint16_t groupStartIdx_, uint16_t groupEndI
                         for (int i = 0; i < MAX_RAID_ROOM_PLAYERS; i++) {
 
                             if (accessor1->second.empty()) { // Not enough players for raid match
-                                tempMatchedUser.clear();
                                 break;
                             }
 
@@ -149,7 +148,6 @@ void MatchingManager::MatchingThread(uint16_t groupStartIdx_, uint16_t groupEndI
                     for (int i = 0; i < MAX_RAID_ROOM_PLAYERS; i++) {
 
                         if (accessor1->second.empty()) { // Not enough players for raid match
-                            tempMatchedUser.clear();
                             break;
                         }
 
