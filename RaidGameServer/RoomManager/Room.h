@@ -5,17 +5,13 @@
 #include <string>
 #include <cstdint>
 #include <iostream>
-#include <winsock2.h>
-#include <ws2tcpip.h>
 
-#include "RaidUserInfo.h"
-
-constexpr int waitingUsersTime = 30; // Time to wait for all users to be ready
+#include "RaidConfig.h"
 
 class Room {
 public:
 	Room(SOCKET* udpSkt_) {
-		ruInfos.resize(3); // // Add +1 to avoid using index 0
+		ruInfos.resize(MAX_RAID_ROOM_PLAYERS + 1); // MAX_RAID_ROOM_PLAYERS + 1 to avoid using index 0
 		udpSkt = udpSkt_;
 	}
 	~Room() {
@@ -24,19 +20,11 @@ public:
 		}
 	}
 
-
 	//  ---------------------------- SET  ----------------------------
 
-	bool Set(uint16_t roomNum_, uint16_t mapNum_, uint16_t timer_, int mobHp_, RaidUserInfo* raidUserInfo1, RaidUserInfo* raidUserInfo2) {
-		RaidUserInfo* ruInfo1 = new RaidUserInfo;
-		ruInfos[1] = raidUserInfo1;
-
-		RaidUserInfo* ruInfo2 = new RaidUserInfo;
-		ruInfos[2] = raidUserInfo2;
-
-		mapNum = mapNum_;
+	bool Set(uint16_t roomNum_, int mobHp_) {
+		roomNum = roomNum_;
 		mobHp.store(mobHp_);
-		
 		return true;
 	}
 
@@ -48,6 +36,10 @@ public:
 
 	void SetSockAddr(uint16_t userRaidServerObjNum_, sockaddr_in userAddr_) { // Set UDP socket address received from user 
 		ruInfos[userRaidServerObjNum_]->userAddr = userAddr_;
+	}
+
+	void SetMapNum(uint16_t mapNum_) {
+		mapNum = mapNum_;
 	}
 
 	std::chrono::time_point<std::chrono::steady_clock> SetEndTime() { // Set raid end time
@@ -70,28 +62,12 @@ public:
 		return mapNum;
 	}
 
-	RaidUserInfo* GetMyInfo(uint16_t userRaidServerObjNum_) {
-		if (userRaidServerObjNum_ == 1) return ruInfos[1];
-		else if (userRaidServerObjNum_ == 2) return ruInfos[2];
+	RaidUserInfo* GetUserInfoByObjNum(uint16_t userRaidServerObjNum_) {
+		return ruInfos[userRaidServerObjNum_];
 	}
 
-	RaidUserInfo* GetTeamInfo(uint16_t userRaidServerObjNum_) {
-		if (userRaidServerObjNum_ == 2) return ruInfos[1];
-		else if (userRaidServerObjNum_ == 1) return ruInfos[2];
-	}
-
-	unsigned int GetMyScore(uint16_t userRaidServerObjNum_) {
-		if (userRaidServerObjNum_ == 1) return ruInfos[1]->userScore.load();
-		else if (userRaidServerObjNum_ == 2) return ruInfos[2]->userScore.load();
-	}
-
-	unsigned int GetTeamScore(uint16_t userRaidServerObjNum_) {
-		if (userRaidServerObjNum_ == 2) return ruInfos[1]->userScore.load();
-		else if (userRaidServerObjNum_ == 1) return ruInfos[2]->userScore.load();
-	}
-
-	uint16_t GetRoomUserCnt() {
-		return static_cast<uint16_t>(ruInfos.size());
+	unsigned int GetUserScoreByObjNum(uint16_t userRaidServerObjNum_) {
+		return ruInfos[userRaidServerObjNum_]->userScore.load();
 	}
 
 	std::chrono::time_point<std::chrono::steady_clock> GetEndTime() {
@@ -111,8 +87,18 @@ public:
 		return timeOver;
 	}
 
+	uint16_t UserSetCheck(RaidUserInfo* raidUserInfo_) { // Check if all users are ready
+		
+		uint16_t tempNum = startCheck.fetch_add(1) + 1;
+
+		raidUserInfo_->userRaidServerObjNum = tempNum;
+		ruInfos[tempNum] = raidUserInfo_;
+
+		return tempNum;
+	}
+
 	bool StartCheck() { // Check if all users are ready
-		if (startCheck.fetch_add(1) + 1 == 2) {
+		if (startCheck.fetch_add(1) + 1 == MAX_RAID_ROOM_PLAYERS) {
 			endTime = std::chrono::steady_clock::now() + std::chrono::minutes(2) + std::chrono::seconds(8);
 			return true;
 		}
@@ -163,18 +149,17 @@ private:
 
 	// 8 bytes
 	SOCKET* udpSkt;
-	std::chrono::time_point<std::chrono::steady_clock> endTime = std::chrono::steady_clock::now() + std::chrono::seconds(waitingUsersTime); // Add buffer time to prevent instant room deletion
+	std::chrono::time_point<std::chrono::steady_clock> endTime = std::chrono::steady_clock::now() + std::chrono::seconds(WAITING_USERS_TIME); // Add buffer time to prevent instant room deletion
 
 	// 4 bytes
 	std::atomic<int> mobHp;
-	char mobHpBuf[sizeof(unsigned int)];
 
 	// 2 bytes
 	uint16_t roomNum;
 	uint16_t mapNum;
+	std::atomic<uint16_t> startCheck = 0;
 
 	// 1 bytes
-	bool timeOver = false;
+	std::atomic<bool> timeOver = false;
 	std::atomic<bool> finishCheck = false;
-	std::atomic<uint16_t> startCheck = 0;
 };

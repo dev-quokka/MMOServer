@@ -79,10 +79,12 @@ void RoomManager::TickRateThread() {
     }
 }
 
-bool RoomManager::MakeRoom(uint16_t roomNum_, uint16_t mapNum_, uint16_t timer_, int mobHp_, RaidUserInfo* raidUserInfo1, RaidUserInfo* raidUserInfo2) {
+bool RoomManager::MakeRoom(uint16_t roomNum_, int mobHp_) {
+    if (roomMap.find(roomNum_) != roomMap.end()) return true; // // Return if the room has already been created
+
     Room* room = new Room(&udpSkt);
 
-    if (!room->Set(roomNum_, mapNum_, timer_, mobHp_, raidUserInfo1, raidUserInfo2)) {
+    if (!room->Set(roomNum_, mobHp_)) {
         std::cout << "Making Room Fail in RoomManager" << std::endl;
         return false;
     }

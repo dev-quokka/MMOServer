@@ -9,7 +9,7 @@
 #include <unordered_map>
 
 const uint32_t MAX_RECV_SIZE = 1024; // Set Max RECV Buf
-const uint32_t MAX_CIRCLE_SIZE = 8096;
+const uint32_t MAX_CIRCLE_SIZE = 1024;
 
 //  ---------------------------- SYSTEM  ----------------------------
 

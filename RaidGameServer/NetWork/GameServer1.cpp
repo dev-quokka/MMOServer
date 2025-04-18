@@ -2,11 +2,9 @@
 
 bool GameServer1::init(const uint16_t MaxThreadCnt_, int port_) {
     WSADATA wsadata;
-    int check = 0;
     MaxThreadCnt = MaxThreadCnt_; // Set the number of worker threads
 
-    check = WSAStartup(MAKEWORD(2, 2), &wsadata);
-    if (check) {
+    if (WSAStartup(MAKEWORD(2, 2), &wsadata)) {
         std::cout << "Failed to WSAStartup" << std::endl;
         return false;
     }
@@ -23,7 +21,7 @@ bool GameServer1::init(const uint16_t MaxThreadCnt_, int port_) {
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     if (bind(serverSkt, (SOCKADDR*)&addr, sizeof(addr))) {
-        std::cout << " Failed to Bind :" << WSAGetLastError() << std::endl;
+        std::cout << "Failed to Bind :" << WSAGetLastError() << std::endl;
         return false;
     }
 
@@ -70,12 +68,12 @@ bool GameServer1::CenterServerConnect() {
 
     centerObj->ConnUserRecv();
 
-    IM_GAME_REQUEST imReq;
-    imReq.PacketId = (UINT16)PACKET_ID::IM_GAME_REQUEST;
-    imReq.PacketLength = sizeof(IM_GAME_REQUEST);
-    imReq.gameServerNum = GAME_NUM;
+    RAID_SERVER_CONNECT_REQUEST imReq;
+    imReq.PacketId = (UINT16)PACKET_ID::RAID_SERVER_CONNECT_REQUEST;
+    imReq.PacketLength = sizeof(RAID_SERVER_CONNECT_REQUEST);
+    imReq.gameServerNum = GAME_SERVER_NUM;
 
-    centerObj->PushSendMsg(sizeof(IM_GAME_REQUEST), (char*)&imReq);
+    centerObj->PushSendMsg(sizeof(RAID_SERVER_CONNECT_REQUEST), (char*)&imReq);
 
     return true;
 }
@@ -100,26 +98,22 @@ bool GameServer1::MatchingServerConnect() {
 
     matchingObj->ConnUserRecv();
 
-    MATCHING_SERVER_CONNECT_REQUEST imReq;
-    imReq.PacketId = (UINT16)PACKET_ID::MATCHING_SERVER_CONNECT_REQUEST;
-    imReq.PacketLength = sizeof(MATCHING_SERVER_CONNECT_REQUEST);
-    imReq.gameServerNum = GAME_NUM;
+    MATCHING_SERVER_CONNECT_REQUEST_FROM_RAID_SERVER imReq;
+    imReq.PacketId = (UINT16)PACKET_ID::MATCHING_SERVER_CONNECT_REQUEST_FROM_RAID_SERVER;
+    imReq.PacketLength = sizeof(MATCHING_SERVER_CONNECT_REQUEST_FROM_RAID_SERVER);
+    imReq.gameServerNum = GAME_SERVER_NUM;
 
-    matchingObj->PushSendMsg(sizeof(MATCHING_SERVER_CONNECT_REQUEST), (char*)&imReq);
+    matchingObj->PushSendMsg(sizeof(MATCHING_SERVER_CONNECT_REQUEST_FROM_RAID_SERVER), (char*)&imReq);
 
     return true;
 }
 
 bool GameServer1::StartWork() {
-    bool check = CreateWorkThread();
-    if (!check) {
-        std::cout << "Failed to Create Work Thread" << std::endl;
+    if (!CreateWorkThread()) {
         return false;
     }
 
-    check = CreateAccepterThread();
-    if (!check) {
-        std::cout << "Failed to Create Accepter Thread" << std::endl;
+    if (!CreateAccepterThread()) {
         return false;
     }
 
@@ -143,7 +137,7 @@ bool GameServer1::StartWork() {
     }
 
     roomManager->init();
-    packetManager->init(MaxThreadCnt);// Run MySQL && Run Redis Threads (The number of Clsuter Master Nodes + 1)
+    packetManager->init(MaxThreadCnt);
     packetManager->SetManager(connUsersManager, roomManager);
 
     MatchingServerConnect();
@@ -154,6 +148,7 @@ bool GameServer1::StartWork() {
 
 bool GameServer1::CreateWorkThread() {
     WorkRun = true;
+
     try {
         auto threadCnt = MaxThreadCnt;
         for (int i = 0; i < threadCnt; i++) {
@@ -161,14 +156,16 @@ bool GameServer1::CreateWorkThread() {
         }
     }
     catch (const std::system_error& e) {
-        std::cerr << "Failed to Create Work Threads: " << e.what() << std::endl;
+        std::cerr << "Failed to Create Work Threads : " << e.what() << std::endl;
         return false;
     }
+
     return true;
 }
 
 bool GameServer1::CreateAccepterThread() {
     AccepterRun = true;
+
     try {
         auto threadCnt = MaxThreadCnt / 4 + 1;
         for (int i = 0; i < threadCnt; i++) {
@@ -176,9 +173,10 @@ bool GameServer1::CreateAccepterThread() {
         }
     }
     catch (const std::system_error& e) {
-        std::cerr << "Failed to Create Accepter Threads: " << e.what() << std::endl;
+        std::cerr << "Failed to Create Accepter Threads : " << e.what() << std::endl;
         return false;
     }
+
     return true;
 }
 
@@ -197,7 +195,7 @@ void GameServer1::WorkThread() {
             INFINITE
         );
 
-        if (gqSucces && dwIoSize == 0 && lpOverlapped == NULL) { // Server End Request
+        if (gqSucces && dwIoSize == 0 && lpOverlapped == NULL) {
             WorkRun = false;
             continue;
         }
@@ -207,7 +205,13 @@ void GameServer1::WorkThread() {
         connUser = connUsersManager->FindUser(connObjNum);
 
         if (!gqSucces || (dwIoSize == 0 && overlappedEx->taskType != TaskType::ACCEPT)) { // User Disconnect
-            std::cout << "socket " << connUser->GetSocket() << " Disconnect" << std::endl;
+            std::cout << "socket " << connUser->GetSocket() << " Disconnected" << std::endl;
+
+            if (connObjNum == 0) { // Auto shutdown if the center server is disconnected
+                std::cout << "Center Server Disconnected" << std::endl;
+                ServerEnd();
+                exit(0);
+            }
 
             packetManager->Disconnect(connObjNum);
             connUser->Reset(); // Reset 
@@ -217,12 +221,12 @@ void GameServer1::WorkThread() {
 
         if (overlappedEx->taskType == TaskType::ACCEPT) { // User Connect
             if (connUser->ConnUserRecv()) {
-                std::cout << "socket " << connUser->GetSocket() << " Connect Requset" << std::endl;
+                std::cout << "socket " << connUser->GetSocket() << " Connection Requset" << std::endl;
             }
             else { // Bind Fail
                 connUser->Reset(); // Reset ConnUser
                 AcceptQueue.push(connUser);
-                std::cout << "socket " << connUser->GetSocket() << " ConnectFail" << std::endl;
+                std::cout << "socket " << connUser->GetSocket() << " Connection Failed" << std::endl;
             }
         }
         else if (overlappedEx->taskType == TaskType::RECV) {
