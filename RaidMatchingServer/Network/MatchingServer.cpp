@@ -1,5 +1,7 @@
 #include "MatchingServer.h"
 
+// =========================== INITIALIZATION ===========================
+
 bool MatchingServer::Init(const uint16_t MaxThreadCnt_, int port_) {
     WSAData wsadata;
     MaxThreadCnt = MaxThreadCnt_; // Set the number of worker threads
@@ -48,13 +50,98 @@ bool MatchingServer::Init(const uint16_t MaxThreadCnt_, int port_) {
     return true;
 }
 
+bool MatchingServer::StartWork() {
+    if (!CreateWorkThread()) {
+        return false;
+    }
+
+    if (!CreateAccepterThread()) {
+        return false;
+    }
+
+    connServersManager = new ConnServersManager(SERVER_COUNT);
+
+    matchingManager = new MatchingManager;
+    redisManager = new RedisManager;
+
+    matchingManager->Init(connServersManager);
+    redisManager->init(1);
+
+    // 0 : Center Server
+    ConnServer* connServer = new ConnServer(MAX_CIRCLE_SIZE, 0, IOCPHandle, overLappedManager);
+    connServersManager->InsertServer(0, connServer);
+
+    CenterServerConnect();
+
+    for (int i = 1; i < SERVER_COUNT; i++) { // Make ConnUsers Queue
+        ConnServer* connServer = new ConnServer(MAX_CIRCLE_SIZE, i, IOCPHandle, overLappedManager);
+
+        AcceptQueue.push(connServer); // Push ConnUser
+        connServersManager->InsertServer(i, connServer); // Init ConnUsers
+    }
+
+    redisManager->SetManager(connServersManager, matchingManager);
+}
+
+bool MatchingServer::CreateWorkThread() {
+    workRun = true;
+
+    try {
+        for (int i = 0; i < MaxThreadCnt; i++) {
+            workThreads.emplace_back([this]() { WorkThread(); });
+        }
+    }
+    catch (const std::system_error& e) {
+        std::cerr << "Failed to Create Work Thread : " << e.what() << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+void MatchingServer::ServerEnd() {
+    workRun = false;
+    AccepterRun = false;
+
+    for (int i = 0; i < workThreads.size(); i++) {
+        PostQueuedCompletionStatus(IOCPHandle, 0, 0, nullptr);
+    }
+
+    for (int i = 0; i < workThreads.size(); i++) { // Shutdown worker threads
+        if (workThreads[i].joinable()) {
+            workThreads[i].join();
+        }
+    }
+
+    for (int i = 0; i < acceptThreads.size(); i++) { // Shutdown accept threads
+        if (acceptThreads[i].joinable()) {
+            acceptThreads[i].join();
+        }
+    }
+
+    delete redisManager;
+    delete connServersManager;
+    delete matchingManager;
+
+    CloseHandle(IOCPHandle);
+    closesocket(serverSkt);
+    WSACleanup();
+
+    std::cout << "Wait 5 Seconds Before Shutdown" << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait 5 seconds before server shutdown
+    std::cout << "Game Server1 Shutdown" << std::endl;
+}
+
+
+// ========================== SERVER CONNECTION ==========================
+
 bool MatchingServer::CenterServerConnect() {
-    auto centerObj = connServersManager->FindUser(0);
+    auto centerObj = connServersManager->FindServer(0);
 
     SOCKADDR_IN addr;
     ZeroMemory(&addr, sizeof(addr));
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(CENTER_SERVER_PORT);
+    addr.sin_port = htons(ServerAddressMap[ServerType::CenterServer].port);
     inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr.s_addr);
 
     std::cout << "Connecting To Center Server" << std::endl;
@@ -68,71 +155,20 @@ bool MatchingServer::CenterServerConnect() {
 
     centerObj->ServerRecv();
 
-    IM_MATCHING_REQUEST imReq;
-    imReq.PacketId = (UINT16)PACKET_ID::IM_MATCHING_REQUEST;
-    imReq.PacketLength = sizeof(IM_MATCHING_REQUEST);
+    MATCHING_SERVER_CONNECT_REQUEST imReq;
+    imReq.PacketId = (UINT16)PACKET_ID::MATCHING_SERVER_CONNECT_REQUEST;
+    imReq.PacketLength = sizeof(MATCHING_SERVER_CONNECT_REQUEST);
 
-    centerObj->PushSendMsg(sizeof(IM_MATCHING_REQUEST), (char*)&imReq);
+    centerObj->PushSendMsg(sizeof(MATCHING_SERVER_CONNECT_REQUEST), (char*)&imReq);
 
-    return true;
-}
-
-bool MatchingServer::StartWork() {
-    bool check = CreateWorkThread();
-    if (!check) {
-        return false;
-    }
-
-    check = CreateAccepterThread();
-    if (!check) {
-        return false;
-    }
-
-    connServersManager = new ConnServersManager(SERVER_COUNT);
-
-    matchingManager = new MatchingManager;
-    packetManager = new PacketManager;
-
-    matchingManager->Init(connServersManager);
-    packetManager->init(1);
-
-    // 0 : Center Server
-    ConnServer* connServer = new ConnServer(MAX_CIRCLE_SIZE, 0, IOCPHandle, overLappedManager);
-    connServersManager->InsertUser(0, connServer);
-
-    CenterServerConnect();
-
-    for (int i = 1; i < SERVER_COUNT; i++) { // Make ConnUsers Queue
-        ConnServer* connServer = new ConnServer(MAX_CIRCLE_SIZE, i, IOCPHandle, overLappedManager);
-
-        AcceptQueue.push(connServer); // Push ConnUser
-        connServersManager->InsertUser(i, connServer); // Init ConnUsers
-    }
-
-    packetManager->SetManager(connServersManager, matchingManager);
-}
-
-bool MatchingServer::CreateWorkThread() {
-    workRun = true;
-    auto threadCnt = MaxThreadCnt;
-    try {
-        for (int i = 0; i < threadCnt; i++) {
-            workThreads.emplace_back([this]() { WorkThread(); });
-        }
-    }
-    catch (const std::system_error& e) {
-        std::cerr << "Failed to Create Work Thread : " << e.what() << std::endl;
-        return false;
-    }
     return true;
 }
 
 bool MatchingServer::CreateAccepterThread() {
     AccepterRun = true;
-    auto threadCnt = MaxThreadCnt / 4 + 1;
 
     try {
-        for (int i = 0; i < threadCnt; i++) {
+        for (int i = 0; i < MaxThreadCnt / 4 + 1; i++) {
             acceptThreads.emplace_back([this]() { AccepterThread(); });
         }
     }
@@ -166,12 +202,17 @@ void MatchingServer::WorkThread() {
 
         auto overlappedEx = (OverlappedEx*)lpOverlapped;
         uint16_t connObjNum = overlappedEx->connObjNum;
-        connServer = connServersManager->FindUser(connObjNum);
+        connServer = connServersManager->FindServer(connObjNum);
 
         if (!gqSucces || (dwIoSize == 0 && overlappedEx->taskType != TaskType::ACCEPT)) { // Server Disconnect
+            std::cout << "socket " << connServer->GetSocket() << " Disconnected" << std::endl;
+            
             if (connObjNum == 0) {
-                std::cout << "Center Server Disconnected" << std::endl;
+                std::cout << "========= Center Server Disconnected =========" << std::endl;
             }
+
+            connServer->Reset(); // Reset 
+            AcceptQueue.push(connServer);
             continue;
         }
         if (overlappedEx->taskType == TaskType::ACCEPT) { // User Connect
@@ -185,19 +226,19 @@ void MatchingServer::WorkThread() {
             }
         }
         else if (overlappedEx->taskType == TaskType::RECV) {
-            packetManager->PushPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf);
+            redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf);
             connServer->ServerRecv(); // Wsarecv Again
             overLappedManager->returnOvLap(overlappedEx);
-        }
-        else if (overlappedEx->taskType == TaskType::NEWRECV) {
-            packetManager->PushPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf);
-            connServer->ServerRecv(); // Wsarecv Again
-            delete[] overlappedEx->wsaBuf.buf;
-            delete overlappedEx;
         }
         else if (overlappedEx->taskType == TaskType::SEND) {
             overLappedManager->returnOvLap(overlappedEx);
             connServer->SendComplete();
+        }
+        else if (overlappedEx->taskType == TaskType::NEWRECV) {
+            redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf);
+            connServer->ServerRecv(); // Wsarecv Again
+            delete[] overlappedEx->wsaBuf.buf;
+            delete overlappedEx;
         }
         else if (overlappedEx->taskType == TaskType::NEWSEND) {
             delete[] overlappedEx->wsaBuf.buf;
@@ -229,37 +270,4 @@ void MatchingServer::AccepterThread() {
             //}
         }
     }
-}
-
-void MatchingServer::ServerEnd() {
-    workRun = false;
-    AccepterRun = false;
-
-    for (int i = 0; i < workThreads.size(); i++) {
-        PostQueuedCompletionStatus(IOCPHandle, 0, 0, nullptr);
-    }
-
-    for (int i = 0; i < workThreads.size(); i++) { // Shutdown worker threads
-        if (workThreads[i].joinable()) {
-            workThreads[i].join();
-        }
-    }
-
-    for (int i = 0; i < acceptThreads.size(); i++) { // Shutdown accept threads
-        if (acceptThreads[i].joinable()) {
-            acceptThreads[i].join();
-        }
-    }
-
-    delete packetManager;
-    delete connServersManager;
-    delete matchingManager;
-
-    CloseHandle(IOCPHandle);
-    closesocket(serverSkt);
-    WSACleanup();
-
-    std::cout << "Wait 5 Seconds Before Shutdown" << std::endl;
-    std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait 5 seconds before server shutdown
-    std::cout << "Game Server1 Shutdown" << std::endl;
 }

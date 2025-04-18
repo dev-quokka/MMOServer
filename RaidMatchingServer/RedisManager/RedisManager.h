@@ -3,21 +3,19 @@
 
 #include <winsock2.h>
 #include <windef.h>
-#include <cstdint>
-#include <iostream>
 #include <random>
-#include <unordered_map>
 #include <sw/redis++/redis++.h>
 
 #include "Packet.h"
+#include "ServerEnum.h"
 #include "ConnServersManager.h"
 #include "MatchingManager.h"
 
-constexpr int MAX_PACKET_SIZE = 128;
+constexpr int MAX_MATCHNIG_PACKET_SIZE = 128;
 
-class PacketManager {
+class RedisManager {
 public:
-    ~PacketManager() {
+    ~RedisManager() {
         redisRun = false;
 
         for (int i = 0; i < redisThreads.size(); i++) { // Shutdown Redis Threads
@@ -26,31 +24,34 @@ public:
             }
         }
     }
-
+    // ====================== INITIALIZATION =======================
     void init(const uint16_t RedisThreadCnt_);
-    void PushPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_);
     void SetManager(ConnServersManager* connServersManager_, MatchingManager* matchingManager_);
 
+
+    // ===================== PACKET MANAGEMENT =====================
+    void PushRedisPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_);
+
 private:
+    // ===================== REDIS MANAGEMENT =====================
     bool CreateRedisThread(const uint16_t RedisThreadCnt_);
     void RedisRun(const uint16_t RedisThreadCnt_);
     void RedisThread();
 
-    //SYSTEM
+    // ======================= MATCHING SERVER =======================
     void ImMatchingResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void ImGameRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    void ServerDisConnect(uint16_t connObjNum_);
 
-    // RAID
+    // ======================= RAID GAME SERVER =======================
     void MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    void MatchStartFail(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); 
 
-    typedef void(PacketManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
+
+    typedef void(RedisManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
 
     // 242 bytes
     sw::redis::ConnectionOptions connection_options;
-    boost::lockfree::queue<DataPacket> procSktQueue{ MAX_PACKET_SIZE };
+    boost::lockfree::queue<DataPacket> procSktQueue{ MAX_MATCHNIG_PACKET_SIZE };
 
     // 80 bytes
     std::unordered_map<uint16_t, RECV_PACKET_FUNCTION> packetIDTable;
@@ -67,6 +68,6 @@ private:
     MatchingManager* matchingManager;
 
     // 1 bytes
-    bool redisRun = false;
+    std::atomic<bool> redisRun = false;
 };
 

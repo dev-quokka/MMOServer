@@ -1,5 +1,7 @@
 #include "MatchingManager.h"
 
+// ============================== INITIALIZATION ===============================
+
 bool MatchingManager::Init(ConnServersManager* connServersManager_) {
     connServersManager = connServersManager_;
 
@@ -15,6 +17,9 @@ bool MatchingManager::Init(ConnServersManager* connServersManager_) {
 
     return true;
 }
+
+
+// ============================= MATCHING MANAGEMENT =============================
 
 bool MatchingManager::CreateMatchThread(uint16_t matchThreadCount_) {
     matchRun = true;
@@ -94,6 +99,7 @@ void MatchingManager::MatchingThread(uint16_t groupStartIdx_, uint16_t groupEndI
                         for (int i = 0; i < MAX_RAID_ROOM_PLAYERS; i++) {
 
                             if (accessor1->second.empty()) { // Not enough players for raid match
+                                tempMatchedUser.clear();
                                 break;
                             }
 
@@ -123,7 +129,7 @@ void MatchingManager::MatchingThread(uint16_t groupStartIdx_, uint16_t groupEndI
                             tempRoomNum = 0; // If roomNum is used, reset it to 0
                             tempMatchedUser.clear();
                         }
-                        else { // Move to the next group
+                        else { // Delete matched user objects and Move to the next group
                             for (int i = 0; i < tempMatchedUser.size(); i++) {
                                 accessor1->second.insert(tempMatchedUser[i]);
                             }
@@ -148,6 +154,7 @@ void MatchingManager::MatchingThread(uint16_t groupStartIdx_, uint16_t groupEndI
                     for (int i = 0; i < MAX_RAID_ROOM_PLAYERS; i++) {
 
                         if (accessor1->second.empty()) { // Not enough players for raid match
+                            tempMatchedUser.clear();
                             break;
                         }
 
@@ -177,7 +184,7 @@ void MatchingManager::MatchingThread(uint16_t groupStartIdx_, uint16_t groupEndI
                         tempRoomNum = 0; // If roomNum is used, reset it to 0
                         tempMatchedUser.clear();
                     }
-                    else { // Move to the next group
+                    else { // Delete matched user objects and Move to the next group
                         for (int i = 0; i < tempMatchedUser.size(); i++) {
                             accessor1->second.insert(tempMatchedUser[i]);
                         }
