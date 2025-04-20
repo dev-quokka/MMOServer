@@ -1,10 +1,9 @@
 #pragma once
+#include <iostream>
 
 #include "Define.h"
-#include <iostream>
-#include <boost/lockfree/queue.hpp>
 
-constexpr uint16_t OVERLAPPED_TCP_QUEUE_SIZE = 10;
+constexpr uint16_t OVERLAPPED_QUEUE_SIZE = 10;
 
 class OverLappedManager {
 public:
@@ -24,8 +23,7 @@ public:
 	OverlappedEx* getOvLap();
 	void returnOvLap(OverlappedEx* overlappedEx_); // Reset object
 
-
 private:
-	boost::lockfree::queue<OverlappedEx*> ovLapPool{ OVERLAPPED_TCP_QUEUE_SIZE };
+	boost::lockfree::queue<OverlappedEx*> ovLapPool{ OVERLAPPED_QUEUE_SIZE };
 };
 

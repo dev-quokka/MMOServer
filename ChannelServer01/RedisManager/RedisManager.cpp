@@ -10,7 +10,7 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
     // SYSTEM
     packetIDTable[(UINT16)PACKET_ID::USER_CONNECT_CHANNEL_REQUEST] = &RedisManager::UserConnect;
 
-    packetIDTable[(UINT16)PACKET_ID::IM_CHANNEL_RESPONSE] = &RedisManager::ImChannelRequest;
+    packetIDTable[(UINT16)PACKET_ID::CHANNEL_SERVER_CONNECT_RESPONSE] = &RedisManager::ChannelServerConnectRequest;
     packetIDTable[(UINT16)PACKET_ID::CHANNEL_USER_COUNTS_REQUEST] = &RedisManager::SendChannelUserCounts;
     packetIDTable[(UINT16)PACKET_ID::MOVE_CHANNEL_REQUEST] = &RedisManager::MoveChannel;
 
@@ -34,7 +34,7 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
     channelManager->init();
 }
 
-void RedisManager::RedisRun(const uint16_t RedisThreadCnt_) { // Connect Redis Server
+bool RedisManager::RedisRun(const uint16_t RedisThreadCnt_) { // Connect Redis Server
     try {
         connection_options.host = "127.0.0.1";  // Redis Cluster IP
         connection_options.port = 7001;  // Redis Cluster Master Node Port
@@ -48,7 +48,10 @@ void RedisManager::RedisRun(const uint16_t RedisThreadCnt_) { // Connect Redis S
     }
     catch (const  sw::redis::Error& err) {
         std::cout << "Redis Connect Error : " << err.what() << std::endl;
+		return false;
     }
+
+	return true;
 }
 
 void RedisManager::Disconnect(uint16_t connObjNum_) {
@@ -62,9 +65,17 @@ void RedisManager::SetManager(ConnUsersManager* connUsersManager_, InGameUserMan
 
 bool RedisManager::CreateRedisThread(const uint16_t RedisThreadCnt_) {
     redisRun = true;
-    for (int i = 0; i < RedisThreadCnt_; i++) {
-        redisThreads.emplace_back(std::thread([this]() {RedisThread(); }));
+    
+    try {
+        for (int i = 0; i < RedisThreadCnt_; i++) {
+            redisThreads.emplace_back(std::thread([this]() { RedisThread(); }));
+        }
     }
+    catch (const std::system_error& e) {
+        std::cerr << "Create Redis Thread Failed : " << e.what() << std::endl;
+        return false;
+    }
+
     return true;
 }
 
@@ -106,8 +117,8 @@ void RedisManager::PushRedisPacket(const uint16_t connObjNum_, const uint32_t si
 
 //  ---------------------------- SYSTEM  ----------------------------
 
-void RedisManager::ImChannelRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
-    auto centerConn = reinterpret_cast<IM_CHANNEL_RESPONSE*>(pPacket_);
+void RedisManager::ChannelServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    auto centerConn = reinterpret_cast<CHANNEL_SERVER_CONNECT_RESPONSE*>(pPacket_);
 
     if (!centerConn->isSuccess) {
         std::cout << "Failed to Authenticate with Center Server" << std::endl;
@@ -118,6 +129,7 @@ void RedisManager::ImChannelRequest(uint16_t connObjNum_, uint16_t packetSize_, 
 }
 
 void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+
     auto userConn = reinterpret_cast<USER_CONNECT_CHANNEL_REQUEST*>(pPacket_);
     std::string key = "jwtcheck:{" + std::to_string(static_cast<uint16_t>(ServerType::ChannelServer01)) + "}";
 
@@ -141,12 +153,14 @@ void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char*
 
     try {
         auto pk = static_cast<uint32_t>(std::stoul(*redis->hget(key, (std::string)userConn->userToken)));
+
         if (pk) {
             std::string userInfokey = "userinfo:{" + std::to_string(pk) + "}";
             std::unordered_map<std::string, std::string> userData;
             redis->hgetall(userInfokey, std::inserter(userData, userData.begin()));
 
             connUsersManager->FindUser(connObjNum_)->SetPk(pk);
+
             inGameUserManager->Set(connObjNum_, (std::string)userConn->userId, pk, std::stoul(userData["exp"]),
                 static_cast<uint16_t>(std::stoul(userData["level"])), std::stoul(userData["raidScore"]));
 
@@ -158,6 +172,7 @@ void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char*
             ucReq.isSuccess = false;
             connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(USER_CONNECT_CHANNEL_RESPONSE), (char*)&ucReq);
             std::cout << (std::string)userConn->userId << " Authentication Failed" << std::endl;
+            return;
         }
     }
     catch (const sw::redis::Error& e) {
@@ -219,39 +234,17 @@ void RedisManager::MoveChannel(uint16_t connObjNum_, uint16_t packetSize_, char*
     moveChRes.PacketId = (uint16_t)PACKET_ID::MOVE_CHANNEL_RESPONSE;
     moveChRes.PacketLength = sizeof(MOVE_CHANNEL_RESPONSE);
 
-    if (expUpReqPacket->channelNum == static_cast<uint16_t>(ChannelType::CH_011)) { // Check if the user can enter the requested channel
-        if (channelManager->InsertChannel(1, connObjNum_, tempUser)) {
-            moveChRes.isSuccess = true;
+    auto moveChannelNum = expUpReqPacket->channelNum;
 
-            if(tempUser->GetChannel() != 0) channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_);
-            tempUser->SetChannel(1);
+    if (channelManager->InsertChannel(moveChannelNum, connObjNum_, tempUser)) {
+        moveChRes.isSuccess = true;
 
-            std::cout <<"Move "<< tempUser->GetId() << " to channel" << static_cast<uint16_t>(ChannelType::CH_011) << std::endl;
-        }
-        else moveChRes.isSuccess = false;
+        if (tempUser->GetChannel() != 0) channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_);
+        tempUser->SetChannel(1);
+
+        std::cout << "Move " << tempUser->GetId() << " to channel" << moveChannelNum << std::endl;
     }
-    else if (expUpReqPacket->channelNum == static_cast<uint16_t>(ChannelType::CH_012)) {
-        if (channelManager->InsertChannel(2, connObjNum_, tempUser)) {
-            moveChRes.isSuccess = true;
-
-            if (tempUser->GetChannel() != 0) channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_);
-            tempUser->SetChannel(2);
-
-            std::cout <<"Move "<< tempUser->GetId() << " to channel" << static_cast<uint16_t>(ChannelType::CH_012) << std::endl;
-        }
-        else moveChRes.isSuccess = false;
-    }
-    else if (expUpReqPacket->channelNum == static_cast<uint16_t>(ChannelType::CH_013)) {
-        if (channelManager->InsertChannel(3, connObjNum_, tempUser)) {
-            moveChRes.isSuccess = true;
-
-            if (tempUser->GetChannel() != 0) channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_);
-            tempUser->SetChannel(3);
-
-            std::cout << "Move " << tempUser->GetId() << " to channel" << static_cast<uint16_t>(ChannelType::CH_013) << std::endl;
-        }
-        else moveChRes.isSuccess = false;
-    }
+    else moveChRes.isSuccess = false;
 
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_CHANNEL_RESPONSE), (char*)&moveChRes);
 }

@@ -4,7 +4,6 @@
 #include <winsock2.h>
 #include <cstdint>
 #include <string>
-#include <vector>
 #include <chrono>
 
 const int MAX_USER_ID_LEN = 32;
@@ -67,7 +66,7 @@ struct MATCHING_RESPONSE_FROM_GAME_SERVER : PACKET_HEADER {
 };
 
 struct USER_CONNECT_GAME_REQUEST : PACKET_HEADER {
-	char userToken[MAX_JWT_TOKEN_LEN + 1];
+	char userToken[MAX_JWT_TOKEN_LEN + 1]; // userToken For User Check
 	char userId[MAX_USER_ID_LEN + 1];
 };
 

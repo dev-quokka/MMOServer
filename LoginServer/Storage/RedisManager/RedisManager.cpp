@@ -134,7 +134,7 @@ void RedisManager::GetUserInfo(uint16_t connObjNum_, uint16_t packetSize_, char*
     uiRes.PacketId = (UINT16)PACKET_ID::USERINFO_RESPONSE;
     uiRes.PacketLength = sizeof(USERINFO_RESPONSE);
 
-    if (userInfoPk.second.level == 0) { // Return value 0 indicates failure
+    if (userInfoPk.first == 0) { // Return value 0 indicates failure
         std::cout << "GetUserInfo Fail" << std::endl;
 
         tempUserInfo.level = 0;
@@ -151,9 +151,10 @@ void RedisManager::GetUserInfo(uint16_t connObjNum_, uint16_t packetSize_, char*
     try {
         auto pipe = redis->pipeline(tag);
 
-        pipe.hset(key, "level", std::to_string(tempLoginUserInfo.level))
+        pipe.hset(key, "userId", std::string(uiReq->userId))
+            .hset(key, "level", std::to_string(tempLoginUserInfo.level))
             .hset(key, "exp", std::to_string(tempLoginUserInfo.exp))
-            .hset(key, "lastlogin", tempLoginUserInfo.lastLogin)
+            .hset(key, "lastLogin", tempLoginUserInfo.lastLogin)
             .hset(key, "raidScore", std::to_string(tempLoginUserInfo.raidScore))
             .hset(key, "status", "Online")
             .expire(key, 3600);

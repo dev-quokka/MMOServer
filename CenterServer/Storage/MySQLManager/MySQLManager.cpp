@@ -8,11 +8,11 @@ bool MySQLManager::init() {
     ConnPtr = mysql_real_connect(&Conn, "127.0.0.1", "quokka", "1234", "iocp", 3306, (char*)NULL, 0);
     if (ConnPtr == NULL) {
         std::cout << mysql_error(&Conn) << std::endl;
-        std::cout << "Mysql Connect Fail" << std::endl;
+        std::cout << "Mysql Connection Fail" << std::endl;
         return false;
     }
 
-    std::cout << "Mysql Connect Success" << std::endl;
+    std::cout << "Mysql Connection Success" << std::endl;
     return true;
 }
 

@@ -3,7 +3,7 @@
 // ==================== INITIALIZATION ====================
 
 bool ChannelServersManager::init() {
-	servers.resize(3); // ¼­¹ö¼ö + 1
+	servers.resize(3);
 	servers[0] = nullptr;
 
 	for (int i = 1; i < 3; i++) {

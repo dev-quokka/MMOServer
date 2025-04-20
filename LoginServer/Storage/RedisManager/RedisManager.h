@@ -44,7 +44,6 @@ private:
     void RedisRun(const uint16_t packetThreadCnt_);
     void RedisThread();
 
-    typedef void(RedisManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
 
     // ======================= LOGIN SERVER =======================
     void ImLoginResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
@@ -54,6 +53,7 @@ private:
     void GetMaterials(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void GameStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
+    typedef void(RedisManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
 
     // 242 bytes
     sw::redis::ConnectionOptions connection_options;

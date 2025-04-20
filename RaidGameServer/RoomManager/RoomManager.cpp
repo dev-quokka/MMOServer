@@ -1,5 +1,7 @@
 #include "RoomManager.h"
 
+// ====================== INITIALIZATION =======================
+
 bool RoomManager::init() {
     udpSkt = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (udpSkt == INVALID_SOCKET) {
@@ -27,6 +29,8 @@ bool RoomManager::init() {
 
 	return true;
 }
+
+// ===================== THREAD MANAGEMENT =====================
 
 bool RoomManager::CreateTimeCheckThread() {
     timeChekcRun = true;
@@ -68,40 +72,84 @@ void RoomManager::TickRateThread() {
         }
 
         for (auto iter = roomMap.begin(); iter != roomMap.end(); iter++) { // Send synchronization data
-            iter->second->SendSyncMsg();
+            if (iter->second->IsGameRunning()) {
+                iter->second->SendSyncMsg();
+            }
         }
 
         auto currentTime = std::chrono::steady_clock::now();
 
         while (timeCheck > currentTime) {  // Sleep for the remaining time until the next tick
-            std::this_thread::sleep_for(timeCheck - currentTime); 
+            std::this_thread::sleep_for(timeCheck - currentTime);
+        }
+
+    }
+}
+
+void RoomManager::TimeCheckThread() {
+    Room* room_;
+
+    while (timeChekcRun) {
+        if (!endRoomCheckSet.empty()) { // Active room exists
+            room_ = (*endRoomCheckSet.begin());
+            if (room_->GetEndTime() <= std::chrono::steady_clock::now()) { // Timeout occurred
+                std::cout << "Time out. Raid ended Room : " << room_->GetRoomNum() << std::endl;
+                room_->TimeOver();
+                endRoomCheckSet.erase(endRoomCheckSet.begin());
+            }
+            else { // Game in progress
+                std::cout << "ÁøÇà Áß" << std::endl;
+                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            }
+        }
+        else { // No active room
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         }
     }
 }
 
-bool RoomManager::MakeRoom(uint16_t roomNum_, int mobHp_) {
-    if (roomMap.find(roomNum_) != roomMap.end()) return true; // // Return if the room has already been created
 
-    Room* room = new Room(&udpSkt);
+// ===================== ROOM MANAGEMENT =======================
 
-    if (!room->Set(roomNum_, mobHp_)) {
-        std::cout << "Making Room Fail in RoomManager" << std::endl;
-        return false;
+void RoomManager::MakeRoom(uint16_t roomNum_) {
+    tbb::concurrent_hash_map<uint16_t, Room*>::accessor accessor;
+
+	if (roomMap.insert(accessor, roomNum_)) { // Create a new room if it doesn't exist
+        accessor->second = new Room(roomNum_, &udpSkt);
     }
 
-    roomMap[roomNum_] = room;
-    return true;
+    return;
+}
+
+void RoomManager::InsertEndCheckSet(Room* tempRoom_) {
+    endRoomCheckSet.insert(tempRoom_); // Insert the room into the end check set
 }
 
 Room* RoomManager::GetRoom(uint16_t roomNum_) {
-    return roomMap[roomNum_];
+    tbb::concurrent_hash_map<uint16_t, Room*>::accessor accessor;
+
+    if (!roomMap.find(accessor, roomNum_)) { // Return if the room does not exist
+        std::cout << "Room not found" << std::endl;
+        return nullptr;
+    }
+
+    return accessor->second;
 }
 
 void RoomManager::DeleteRoom(uint16_t roomNum_) {
-    Room* room = roomMap[roomNum_];
-    delete room;
-    roomMap.erase(roomNum_);
+    tbb::concurrent_hash_map<uint16_t, Room*>::accessor accessor;
+
+    if (!roomMap.find(accessor, roomNum_)) { // Return if the room does not exist
+        std::cout << "Room not found" << std::endl;
+        return;
+    }
+
+    delete accessor->second;
+    roomMap.erase(accessor); // Remove the room from the map
 }
+
+
+// ====================== RAID CLEANUP =========================
 
 void RoomManager::DeleteMob(Room* room_) { // Raid mob defeated
     if (room_->TimeOverCheck()) { // The room was already removed due to a timeout check
@@ -120,26 +168,5 @@ void RoomManager::DeleteMob(Room* room_) { // Raid mob defeated
         }
     }
 
-    DeleteRoom(room_->GetRoomNum()); 
-}
-
-void RoomManager::TimeCheckThread() {
-    std::chrono::steady_clock::time_point now;
-    Room* room_;
-    while (timeChekcRun) {
-        if (!endRoomCheckSet.empty()) { // Active room exists
-            room_ = (*endRoomCheckSet.begin());
-            if (room_->GetEndTime() <= std::chrono::steady_clock::now()) { // Timeout occurred
-                std::cout << "Time out. Raid ended Room : " << room_->GetRoomNum() <<std::endl;
-                room_->TimeOver(); 
-                endRoomCheckSet.erase(endRoomCheckSet.begin());
-            }
-            else { // Game in progress
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            }
-        }
-        else { // No active room
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        }
-    }
+    DeleteRoom(room_->GetRoomNum());
 }

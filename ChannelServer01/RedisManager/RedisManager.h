@@ -4,10 +4,7 @@
 #include <jwt-cpp/jwt.h>
 #include <winsock2.h>
 #include <windef.h>
-#include <cstdint>
-#include <iostream>
 #include <random>
-#include <unordered_map>
 #include <sw/redis++/redis++.h>
 
 #include "Packet.h"
@@ -39,11 +36,11 @@ public:
 private:
     bool CreateRedisThread(const uint16_t RedisThreadCnt_);
     bool EquipmentEnhance(uint16_t currentEnhanceCount_);
-    void RedisRun(const uint16_t RedisThreadCnt_);
+    bool RedisRun(const uint16_t RedisThreadCnt_);
     void RedisThread();
 
     //SYSTEM
-    void ImChannelRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); 
+    void ChannelServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 	void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); 
     void UserDisConnect(uint16_t connObjNum_); 
     void SendChannelUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);

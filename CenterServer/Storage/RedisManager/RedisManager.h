@@ -4,14 +4,10 @@
 #include <jwt-cpp/jwt.h>
 #include <winsock2.h>
 #include <windef.h>
-#include <cstdint>
-#include <iostream>
 #include <random>
-#include <unordered_map>
 #include <sw/redis++/redis++.h>
 
 #include "Packet.h"
-#include "UserSyncData.h"
 #include "InGameUser.h"
 #include "ServerChannelEnum.h"
 #include "InGameUserManager.h"
@@ -33,6 +29,7 @@ public:
         }
     }
 
+
     // ====================== INITIALIZATION =======================
     void init(const uint16_t RedisThreadCnt_);
     void SetManager(ConnUsersManager* connUsersManager_, InGameUserManager* inGameUserManager_);
@@ -51,8 +48,6 @@ private:
     bool CreateRedisThread(const uint16_t RedisThreadCnt_);
     void RedisThread();
 
-    typedef void(RedisManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
-
 
     // ======================= SYNCRONIZATION =======================
     USERINFO GetUpdatedUserInfo(uint16_t userPk_);
@@ -65,20 +60,22 @@ private:
     void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void Logout(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void UserDisConnect(uint16_t connObjNum_);
-    void LoginServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); 
-    void ChannelServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    void MatchingServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    void GameServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
 
+    // ======================= LOGIN SERVER =======================
+    void LoginServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+
+
     // ======================= CHANNEL SERVER =======================
+    void ChannelServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void ChannelDisConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
 
     // ======================= MATCHING SERVER =======================
+    void MatchingServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MatchStartResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
@@ -87,9 +84,11 @@ private:
     
 
     // ======================= RAID GAME SERVER =======================
+    void GameServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void SyncUserRaidScore(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
 
+    typedef void(RedisManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
 
     // 242 bytes
     sw::redis::ConnectionOptions connection_options;
@@ -99,7 +98,6 @@ private:
 
     // 80 bytes
     std::unordered_map<uint16_t, RECV_PACKET_FUNCTION> packetIDTable;
-    std::unordered_map<ServerType, ServerAddress> ServerAddressMap;
 
     // 32 bytes
     std::vector<uint16_t> channelServerObjNums;
@@ -108,7 +106,6 @@ private:
     
     // 16 bytes
     std::unique_ptr<sw::redis::RedisCluster> redis;
-    std::thread redisThread;
 
     MySQLManager* mySQLManager;
     ConnUsersManager* connUsersManager;

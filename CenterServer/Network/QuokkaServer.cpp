@@ -211,15 +211,15 @@ void QuokkaServer::WorkThread() {
             connUser->ConnUserRecv(); // Wsarecv Again
             overLappedManager->returnOvLap(overlappedEx);
         }
+        else if (overlappedEx->taskType == TaskType::SEND) {
+            overLappedManager->returnOvLap(overlappedEx);
+            connUser->SendComplete();
+        }
         else if (overlappedEx->taskType == TaskType::NEWRECV) {
             redisManager->PushRedisPacket(connObjNum, dwIoSize, overlappedEx->wsaBuf.buf); // Proccess In Redismanager
             connUser->ConnUserRecv(); // Wsarecv Again
             delete[] overlappedEx->wsaBuf.buf;
             delete overlappedEx;
-        }
-        else if (overlappedEx->taskType == TaskType::SEND) {
-            overLappedManager->returnOvLap(overlappedEx);
-            connUser->SendComplete();
         }
         else if (overlappedEx->taskType == TaskType::NEWSEND) {
             delete[] overlappedEx->wsaBuf.buf;

@@ -1,29 +1,32 @@
-#include <iostream>
 #include "ChannelServer2.h"
 
-const uint16_t PORT = 9221;
 const uint16_t maxThreadCount = 1;
 
+std::unordered_map<ServerType, ServerAddress> ServerAddressMap = { // Set server addresses
+    { ServerType::CenterServer,     { "127.0.0.1", 9090 } },
+    { ServerType::ChannelServer01, { "127.0.0.1", 9211 } },
+    { ServerType::ChannelServer02, { "127.0.0.1", 9221 } },
+    { ServerType::RaidGameServer01, { "127.0.0.1", 9510 } },
+    { ServerType::LoginServer,   { "127.0.0.1", 9091 } },
+    { ServerType::MatchingServer,   { "127.0.0.1", 9131 } },
+};
+
 int main() {
-    ChannelServer2 channelServer2;
+    ChannelServer2 channelServer1;
 
-    if (!channelServer2.init(maxThreadCount, PORT)) {
-        return 0;
-    }
+    channelServer1.init(maxThreadCount, ServerAddressMap[ServerType::CenterServer].port);
+    channelServer1.StartWork();
 
-    channelServer2.StartWork();
-    channelServer2.CenterConnect();
-
-    std::cout << "=== CHANNEL SERVER 2 START ===" << std::endl;
-    std::cout << "=== If You Want Exit, Write channel2 ===" << std::endl;
+    std::cout << "=== CHANNEL SERVER 1 START ===" << std::endl;
+    std::cout << "=== If You Want Exit, Write channel1 ===" << std::endl;
     std::string k = "";
 
     while (1) {
         std::cin >> k;
-        if (k == "channel2") break;
+        if (k == "channel1") break;
     }
 
-    channelServer2.ServerEnd();
+    channelServer1.ServerEnd();
 
     return 0;
 }

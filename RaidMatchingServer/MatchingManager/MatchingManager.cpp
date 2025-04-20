@@ -55,8 +55,7 @@ uint16_t MatchingManager::Insert(uint16_t userPk_, uint16_t userCenterObjNum_, u
     uint16_t groupNum = userGroupNum_;
 
     if (matchingMap.find(accessor, groupNum)) { // Insert Success
-        accessor->second.insert(tempRoom);
-        std::cout << "Insert Group " << groupNum << std::endl;
+        auto [iter, inserted] = accessor->second.insert(tempRoom);
         return userCenterObjNum_;
     }
 
@@ -85,58 +84,46 @@ uint16_t MatchingManager::CancelMatching(uint16_t userCenterObjNum_, uint16_t us
 }
 
 void MatchingManager::MatchingThread(uint16_t groupStartIdx_, uint16_t groupEndIdx_) {
-    uint16_t cnt = 1;
+    uint16_t cnt = groupStartIdx_;
     uint16_t tempRoomNum = 0;
     std::vector<MatchingRoom*> tempMatchedUser;
 
     while (matchRun) {
         if (tempRoomNum == 0) { // Need to select a new Room Number
             if (roomNumQueue.pop(tempRoomNum)) { // Select a new Room Number
-                for (int i = cnt; i <= USER_LEVEL_GROUPS / 2; i++) {
+                for (int i = cnt; i <= groupEndIdx_; i++) {
                     tbb::concurrent_hash_map<uint16_t, std::set<MatchingRoom*, MatchingRoomComp>>::accessor accessor1;
 
                     if (matchingMap.find(accessor1, i)) { // Check the level group number i
-                        for (int i = 0; i < MAX_RAID_ROOM_PLAYERS; i++) {
 
-                            if (accessor1->second.empty()) { // Not enough players for raid match
-                                tempMatchedUser.clear();
-                                break;
-                            }
+                        if (accessor1->second.size() < MAX_RAID_ROOM_PLAYERS) continue;
 
+                        for (int j = 0; j < MAX_RAID_ROOM_PLAYERS; j++) {
                             MatchingRoom* tempMatching = *accessor1->second.begin();
-                            accessor1->second.erase(accessor1->second.begin());
-
                             tempMatchedUser.emplace_back(tempMatching);
+                            accessor1->second.erase(accessor1->second.begin());
                         }
 
-                        if (tempMatchedUser.size() == MAX_RAID_ROOM_PLAYERS) { // Enough players for raid
-                            for (int i = 0; i < tempMatchedUser.size(); i++) {
-                                MATCHING_REQUEST_TO_GAME_SERVER rMatchingResPacket;
-                                rMatchingResPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_REQUEST_TO_GAME_SERVER;
-                                rMatchingResPacket.PacketLength = sizeof(MATCHING_REQUEST_TO_GAME_SERVER);
-                                rMatchingResPacket.roomNum = tempRoomNum;
-                                rMatchingResPacket.userCenterObjNum = tempMatchedUser[i]->userCenterObjNum;
-                                rMatchingResPacket.userPk = tempMatchedUser[i]->userPk;
+                        for (int k = 0; k < tempMatchedUser.size(); k++) {
+                            MATCHING_REQUEST_TO_GAME_SERVER rMatchingResPacket;
+                            rMatchingResPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_REQUEST_TO_GAME_SERVER;
+                            rMatchingResPacket.PacketLength = sizeof(MATCHING_REQUEST_TO_GAME_SERVER);
+                            rMatchingResPacket.roomNum = tempRoomNum;
+                            rMatchingResPacket.userCenterObjNum = tempMatchedUser[k]->userCenterObjNum;
+                            rMatchingResPacket.userPk = tempMatchedUser[k]->userPk;
 
-                                connServersManager->GetGameServerObjNum(1)->  // Send matched user data to the game server
-                                    PushSendMsg(sizeof(MATCHING_REQUEST_TO_GAME_SERVER), (char*)&rMatchingResPacket);
+                            connServersManager->GetGameServerObjNum(1)->  // Send matched user data to the game server
+                                PushSendMsg(sizeof(MATCHING_REQUEST_TO_GAME_SERVER), (char*)&rMatchingResPacket);
 
-                                std::cout << "Matched Success" << std::endl;
-
-                                delete tempMatchedUser[i];
-                            }
-
-                            tempRoomNum = 0; // If roomNum is used, reset it to 0
-                            tempMatchedUser.clear();
-                        }
-                        else { // Delete matched user objects and Move to the next group
-                            for (int i = 0; i < tempMatchedUser.size(); i++) {
-                                accessor1->second.insert(tempMatchedUser[i]);
-                            }
-                            tempMatchedUser.clear();
+                            delete tempMatchedUser[k];
                         }
 
-                        if (cnt == USER_LEVEL_GROUPS / 2) cnt = 1; // Continue matchmaking check from the next group
+                        std::cout << "Matched Success" << std::endl;
+
+                        tempRoomNum = 0; // If roomNum is used, reset it to 0
+                        tempMatchedUser.clear();
+
+                        if (cnt == groupEndIdx_) cnt = 1; // Continue matchmaking check from the next group
                         else cnt++;
                         break;
                     }
@@ -147,51 +134,40 @@ void MatchingManager::MatchingThread(uint16_t groupStartIdx_, uint16_t groupEndI
             }
         }
         else { // Exist Room Num
-            for (int i = 1; i <= USER_LEVEL_GROUPS / 2; i++) {
+            for (int i = cnt; i <= groupEndIdx_; i++) {
                 tbb::concurrent_hash_map<uint16_t, std::set<MatchingRoom*, MatchingRoomComp>>::accessor accessor1;
 
                 if (matchingMap.find(accessor1, i)) { // Check the level group number i
-                    for (int i = 0; i < MAX_RAID_ROOM_PLAYERS; i++) {
 
-                        if (accessor1->second.empty()) { // Not enough players for raid match
-                            tempMatchedUser.clear();
-                            break;
-                        }
+                    if (accessor1->second.size() < MAX_RAID_ROOM_PLAYERS) continue;
 
+                    for (int j = 0; j < MAX_RAID_ROOM_PLAYERS; j++) {
                         MatchingRoom* tempMatching = *accessor1->second.begin();
-                        accessor1->second.erase(accessor1->second.begin());
-
                         tempMatchedUser.emplace_back(tempMatching);
+                        accessor1->second.erase(accessor1->second.begin());
                     }
 
-                    if (tempMatchedUser.size() == MAX_RAID_ROOM_PLAYERS) { // Enough players for raid
-                        for (int i = 0; i < tempMatchedUser.size(); i++) {
-                            MATCHING_REQUEST_TO_GAME_SERVER rMatchingResPacket;
-                            rMatchingResPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_REQUEST_TO_GAME_SERVER;
-                            rMatchingResPacket.PacketLength = sizeof(MATCHING_REQUEST_TO_GAME_SERVER);
-                            rMatchingResPacket.roomNum = tempRoomNum;
-                            rMatchingResPacket.userCenterObjNum = tempMatchedUser[i]->userCenterObjNum;
-                            rMatchingResPacket.userPk = tempMatchedUser[i]->userPk;
+                    MATCHING_REQUEST_TO_GAME_SERVER rMatchingResPacket;
+                    rMatchingResPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_REQUEST_TO_GAME_SERVER;
+                    rMatchingResPacket.PacketLength = sizeof(MATCHING_REQUEST_TO_GAME_SERVER);
+                    rMatchingResPacket.roomNum = tempRoomNum;
 
-                            connServersManager->GetGameServerObjNum(1)->  // Send matched user data to the game server
-                                PushSendMsg(sizeof(MATCHING_REQUEST_TO_GAME_SERVER), (char*)&rMatchingResPacket);
+                    for (int k = 0; k < tempMatchedUser.size(); k++) {
+                        rMatchingResPacket.userCenterObjNum = tempMatchedUser[k]->userCenterObjNum;
+                        rMatchingResPacket.userPk = tempMatchedUser[k]->userPk;
 
-                            std::cout << "Matched Success" << std::endl;
+                        connServersManager->GetGameServerObjNum(1)->  // Send matched user data to the game server
+                            PushSendMsg(sizeof(MATCHING_REQUEST_TO_GAME_SERVER), (char*)&rMatchingResPacket);
 
-                            delete tempMatchedUser[i];
-                        }
-
-                        tempRoomNum = 0; // If roomNum is used, reset it to 0
-                        tempMatchedUser.clear();
-                    }
-                    else { // Delete matched user objects and Move to the next group
-                        for (int i = 0; i < tempMatchedUser.size(); i++) {
-                            accessor1->second.insert(tempMatchedUser[i]);
-                        }
-                        tempMatchedUser.clear();
+                        delete tempMatchedUser[k];
                     }
 
-                    if (cnt == USER_LEVEL_GROUPS / 2) cnt = 1; // Continue matchmaking check from the next group
+                    std::cout << "Matched Success" << std::endl;
+
+                    tempRoomNum = 0; // If roomNum is used, reset it to 0
+                    tempMatchedUser.clear();
+
+                    if (cnt == groupEndIdx_) cnt = 1; // Continue matchmaking check from the next group
                     else cnt++;
                     break;
                 }

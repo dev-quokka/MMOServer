@@ -1,13 +1,10 @@
 #pragma once
-
 #include <winsock2.h>
 #include <windows.h>
 #include <ws2tcpip.h>
 #include <set>
 #include <thread>
-#include <chrono>
 #include <mutex>
-#include <iostream>
 #include <unordered_map>
 #include <boost/lockfree/queue.hpp>
 #include <tbb/concurrent_hash_map.h>
@@ -35,16 +32,22 @@ public:
 		}
 	};
 
+	// ====================== INITIALIZATION =======================
 	bool init();
+
+	// ===================== THREAD MANAGEMENT =====================
 	bool CreateTimeCheckThread();
 	bool CreateTickRateThread();
 	void TimeCheckThread();
 	void TickRateThread();
 
-	bool MakeRoom(uint16_t roomNum_, int mobHp_);
+	// ===================== ROOM MANAGEMENT =======================
+	void MakeRoom(uint16_t roomNum_);
+	void InsertEndCheckSet(Room* tempRoom_);
 	Room* GetRoom(uint16_t roomNum_);
 	void DeleteRoom(uint16_t roomNum_);
 
+	// ====================== RAID CLEANUP =========================
 	void DeleteMob(Room* room_);
 
 private:
@@ -52,7 +55,7 @@ private:
 	std::mutex mDeleteRoom;
 	std::mutex mDeleteMatch;
 
-	std::unordered_map<uint16_t, Room*> roomMap;
+	tbb::concurrent_hash_map<uint16_t, Room*> roomMap;
 
 	// 24 bytes
 	std::set<Room*, EndTimeComp> endRoomCheckSet;

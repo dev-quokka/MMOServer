@@ -2,18 +2,15 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include <winsock2.h>
-#include <cstdint>
 #include <string>
-#include <vector>
 #include <chrono>
 
+#include "UserSyncData.h"
+
 constexpr uint16_t MAX_IP_LEN = 32;
-constexpr uint16_t MAX_USER_ID_LEN = 32;
 constexpr uint16_t MAX_SERVER_USERS = 128;
 constexpr uint16_t MAX_JWT_TOKEN_LEN = 256;
 constexpr uint16_t MAX_SCORE_SIZE = 512;
-
-constexpr uint16_t RANKING_USER_COUNT = 3; // Number of users to display per ranking page
 
 struct DataPacket {
 	uint32_t dataSize;
@@ -34,11 +31,6 @@ struct PACKET_HEADER
 {
 	uint16_t PacketLength;
 	uint16_t PacketId;
-};
-
-struct RANKING {
-	uint16_t score = 0;
-	char userId[MAX_USER_ID_LEN + 1];
 };
 
 
@@ -204,6 +196,7 @@ struct RAID_MATCHING_RESPONSE : PACKET_HEADER {
 struct MATCHING_RESPONSE_FROM_GAME_SERVER : PACKET_HEADER {
 	uint16_t userCenterObjNum;
 	uint16_t userRaidServerObjNum;
+	uint16_t serverNum;
 	uint16_t roomNum;
 };
 
@@ -217,6 +210,7 @@ struct SYNC_HIGHSCORE_REQUEST : PACKET_HEADER {
 	unsigned int userScore;
 	uint16_t userPk;
 };
+
 
 enum class PACKET_ID : uint16_t {
 

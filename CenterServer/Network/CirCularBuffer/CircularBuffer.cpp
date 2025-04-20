@@ -1,5 +1,4 @@
 #include "CircularBuffer.h"
-#include <iostream>
 
 // Write Data
 bool CircularBuffer::Write(const char* data, uint32_t size_) {

@@ -2,17 +2,6 @@
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "mswsock.lib")
 
-#include <winsock2.h>
-#include <windows.h>
-#include <cstdint>
-#include <atomic>
-#include <iostream>
-#include <vector>
-#include <thread>
-#include <mutex>
-#include <deque>
-#include <queue>
-#include <boost/lockfree/queue.hpp>
 #include <tbb/concurrent_hash_map.h>
 
 #include "Packet.h"
@@ -23,13 +12,12 @@
 #include "InGameUserManager.h"
 #include "RedisManager.h"
 
-constexpr uint16_t MAX_USERS_OBJECT = 30; // User objects allocated for average Channel Server1 load
-constexpr int MAX_CHANNEL1_USERS_COUNT = 30; // // Maximum number of users per channel * number of channel
+constexpr uint16_t MAX_USERS_OBJECT = 10; // User objects allocated for average Channel Server1 load
+constexpr uint16_t MAX_CHANNEL1_USERS_COUNT = 10; // // Maximum number of users per channel * number of channel
 
 class ChannelServer2 {
 public:
     bool init(const uint16_t MaxThreadCnt_, int port_);
-    bool CenterConnect();
     bool StartWork();
     void ServerEnd();
 
@@ -42,7 +30,7 @@ private:
     void AccepterThread();
 
     // 136 bytes 
-    boost::lockfree::queue<ConnUser*> AcceptQueue{ MAX_USERS_OBJECT };
+    boost::lockfree::queue<ConnUser*> AcceptQueue{ MAX_USERS_OBJECT + 1 };
 
     // 32 bytes
     std::vector<std::thread> workThreads;

@@ -1,17 +1,10 @@
 #pragma once
-
-#define SERVER_IP "127.0.0.1"
-#define CENTER_SERVER_PORT 9090
+#include <atomic>
 
 #include "Define.h"
 #include "CircularBuffer.h"
 #include "Packet.h"
 #include "overLappedManager.h"
-
-#include <cstdint>
-#include <iostream>
-#include <atomic>
-#include <boost/lockfree/queue.hpp>
 
 class ConnUser {
 public:

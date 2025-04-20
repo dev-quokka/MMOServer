@@ -3,7 +3,7 @@
 // ====================== INITIALIZATION ======================
 
 void OverLappedManager::init() {
-	for (int i = 0; i < OVERLAPPED_TCP_QUEUE_SIZE; i++) {
+	for (int i = 0; i < OVERLAPPED_QUEUE_SIZE; i++) {
 		OverlappedEx* overlappedEx = new OverlappedEx;
 		ZeroMemory(overlappedEx, sizeof(OverlappedEx));
 		ovLapPool.push(overlappedEx);

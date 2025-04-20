@@ -1,17 +1,15 @@
 #pragma once
-
 #include <chrono>
-#include <vector>
 #include <string>
-#include <cstdint>
-#include <iostream>
+#include <vector>
 
 #include "RaidConfig.h"
 
 class Room {
 public:
-	Room(SOCKET* udpSkt_) {
-		ruInfos.resize(MAX_RAID_ROOM_PLAYERS + 1); // MAX_RAID_ROOM_PLAYERS + 1 to avoid using index 0
+	Room(uint16_t roomNum_, SOCKET* udpSkt_) {
+		roomNum = roomNum_;
+		ruInfos.resize(MAX_RAID_ROOM_PLAYERS + 1,nullptr); // MAX_RAID_ROOM_PLAYERS + 1 to avoid using index 0
 		udpSkt = udpSkt_;
 	}
 	~Room() {
@@ -20,12 +18,17 @@ public:
 		}
 	}
 
-	//  ---------------------------- SET  ----------------------------
+	
+	// ============================ SET ============================
 
-	bool Set(uint16_t roomNum_, int mobHp_) {
-		roomNum = roomNum_;
+	bool Set(uint16_t mapNum_, int mobHp_) {
+		mapNum = mapNum_;
 		mobHp.store(mobHp_);
 		return true;
+	}
+
+	void SetGameRunning(bool flag_) { // Set game start flag
+		gameStart.store(flag_);
 	}
 
 	bool SetUserConnObjNum(uint16_t userRaidServerObjNum_, uint16_t userConnObjNum_) { // Set user unique ID for use in Game Server
@@ -38,17 +41,17 @@ public:
 		ruInfos[userRaidServerObjNum_]->userAddr = userAddr_;
 	}
 
-	void SetMapNum(uint16_t mapNum_) {
-		mapNum = mapNum_;
-	}
-
 	std::chrono::time_point<std::chrono::steady_clock> SetEndTime() { // Set raid end time
 		endTime = std::chrono::steady_clock::now() + std::chrono::seconds(10);
 		return endTime;
 	}
 
 
-	//  ---------------------------- GET  ----------------------------
+	// ============================ GET ============================
+
+	bool IsGameRunning() { // Check if the game has started
+		return gameStart.load();
+	}
 
 	int GetMobHp() {
 		return mobHp.load();
@@ -75,20 +78,21 @@ public:
 	}
 
 
-	//  ---------------------------- END CHECK  ----------------------------
+	// ========================== END CHECK ==========================
 
 	void TimeOver() {
-		finishCheck.store(true);
-		mobHp.store(0);
 		timeOver = true;
+		finishCheck.store(true);
+		gameStart.store(false);
+		mobHp.store(0);
+		sendCheck.store(0);
 	}
 
 	bool TimeOverCheck() {
 		return timeOver;
 	}
 
-	uint16_t UserSetCheck(RaidUserInfo* raidUserInfo_) { // Check if all users are ready
-		
+	uint16_t UserSetCheck(RaidUserInfo* raidUserInfo_) {
 		uint16_t tempNum = startCheck.fetch_add(1) + 1;
 
 		raidUserInfo_->userRaidServerObjNum = tempNum;
@@ -97,30 +101,46 @@ public:
 		return tempNum;
 	}
 
+	bool SendUserCheck() {
+		if(sendCheck.fetch_add(1) + 1 >= MAX_RAID_ROOM_PLAYERS) return true;
+		return false;
+	}
+
 	bool StartCheck() { // Check if all users are ready
-		if (startCheck.fetch_add(1) + 1 == MAX_RAID_ROOM_PLAYERS) {
-			endTime = std::chrono::steady_clock::now() + std::chrono::minutes(2) + std::chrono::seconds(8);
+		if (startCheck.fetch_add(1) + 1 >= MAX_RAID_ROOM_PLAYERS) {
 			return true;
 		}
+
 		return false;
 	}
 
 	bool EndCheck() { // Check if the room has already ended 
-		if (startCheck.fetch_sub(1) - 1 == 0) {
+		if (startCheck.fetch_sub(1) - 1 <= 0) {
 			return true;
 		}
 		return false;
 	}
 
 
-	//  ---------------------------- RAID  ----------------------------
+	// ============================ RAID ===========================
 
 	void SendSyncMsg() { // Send sync messages to active players
 		unsigned int tempMobHp = mobHp.load();
-		for (int i = 1; i < ruInfos.size(); i++) { // 게임중인 유저들에게 동기화 메시지 전송
-			sendto(*udpSkt, (char*)&tempMobHp, sizeof(tempMobHp), 0, (sockaddr*)&ruInfos[i]->userAddr, sizeof(ruInfos[i]->userAddr));
+
+		for (int i = 1; i <= ruInfos.size(); i++) { // Send synchronization message to players currently in game
+			if (ruInfos[i] == nullptr) {
+				std::cout << "not yet" << std::endl;
+				continue;
+			}
+
+			if (sendto(*udpSkt, (char*)&tempMobHp, sizeof(tempMobHp), 0, (sockaddr*)&ruInfos[i]->userAddr, sizeof(ruInfos[i]->userAddr)) == SOCKET_ERROR) {
+				std::cout << "실패" << std::endl;
+				std::cerr << "sendto failed: " << WSAGetLastError() << std::endl;
+				continue;
+			}
+
+			std::cout << "RoomNum : " << roomNum << ", Mob Hp : " << tempMobHp << std::endl;
 		}
-		std::cout << "RoomNum : " << roomNum << ", Mob Hp : " << tempMobHp << std::endl;
 	}
 
 	std::pair<unsigned int, unsigned int> Hit(uint16_t userNum_, unsigned int damage_) { // {Current mobhp, Acquired score}
@@ -158,8 +178,10 @@ private:
 	uint16_t roomNum;
 	uint16_t mapNum;
 	std::atomic<uint16_t> startCheck = 0;
+	std::atomic<uint16_t> sendCheck = 0;
 
 	// 1 bytes
 	std::atomic<bool> timeOver = false;
+	std::atomic<bool> gameStart = false;
 	std::atomic<bool> finishCheck = false;
 };

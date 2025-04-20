@@ -4,26 +4,16 @@
 
 void RedisManager::init(const uint16_t RedisThreadCnt_) {
 
-    // -------------------- SET SERVER ADDRESSES ---------------------
-
-    ServerAddressMap[ServerType::GatewayServer] = { "127.0.0.1", 9091 };
-    ServerAddressMap[ServerType::MatchingServer] = { "127.0.0.1", 9131 };
-    ServerAddressMap[ServerType::ChannelServer01] = { "127.0.0.1", 9211 };
-    ServerAddressMap[ServerType::ChannelServer02] = { "127.0.0.1", 9221 };
-    ServerAddressMap[ServerType::RaidGameServer01] = { "127.0.0.1", 9501 };
-
-
     // -------------------- SET PACKET HANDLERS ----------------------
-
     packetIDTable = std::unordered_map<uint16_t, RECV_PACKET_FUNCTION>();
 
-    // SYSTEM
+    // CENTER
     packetIDTable[(uint16_t)PACKET_ID::USER_CONNECT_REQUEST] = &RedisManager::UserConnect;
     packetIDTable[(uint16_t)PACKET_ID::USER_LOGOUT_REQUEST] = &RedisManager::Logout;
     packetIDTable[(uint16_t)PACKET_ID::SERVER_USER_COUNTS_REQUEST] = &RedisManager::SendServerUserCounts;
     packetIDTable[(uint16_t)PACKET_ID::MOVE_SERVER_REQUEST] = &RedisManager::MoveServer;
 
-    // SESSION
+    // LOGIN
     packetIDTable[(uint16_t)PACKET_ID::LOGIN_SERVER_CONNECT_REQUEST] = &RedisManager::LoginServerConnectRequest;
 
     // CHANNEL
@@ -95,6 +85,9 @@ void RedisManager::RedisRun(const uint16_t RedisThreadCnt_) { // Connect Redis S
     }
     catch (const  sw::redis::Error& err) {
         std::cout << "Redis Connect Error : " << err.what() << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Exception error : " << e.what() << std::endl;
     }
 }
 
@@ -426,35 +419,18 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
     MOVE_SERVER_RESPONSE moveCHResPacket;
     std::string tag;
 
-    if (MoveCHReqPacket->serverNum == 1) { // Set address for channel server 1
-        moveCHResPacket.PacketId = (uint16_t)PACKET_ID::MOVE_SERVER_RESPONSE;
-        moveCHResPacket.PacketLength = sizeof(MOVE_SERVER_RESPONSE);
-		moveCHResPacket.port = ServerAddressMap[ServerType::ChannelServer01].port;
-        strncpy_s(moveCHResPacket.ip, ServerAddressMap[ServerType::ChannelServer01].ip.c_str(), 256);
+	auto moveServerNum = MoveCHReqPacket->serverNum + CHANNEL_SERVER_START_NUMBER;
 
-        tag = "{" + std::to_string(static_cast<uint16_t>(ServerType::ChannelServer01)) + "}";
+    moveCHResPacket.PacketId = (uint16_t)PACKET_ID::MOVE_SERVER_RESPONSE;
+    moveCHResPacket.PacketLength = sizeof(MOVE_SERVER_RESPONSE);
+    moveCHResPacket.port = ServerAddressMap[static_cast<ServerType>(moveServerNum)].port;
+    strncpy_s(moveCHResPacket.ip, ServerAddressMap[static_cast<ServerType>(moveServerNum)].ip.c_str(), 256);
 
-        if (!channelServersManager->EnterChannelServer(static_cast<uint16_t>(ChannelServerType::CH_01))) { // Failed to move to channel server 1
-            moveCHResPacket.port = 0;
-            connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_SERVER_RESPONSE), (char*)&moveCHResPacket);
-            return;
-        };
-
-	}
-	else if (MoveCHReqPacket->serverNum == 2) { // Set address for channel server 2
-        moveCHResPacket.PacketId = (uint16_t)PACKET_ID::MOVE_SERVER_RESPONSE;
-        moveCHResPacket.PacketLength = sizeof(MOVE_SERVER_RESPONSE);
-        moveCHResPacket.port = ServerAddressMap[ServerType::ChannelServer02].port;
-        strncpy_s(moveCHResPacket.ip, ServerAddressMap[ServerType::ChannelServer02].ip.c_str(), 256);
-
-        tag = "{" + std::to_string(static_cast<uint16_t>(ServerType::ChannelServer02)) + "}";
-
-        if (!channelServersManager->EnterChannelServer(static_cast<uint16_t>(ChannelServerType::CH_02))) { // Failed to move to channel server 2
-            moveCHResPacket.port = 0;
-            connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_SERVER_RESPONSE), (char*)&moveCHResPacket);
-            return;
-        };
-	}
+    if (!channelServersManager->EnterChannelServer(moveServerNum)) { // Failed to move to channel server 1
+        moveCHResPacket.port = 0;
+        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_SERVER_RESPONSE), (char*)&moveCHResPacket);
+        return;
+    };
 
     auto tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
@@ -468,6 +444,7 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
                 std::chrono::seconds{ 300 })
             .sign(jwt::algorithm::hs256{ JWT_SECRET });
 
+        tag = "{" + std::to_string(static_cast<uint16_t>(ServerType::ChannelServer01)) + "}";
         std::string key = "jwtcheck:" + tag;
 
         auto pipe = redis->pipeline(tag);
@@ -477,16 +454,24 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
 
         pipe.exec();
 
-        strncpy_s(moveCHResPacket.serverToken, token.c_str(), 256);
+        strncpy_s(moveCHResPacket.serverToken, token.c_str(), MAX_JWT_TOKEN_LEN + 1);
 
         connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_SERVER_RESPONSE), (char*)&moveCHResPacket); // Send Channel Server address and JWT token to the user
     }
-    catch (const sw::redis::Error& e) {
+    catch (const sw::redis::Error& e) { 
         std::cerr << "Redis error : " << e.what() << std::endl;
+
+        // Send 0 when JWT token generation fails
+        memset(moveCHResPacket.serverToken, 0, sizeof(moveCHResPacket.serverToken));
+        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_SERVER_RESPONSE), (char*)&moveCHResPacket);
         return;
     }
     catch (const std::exception& e) {
         std::cerr << "Exception error : " << e.what() << std::endl;
+
+        // Send 0 when JWT token generation fails
+        memset(moveCHResPacket.serverToken, 0, sizeof(moveCHResPacket.serverToken));
+        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_SERVER_RESPONSE), (char*)&moveCHResPacket);
     }
 }
 
@@ -612,23 +597,25 @@ void RedisManager::MatchStartResponse(uint16_t connObjNum_, uint16_t packetSize_
 
         try {
             redis->hset("userinfo:{" + std::to_string(tempUser->GetPk()) + "}", "userstate", "raidMatching"); // Set user status to "raidMatching" in Redis Cluster
+
+            tempUser->SetUserState(UserState::raidMatching);
+            connUsersManager->FindUser(matchSuccessReqPacket->userCenterObjNum)->PushSendMsg(sizeof(RAID_MATCHING_RESPONSE), (char*)&matchResPacket);
+
+            return;
         }
         catch (const sw::redis::Error& e) {
+            matchResPacket.insertSuccess = false;
+            connUsersManager->FindUser(matchSuccessReqPacket->userCenterObjNum)->PushSendMsg(sizeof(RAID_MATCHING_RESPONSE), (char*)&matchResPacket);
+
             std::cerr << "Redis error : " << e.what() << std::endl;
             return;
         }
-
-        tempUser->SetUserState(UserState::raidMatching);
-
-        std::cout << tempUser->GetId() << " " << tempUser->GetUserGroupNum() <<  "group matching successful" << std::endl;
     }
     else {
         matchResPacket.insertSuccess = matchSuccessReqPacket->isSuccess;
-
+        connUsersManager->FindUser(matchSuccessReqPacket->userCenterObjNum)->PushSendMsg(sizeof(RAID_MATCHING_RESPONSE), (char*)&matchResPacket);
         std::cout << tempUser->GetId() << " " << tempUser->GetUserGroupNum() << "group matching failed" << std::endl;
     }
-
-    connUsersManager->FindUser(matchSuccessReqPacket->userCenterObjNum)->PushSendMsg(sizeof(RAID_MATCHING_RESPONSE), (char*)&matchResPacket);
 }
 
 void RedisManager::MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
@@ -667,18 +654,18 @@ void RedisManager::MatchingCancelResponse(uint16_t connObjNum_, uint16_t packetS
     std::cout << tempUser->GetId() << " Matching Cancel Success" << std::endl;
 }
 
-
 void RedisManager::CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto matchSuccessReqPacket = reinterpret_cast<MATCHING_RESPONSE_FROM_GAME_SERVER*>(pPacket_);
 
+    auto raidServerNum = matchSuccessReqPacket->serverNum + GAME_SERVER_START_NUMBER;
     uint16_t tempRoomNum = matchSuccessReqPacket->roomNum;
 
     RAID_READY_REQUEST raidReadyReqPacket;
     raidReadyReqPacket.PacketId = (uint16_t)PACKET_ID::RAID_READY_REQUEST;
     raidReadyReqPacket.PacketLength = sizeof(RAID_READY_REQUEST);
     raidReadyReqPacket.roomNum = tempRoomNum;
-    raidReadyReqPacket.port = ServerAddressMap[ServerType::RaidGameServer01].port;
-    strncpy_s(raidReadyReqPacket.ip, ServerAddressMap[ServerType::RaidGameServer01].ip.c_str(), 256);
+    raidReadyReqPacket.port = ServerAddressMap[static_cast<ServerType>(raidServerNum)].port;
+    strncpy_s(raidReadyReqPacket.ip, ServerAddressMap[static_cast<ServerType>(raidServerNum)].ip.c_str(), 256);
 
     if (matchSuccessReqPacket->roomNum == 0) { // Send game creation failure message to matched users
         raidReadyReqPacket.roomNum = 0;
@@ -690,30 +677,32 @@ void RedisManager::CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_,
 
     { // Generate JWT token
         try {
+            std::string tag = "{" + std::to_string(static_cast<uint16_t>(ServerType::RaidGameServer01)) + "}";
+            std::string key = "jwtcheck:" + tag;
+
             std::string token = jwt::create()
                 .set_issuer("Center_Server")
                 .set_subject("Connect_GameServer")
-                .set_payload_claim("user_id", jwt::claim(std::to_string(matchSuccessReqPacket->userCenterObjNum))) // User unique ID used in the Center Server
+                .set_payload_claim("user_center_id", jwt::claim(std::to_string(matchSuccessReqPacket->userCenterObjNum))) // User unique ID used in the Center Server
                 .set_payload_claim("room_id", jwt::claim(std::to_string(tempRoomNum))) // Matched room number
                 .set_payload_claim("raid_id", jwt::claim(std::to_string(matchSuccessReqPacket->userRaidServerObjNum))) // User unique ID used in the Raid Server
                 .set_expires_at(std::chrono::system_clock::now() +
                     std::chrono::seconds{ 300 })
                 .sign(jwt::algorithm::hs256{ JWT_SECRET });
 
-            std::string tag = "{" + std::to_string(static_cast<uint16_t>(ServerType::RaidGameServer01)) + "}";
-            std::string key = "jwtcheck:" + tag;
-
             auto pipe = redis->pipeline(tag);
 
-            pipe.hset(key, token, std::to_string(matchSuccessReqPacket->userRaidServerObjNum)) // Save the assigned Game Server unique ID to Redis
+            pipe.hset(key, token, std::to_string(tempUser->GetPk())) // Save the assigned Game Server unique ID to Redis
                 .expire(key, 60);
 
             pipe.hset("userinfo:{" + std::to_string(tempUser->GetPk()) + "}", "userstate", "inRaid"); // Set user status to "inRaid" in Redis Cluster
 
             pipe.exec();
 
-            connUsersManager->FindUser(matchSuccessReqPacket->userCenterObjNum)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&raidReadyReqPacket);
+            strncpy_s(raidReadyReqPacket.serverToken, token.c_str(), MAX_JWT_TOKEN_LEN + 1);
 
+            connUsersManager->FindUser(matchSuccessReqPacket->userCenterObjNum)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&raidReadyReqPacket);
+            std::cout << "¸ÅÄª ¼º°ø pk : " << connUsersManager->FindUser(matchSuccessReqPacket->userCenterObjNum)->GetPk() << std::endl;
         }
         catch (const sw::redis::Error& e) {
             raidReadyReqPacket.roomNum = 0;
@@ -754,7 +743,6 @@ void RedisManager::CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_,
             return;
         }
     }
-
 }
 
 

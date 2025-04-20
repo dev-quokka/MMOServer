@@ -7,6 +7,8 @@
 #include <vector>
 #include <chrono>
 
+const int MAX_INVEN_SIZE = 512;
+
 const uint16_t RANKING_USER_COUNT = 3; // 몇명씩 유저 랭킹 정보 가져올건지
 
 const int MAX_IP_LEN = 32;
@@ -22,9 +24,9 @@ struct PACKET_HEADER
 };
 
 struct USERINFO {
-	uint16_t level = 0;
-	unsigned int exp = 0;
 	unsigned int raidScore = 0;
+	unsigned int exp = 0;
+	uint16_t level = 0;
 };
 
 struct EQUIPMENT {
@@ -43,6 +45,12 @@ struct MATERIALS {
 	uint16_t itemCode = 0;
 	uint16_t position = 0;
 	uint16_t count = 0;
+};
+
+struct RAID_USERINFO{
+	std::string userId  = "";
+	uint16_t userLevel = 0;
+	uint16_t userScore = 0;
 };
 
 struct RANKING {
@@ -107,8 +115,6 @@ struct MOVE_CHANNEL_RESPONSE : PACKET_HEADER {
 };
 
 //  ---------------------------- SESSION  ----------------------------
-
-const int MAX_INVEN_SIZE = 512;
 
 struct USER_GAMESTART_REQUEST : PACKET_HEADER {
 	char userId[MAX_USER_ID_LEN + 1];
@@ -303,12 +309,13 @@ struct USER_CONNECT_GAME_RESPONSE : PACKET_HEADER {
 };
 
 struct RAID_TEAMINFO_REQUEST : PACKET_HEADER {
-	sockaddr_in userAddr; // 유저가 만든 udp 소켓의 sockaddr_in 전달
+	sockaddr_in userAddr;
 };
 
 struct RAID_TEAMINFO_RESPONSE : PACKET_HEADER {
 	char teamId[MAX_USER_ID_LEN + 1];
-	uint16_t teamLevel;
+	uint16_t userLevel;
+	uint16_t userRaidServerObjNum;
 };
 
 struct RAID_START : PACKET_HEADER {
@@ -326,18 +333,19 @@ struct RAID_HIT_RESPONSE : PACKET_HEADER {
 	unsigned int currentMobHp;
 };
 
-struct RAID_END_REQUEST : PACKET_HEADER { // Server TO User
+struct RAID_END : PACKET_HEADER {
+
+};
+
+struct SEND_RAID_SCORE : PACKET_HEADER {
 	unsigned int userScore;
-	unsigned int teamScore;
+	uint16_t userRaidServerObjNum;
 };
 
-struct RAID_END_RESPONSE : PACKET_HEADER { // User to Server (If Server Get This Packet, Return Room Number)
-
-};
 
 enum class PACKET_ID : uint16_t {
 	//  ---------------------------- CENTER (1~)  ----------------------------
-
+	
 	// SYSTEM (1~)
 	USER_CONNECT_REQUEST = 1,
 	USER_CONNECT_RESPONSE = 2,
@@ -357,7 +365,7 @@ enum class PACKET_ID : uint16_t {
 	RAID_RANKING_RESPONSE = 56,
 
 	//  ---------------------------- SESSION (801~)  ----------------------------
-
+	
 	// USER LOGIN (811~)
 	USER_LOGIN_REQUEST = 811,
 	USER_LOGIN_RESPONSE = 812,
@@ -410,8 +418,8 @@ enum class PACKET_ID : uint16_t {
 
 	//  ---------------------------- RAID(8001~)  ----------------------------
 
-	USER_CONNECT_GAME_REQUEST = 8003,
-	USER_CONNECT_GAME_RESPONSE = 8004,
+	USER_CONNECT_GAME_REQUEST = 8005,
+	USER_CONNECT_GAME_RESPONSE = 8006,
 
 	RAID_TEAMINFO_REQUEST = 8055,
 	RAID_TEAMINFO_RESPONSE = 8056,
@@ -419,5 +427,5 @@ enum class PACKET_ID : uint16_t {
 	RAID_HIT_REQUEST = 8058,
 	RAID_HIT_RESPONSE = 8059,
 
-	RAID_END_REQUEST = 8101,
+	RAID_END = 8101,
 };

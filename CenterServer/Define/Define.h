@@ -4,12 +4,14 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <mswsock.h>
+#include <windows.h>
+#include <mswsock.h>
 #include <cstdint>
-#include <string>
-#include <unordered_map>
+#include <iostream>
+#include <boost/lockfree/queue.hpp>
 
 const uint32_t MAX_RECV_SIZE = 1024; // Set Max Recv Buf
-const uint32_t MAX_CIRCLE_SIZE = 1024;
+const uint32_t MAX_CIRCLE_SIZE = 8096;
 
 
 // ======================= IOCP EXTENDED OVERLAPPED STRUCT =======================

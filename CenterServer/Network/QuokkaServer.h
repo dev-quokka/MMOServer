@@ -2,17 +2,6 @@
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "mswsock.lib")
 
-#include <winsock2.h>
-#include <windows.h>
-#include <cstdint>
-#include <atomic>
-#include <iostream>
-#include <vector>
-#include <thread>
-#include <mutex>
-#include <deque>
-#include <queue>
-#include <boost/lockfree/queue.hpp>
 #include <tbb/concurrent_hash_map.h>
 
 #include "Define.h"
@@ -35,9 +24,8 @@ private:
     // ===================== THREAD MANAGEMENT =====================
     bool CreateWorkThread();
     bool CreateAccepterThread();
-
-    void WorkThread(); // IOCP Complete Event Thread
-    void AccepterThread(); // Accept req Thread
+    void WorkThread();
+    void AccepterThread();
 
 
     // 136 bytes 
@@ -65,7 +53,7 @@ private:
     uint16_t maxClientCount = 0;
 
     // 1 bytes
-    bool WorkRun = false;
-    bool AccepterRun = false;
+    std::atomic<bool>  WorkRun = false;
+    std::atomic<bool>  AccepterRun = false;
     std::atomic<bool> UserMaxCheck = false;
 };

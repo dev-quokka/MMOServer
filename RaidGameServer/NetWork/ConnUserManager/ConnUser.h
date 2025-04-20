@@ -1,21 +1,17 @@
 #pragma once
+#include <atomic>
 
 #include "Define.h"
 #include "CircularBuffer.h"
 #include "Packet.h"
 #include "overLappedManager.h"
 
-#include <cstdint>
-#include <iostream>
-#include <atomic>
-#include <boost/lockfree/queue.hpp>
-
 class ConnUser {
 public:
 	ConnUser(uint32_t bufferSize_, uint16_t connObjNum_, HANDLE sIOCPHandle_, OverLappedManager* overLappedManager_)
 		: connObjNum(connObjNum_), sIOCPHandle(sIOCPHandle_), overLappedManager(overLappedManager_) {
+		
 		userSkt = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_IP, NULL, 0, WSA_FLAG_OVERLAPPED);
-
 		if (userSkt == INVALID_SOCKET) {
 			std::cout << "Client socket Error : " << GetLastError() << std::endl;
 		}
@@ -23,7 +19,7 @@ public:
 		auto tIOCPHandle = CreateIoCompletionPort((HANDLE)userSkt, sIOCPHandle_, (ULONG_PTR)0, 0);
 		if (tIOCPHandle == INVALID_HANDLE_VALUE)
 		{
-			std::cout << "reateIoCompletionPort Fail :" << GetLastError() << std::endl;
+			std::cout << "createIoCompletionPort Fail : " << GetLastError() << std::endl;
 		}
 
 		circularBuffer = std::make_unique<CircularBuffer>(bufferSize_);
@@ -34,6 +30,29 @@ public:
 	}
 
 public:
+	// ======================= INITIALIZATION =======================
+
+	void Reset() { // Reset connuser object socket
+		isConn = false;
+		shutdown(userSkt, SD_BOTH);
+		closesocket(userSkt);
+
+		userSkt = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_IP, NULL, 0, WSA_FLAG_OVERLAPPED);
+		if (userSkt == INVALID_SOCKET) {
+			std::cout << "Client socket Error : " << GetLastError() << std::endl;
+		}
+
+		auto tIOCPHandle = CreateIoCompletionPort((HANDLE)userSkt, sIOCPHandle, (ULONG_PTR)0, 0);
+		if (tIOCPHandle == INVALID_HANDLE_VALUE)
+		{
+			std::cout << "createIoCompletionPort Fail : " << GetLastError() << std::endl;
+		}
+
+	}
+
+
+	// ======================= IDENTIFICATION =======================
+
 	bool IsConn() { // Check connection status
 		return isConn;
 	}
@@ -59,6 +78,9 @@ public:
 		return userRaidServerObjNum;
 	}
 
+
+	// ======================= CIRCULAR BUFFER =======================
+
 	bool WriteRecvData(const char* data_, uint32_t size_) { // Set recvdata in circular buffer 
 		return circularBuffer->Write(data_, size_);
 	}
@@ -79,23 +101,8 @@ public:
 		}
 	}
 
-	void Reset() { // Reset connuser object socket
-		isConn = false;
-		shutdown(userSkt, SD_BOTH);
-		closesocket(userSkt);
 
-		userSkt = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_IP, NULL, 0, WSA_FLAG_OVERLAPPED);
-		if (userSkt == INVALID_SOCKET) {
-			std::cout << "Client socket Error : " << GetLastError() << std::endl;
-		}
-
-		auto tIOCPHandle = CreateIoCompletionPort((HANDLE)userSkt, sIOCPHandle, (ULONG_PTR)0, 0);
-		if (tIOCPHandle == INVALID_HANDLE_VALUE)
-		{
-			std::cout << "reateIoCompletionPort Fail :" << GetLastError() << std::endl;
-		}
-
-	}
+	// ========================== ACCEPT ==========================
 
 	bool PostAccept(SOCKET ServerSkt_) {
 		acceptOvlap = {};
@@ -116,6 +123,9 @@ public:
 
 		return true;
 	}
+
+
+	// =========================== RECV ===========================
 
 	bool ConnUserRecv() { 
 		OverlappedEx* tempOvLap = (overLappedManager->getOvLap());
@@ -148,6 +158,9 @@ public:
 
 		return true;
 	}
+
+
+	// =========================== SEND ===========================
 
 	void PushSendMsg(const uint32_t dataSize_, char* sendMsg) {
 

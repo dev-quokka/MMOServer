@@ -1,7 +1,7 @@
 #pragma once
 #include <mutex>
 #include <cstdint>
-#include <windows.h>
+#include <iostream>
 
 class CircularBuffer {
 public:

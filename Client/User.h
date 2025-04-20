@@ -13,7 +13,8 @@
 
 #pragma comment(lib, "ws2_32.lib") // 비주얼에서 소켓프로그래밍 하기 위한 것
 
-const uint16_t INVENTORY_SIZE = 11; // 10개면 +1해서 11개로 해두기
+constexpr uint16_t INVENTORY_SIZE = 11; // 10개면 +1해서 11개로 해두기
+constexpr uint16_t UDP_PORT = 40001;
 
 class User {
 public:
@@ -38,13 +39,14 @@ public:
         addr.sin_port = htons(SESSION_SERVER_PORT);
         inet_pton(AF_INET, SERVER_IP, &addr.sin_addr.s_addr);
 
-        std::cout << "Session Server Connecting..." << std::endl;
+        std::cout << "Login Server Connecting..." << std::endl;
 
         if (connect(sessionSkt, (SOCKADDR*)&addr, sizeof(addr))) {
-            std::cout << "Session Server Connect Fail" << std::endl;
+            std::cout << "Login Server Connect Fail" << std::endl;
             return false;
         }
-        std::cout << "Session Server Connect Success" << std::endl;
+
+        std::cout << "Login Server Connect Success" << std::endl;
 
         memset(recvBuffer, 0, PACKET_SIZE);
 
@@ -62,7 +64,7 @@ public:
         level = tempU.level;
         raidScore = tempU.raidScore;
 
-        if (tempU.level == 0) {
+        if (level == 0) {
             std::cout << "Get Userinfo Fail" << std::endl;
             return false;
         }
@@ -300,14 +302,14 @@ public:
         auto ucResPacket = reinterpret_cast<SERVER_USER_COUNTS_RESPONSE*>(recvBuffer);
         char* ptr = recvBuffer + sizeof(PACKET_HEADER) + sizeof(uint16_t);
         std::vector<uint16_t> tempV;
-        tempV.resize(ucResPacket->serverCount, 0);
+        tempV.resize(ucResPacket->serverCount,0);
         uint16_t tempC = 0;
 
         std::cout << std::endl;
 
         for (int i = 1; i < ucResPacket->serverCount; i++) {
             memcpy((char*)&tempC, ptr, sizeof(uint16_t));
-            std::cout << i << "서버 유저 수 : " << tempC << std::endl;
+            std::cout << i << "서버 유저 수 : " << tempC <<  std::endl;
             tempV[i] = tempC;
             ptr += sizeof(uint16_t);
         }
@@ -491,7 +493,7 @@ public:
 
         udpAddr.sin_family = AF_INET;
         udpAddr.sin_addr.s_addr = INADDR_ANY;
-        udpAddr.sin_port = htons(40000);
+        udpAddr.sin_port = htons(UDP_PORT);
 
         bind(udpSkt, (sockaddr*)&udpAddr, sizeof(udpAddr));
 
@@ -931,6 +933,7 @@ public:
         auto userConnResPacket = reinterpret_cast<USER_CONNECT_GAME_RESPONSE*>(recvBuffer);
 
         if (!userConnResPacket->isSuccess) { // 게임 서버 연결 실패
+            std::cout << "연결 실패" << std::endl;
             gameServerSocketinitialization();
             return;
         }
@@ -942,42 +945,62 @@ public:
 
         std::cout << "Raid Server Connection Success" << std::endl;
 
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+
+        raidUserInfos.resize(3);
+
         RAID_TEAMINFO_REQUEST rtReq;
         rtReq.PacketId = (UINT16)PACKET_ID::RAID_TEAMINFO_REQUEST;
         rtReq.PacketLength = sizeof(RAID_TEAMINFO_REQUEST);
         rtReq.userAddr = udpAddr;
 
-        send(userSkt, (char*)&rtReq, sizeof(rtReq), 0);
+        send(gameServerSkt, (char*)&rtReq, sizeof(rtReq), 0);
         std::cout << "Team Info Waitting" << std::endl;
-        recv(userSkt, recvBuffer, PACKET_SIZE, 0);
 
-        auto rtiReqPacket = reinterpret_cast<RAID_TEAMINFO_RESPONSE*>(recvBuffer);
-        uint16_t teamLevel = rtiReqPacket->teamLevel;
-        std::string teamId = (std::string)rtiReqPacket->teamId;
+		for (int i = 1; i < raidUserInfos.size(); i++) {
+			recv(gameServerSkt, recvBuffer, PACKET_SIZE, 0);
+            auto k = reinterpret_cast<PACKET_HEADER*>(recvBuffer);
+            std::cout << k->PacketId << std::endl;
 
-        std::cout << "Team Waitting" << std::endl;
-        recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+            auto rtiReqPacket = reinterpret_cast<RAID_TEAMINFO_RESPONSE*>(recvBuffer);
 
+			RAID_USERINFO tempRaidUserInfo;
+			tempRaidUserInfo.userId = (std::string)rtiReqPacket->teamId;
+			tempRaidUserInfo.userLevel = rtiReqPacket->userLevel;
+
+			raidUserInfos[rtiReqPacket->userRaidServerObjNum] = tempRaidUserInfo;
+		}
+
+		std::cout << "Get Team Info Success" << std::endl;
+        recv(gameServerSkt, recvBuffer, PACKET_SIZE, 0);
         auto rsReqPacket = reinterpret_cast<RAID_START*>(recvBuffer);
 
         mobHp.store(rsReqPacket->mobHp);
         mapNum = rsReqPacket->mapNum;
 
+        std::cout << "Waiting 2 seconds before starting the raid..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+
         std::cout << "Raid Start !" << std::endl;
         std::cout << "Map : " << mapNum << std::endl;
         std::cout << "Mob Hp : " << mobHp << std::endl;
-        std::cout << "My ID : " << userId << " / Level : " << level << std::endl;
-        std::cout << "Team ID : " << teamId << " / Level : " << teamLevel << std::endl;
+
+        std::cout << std::endl;
+        std::cout << "Raid participant information:" << std::endl;
+
+        for (int i = 1; i < raidUserInfos.size(); i++) {
+            std::cout << "My ID : " << raidUserInfos[i].userId << " / Level : " << raidUserInfos[i].userLevel << std::endl;
+        }
+        std::cout << std::endl;
 
         rEndTime = rsReqPacket->endTime;
-
         syncRun = true;
         inGameRun = true;
 
         CreateSyncThread();
         CreateInGameThread();
 
-        while (inGameRun && syncRun) { std::this_thread::sleep_for(std::chrono::milliseconds(100)); }
+        while (inGameRun && syncRun) { std::this_thread::sleep_for(std::chrono::milliseconds(1000)); }
         std::this_thread::sleep_for(std::chrono::seconds(1));
 
         if (inGameThread.joinable()) inGameThread.join();
@@ -987,6 +1010,8 @@ public:
         if (syncThread.joinable()) syncThread.join();
         std::this_thread::sleep_for(std::chrono::seconds(1));
         std::cout << "Sync Thread End" << std::endl;
+
+		raidUserInfos.clear();
     }
 
     bool CreateSyncThread() {
@@ -1033,8 +1058,8 @@ public:
             rhReq.PacketLength = sizeof(RAID_HIT_REQUEST);
             rhReq.damage = damage;
 
-            send(userSkt, (char*)&rhReq, sizeof(rhReq), 0);
-            recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+            send(gameServerSkt, (char*)&rhReq, sizeof(rhReq), 0);
+            recv(gameServerSkt, recvBuffer, PACKET_SIZE, 0);
 
             auto rhResPacket = reinterpret_cast<RAID_HIT_RESPONSE*>(recvBuffer);
 
@@ -1042,14 +1067,31 @@ public:
                 if (rhResPacket->yourScore != 0) {
                     std::cout << "My Socre : " << rhResPacket->yourScore << std::endl;
                 }
+
                 std::cout << "Game End Waitting..." << std::endl;
 
-                recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+                recv(gameServerSkt, recvBuffer, PACKET_SIZE, 0);
+                auto k = reinterpret_cast<PACKET_HEADER*>(recvBuffer);
+                std::cout << k->PacketId << std::endl;
 
-                auto reReq = reinterpret_cast<RAID_END_REQUEST*>(recvBuffer);
+                std::cout << "Game End" << std::endl;
+                
+                for (int i = 1; i < raidUserInfos.size(); i++ ) {
+                    std::cout << "점수 " << i << std::endl;
+                    recv(gameServerSkt, recvBuffer, PACKET_SIZE, 0);
+					auto k = reinterpret_cast<PACKET_HEADER*>(recvBuffer);
+					std::cout << k->PacketId << std::endl;
 
-                std::cout << "Raid End. Your Score : " << reReq->userScore << std::endl;
-                std::cout << "Raid End. Team Score : " << reReq->teamScore << std::endl;
+					auto scoreRes = reinterpret_cast<SEND_RAID_SCORE*>(recvBuffer);
+                    std::cout << scoreRes->userRaidServerObjNum << " " << scoreRes ->userScore << std::endl;
+
+					raidUserInfos[scoreRes->userRaidServerObjNum].userScore = scoreRes->userScore;
+                }
+
+                for (int i = 1; i < raidUserInfos.size(); i++) {
+                    std::cout << raidUserInfos[i].userId << " Score : " << raidUserInfos[i].userScore << std::endl;
+                }
+
                 std::cout << "Raid End." << std::endl;
                 break;
             }
@@ -1137,6 +1179,8 @@ private:
     std::vector<MATERIALS> mt{ INVENTORY_SIZE };
     std::vector<uint16_t> tempServerUserCounts;
     std::vector<uint16_t> tempChannelUserCounts;
+
+    std::vector<RAID_USERINFO> raidUserInfos;
 
     std::chrono::time_point<std::chrono::steady_clock> rEndTime;
 

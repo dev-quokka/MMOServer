@@ -43,7 +43,7 @@ private:
     void RedisThread();
 
     //SYSTEM
-    void ImChannelRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void ChannelServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void UserDisConnect(uint16_t connObjNum_);
     void SendChannelUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
