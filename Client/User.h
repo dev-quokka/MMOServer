@@ -302,14 +302,14 @@ public:
         auto ucResPacket = reinterpret_cast<SERVER_USER_COUNTS_RESPONSE*>(recvBuffer);
         char* ptr = recvBuffer + sizeof(PACKET_HEADER) + sizeof(uint16_t);
         std::vector<uint16_t> tempV;
-        tempV.resize(ucResPacket->serverCount,0);
+        tempV.resize(ucResPacket->serverCount, 0);
         uint16_t tempC = 0;
 
         std::cout << std::endl;
 
         for (int i = 1; i < ucResPacket->serverCount; i++) {
             memcpy((char*)&tempC, ptr, sizeof(uint16_t));
-            std::cout << i << "서버 유저 수 : " << tempC <<  std::endl;
+            std::cout << i << "서버 유저 수 : " << tempC << std::endl;
             tempV[i] = tempC;
             ptr += sizeof(uint16_t);
         }
@@ -492,8 +492,8 @@ public:
         }
 
         udpAddr.sin_family = AF_INET;
-        udpAddr.sin_addr.s_addr = INADDR_ANY;
         udpAddr.sin_port = htons(UDP_PORT);
+        inet_pton(AF_INET, "127.0.0.1", &udpAddr.sin_addr);
 
         bind(udpSkt, (sockaddr*)&udpAddr, sizeof(udpAddr));
 
@@ -946,7 +946,6 @@ public:
         std::cout << "Raid Server Connection Success" << std::endl;
 
         std::this_thread::sleep_for(std::chrono::seconds(1));
-
         raidUserInfos.resize(3);
 
         RAID_TEAMINFO_REQUEST rtReq;
@@ -954,24 +953,22 @@ public:
         rtReq.PacketLength = sizeof(RAID_TEAMINFO_REQUEST);
         rtReq.userAddr = udpAddr;
 
-        send(gameServerSkt, (char*)&rtReq, sizeof(rtReq), 0);
         std::cout << "Team Info Waitting" << std::endl;
+        send(gameServerSkt, (char*)&rtReq, sizeof(rtReq), 0);
 
-		for (int i = 1; i < raidUserInfos.size(); i++) {
-			recv(gameServerSkt, recvBuffer, PACKET_SIZE, 0);
-            auto k = reinterpret_cast<PACKET_HEADER*>(recvBuffer);
-            std::cout << k->PacketId << std::endl;
+        for (int i = 1; i < raidUserInfos.size(); i++) {
+            recv(gameServerSkt, recvBuffer, PACKET_SIZE, 0);
 
             auto rtiReqPacket = reinterpret_cast<RAID_TEAMINFO_RESPONSE*>(recvBuffer);
 
-			RAID_USERINFO tempRaidUserInfo;
-			tempRaidUserInfo.userId = (std::string)rtiReqPacket->teamId;
-			tempRaidUserInfo.userLevel = rtiReqPacket->userLevel;
+            RAID_USERINFO tempRaidUserInfo;
+            tempRaidUserInfo.userId = (std::string)rtiReqPacket->teamId;
+            tempRaidUserInfo.userLevel = rtiReqPacket->userLevel;
 
-			raidUserInfos[rtiReqPacket->userRaidServerObjNum] = tempRaidUserInfo;
-		}
+            raidUserInfos[rtiReqPacket->userRaidServerObjNum] = tempRaidUserInfo;
+        }
 
-		std::cout << "Get Team Info Success" << std::endl;
+        std::cout << "Get Team Info Success" << std::endl;
         recv(gameServerSkt, recvBuffer, PACKET_SIZE, 0);
         auto rsReqPacket = reinterpret_cast<RAID_START*>(recvBuffer);
 
@@ -994,14 +991,16 @@ public:
         std::cout << std::endl;
 
         rEndTime = rsReqPacket->endTime;
-        syncRun = true;
-        inGameRun = true;
 
         CreateSyncThread();
         CreateInGameThread();
 
-        while (inGameRun && syncRun) { std::this_thread::sleep_for(std::chrono::milliseconds(1000)); }
         std::this_thread::sleep_for(std::chrono::seconds(1));
+
+        while (!inGameRun && !syncRun) { std::this_thread::sleep_for(std::chrono::seconds(1)); }
+
+        syncRun = false;
+        inGameRun = false;
 
         if (inGameThread.joinable()) inGameThread.join();
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -1011,16 +1010,18 @@ public:
         std::this_thread::sleep_for(std::chrono::seconds(1));
         std::cout << "Sync Thread End" << std::endl;
 
-		raidUserInfos.clear();
+        raidUserInfos.clear();
     }
 
     bool CreateSyncThread() {
+        syncRun = true;
         syncThread = std::thread([this]() {SyncThread(); });
         std::cout << "SyncThread Start" << std::endl;
         return true;
     }
 
     bool CreateInGameThread() {
+        inGameRun = true;
         inGameThread = std::thread([this]() {InGameThread(); });
         std::cout << "InGameThread Start" << std::endl;
         return true;
@@ -1031,16 +1032,13 @@ public:
 
         while (syncRun) {
             int serverAddrSize = sizeof(serverAddr);
-
             int received = recvfrom(udpSkt, recvUDPBuffer, sizeof(recvUDPBuffer), 0, (sockaddr*)&serverAddr, &serverAddrSize);
-
-            std::cout << "동기화 데이터 들어옴" << std::endl;
-
-            if (received == sizeof(unsigned int) && syncRun) { // 데이터 잘 들어왔으면 동기화
+            
+            if (received == sizeof(unsigned int)) { // 데이터 잘 들어왔으면 동기화
                 unsigned int mobHp_ = *(unsigned int*)recvUDPBuffer;
                 mobHp.store(mobHp_);
-                std::cout << "Mob Hp : " << mobHp_ << std::endl;
             }
+
         }
     }
 
@@ -1049,6 +1047,7 @@ public:
         unsigned int teamScore = 0;
 
         while (mobHp >= 0 || (std::chrono::steady_clock::now() < rEndTime)) {
+			std::cout << "Mob Hp : " << mobHp.load() << std::endl;
             std::cout << "Input Damage" << std::endl;
             unsigned int damage;
             std::cin >> damage;
@@ -1071,21 +1070,14 @@ public:
                 std::cout << "Game End Waitting..." << std::endl;
 
                 recv(gameServerSkt, recvBuffer, PACKET_SIZE, 0);
-                auto k = reinterpret_cast<PACKET_HEADER*>(recvBuffer);
-                std::cout << k->PacketId << std::endl;
 
                 std::cout << "Game End" << std::endl;
-                
-                for (int i = 1; i < raidUserInfos.size(); i++ ) {
-                    std::cout << "점수 " << i << std::endl;
+
+                for (int i = 1; i < raidUserInfos.size(); i++) {
                     recv(gameServerSkt, recvBuffer, PACKET_SIZE, 0);
-					auto k = reinterpret_cast<PACKET_HEADER*>(recvBuffer);
-					std::cout << k->PacketId << std::endl;
 
-					auto scoreRes = reinterpret_cast<SEND_RAID_SCORE*>(recvBuffer);
-                    std::cout << scoreRes->userRaidServerObjNum << " " << scoreRes ->userScore << std::endl;
-
-					raidUserInfos[scoreRes->userRaidServerObjNum].userScore = scoreRes->userScore;
+                    auto scoreRes = reinterpret_cast<SEND_RAID_SCORE*>(recvBuffer);
+                    raidUserInfos[scoreRes->userRaidServerObjNum].userScore = scoreRes->userScore;
                 }
 
                 for (int i = 1; i < raidUserInfos.size(); i++) {
@@ -1114,6 +1106,7 @@ public:
 
     bool GetRaidScore(uint16_t startNum_) { // 마지막 유저 스코어면 false 반환. 그 뒤 유저 없으니까 체크 x
         int rank;
+
         if (startNum_ == 0) {
             rank = startNum_;
         }
@@ -1191,7 +1184,10 @@ private:
     SOCKET udpSkt;
 
     unsigned int raidScore;
+    std::atomic<unsigned int> exp;
     char recvUDPBuffer[sizeof(unsigned int)];
+
+    std::atomic<uint16_t> level;
 
     // Raid
     std::atomic<int> mobHp;
@@ -1204,6 +1200,4 @@ private:
 
     std::atomic<bool> syncRun = false;
     std::atomic<bool> inGameRun = false;
-    std::atomic<uint16_t> level;
-    std::atomic<unsigned int> exp;
 };

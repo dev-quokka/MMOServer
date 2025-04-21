@@ -90,6 +90,7 @@ private:
 
     // 2 bytes
     uint16_t centerServerObjNum = 0;
+    uint16_t matchingServerObjNum = 1;
 
     // 1 bytes
     std::atomic<bool> redisRun = false;

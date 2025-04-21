@@ -42,7 +42,7 @@ public:
 	}
 
 	std::chrono::time_point<std::chrono::steady_clock> SetEndTime() { // Set raid end time
-		endTime = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+		endTime = std::chrono::steady_clock::now() + std::chrono::seconds(8);
 		return endTime;
 	}
 
@@ -127,19 +127,18 @@ public:
 	void SendSyncMsg() { // Send sync messages to active players
 		unsigned int tempMobHp = mobHp.load();
 
-		for (int i = 1; i <= ruInfos.size(); i++) { // Send synchronization message to players currently in game
+		for (int i = 1; i < ruInfos.size(); i++) { // Send synchronization message to players currently in game
 			if (ruInfos[i] == nullptr) {
 				std::cout << "not yet" << std::endl;
 				continue;
 			}
 
 			if (sendto(*udpSkt, (char*)&tempMobHp, sizeof(tempMobHp), 0, (sockaddr*)&ruInfos[i]->userAddr, sizeof(ruInfos[i]->userAddr)) == SOCKET_ERROR) {
-				std::cout << "½ÇÆÐ" << std::endl;
 				std::cerr << "sendto failed: " << WSAGetLastError() << std::endl;
 				continue;
 			}
 
-			std::cout << "RoomNum : " << roomNum << ", Mob Hp : " << tempMobHp << std::endl;
+			std::cout << "[Sync Msg] RoomNum : " << roomNum << ", Mob Hp : " << tempMobHp << std::endl;
 		}
 	}
 

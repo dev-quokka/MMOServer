@@ -251,14 +251,15 @@ void RedisManager::RaidTeamInfo(uint16_t connObjNum_, uint16_t packetSize_, char
     }
 
     if (tempRoom->SendUserCheck()) {
-        RAID_START raidStartReqPacket1;
-        raidStartReqPacket1.PacketId = (uint16_t)PACKET_ID::RAID_START;
-        raidStartReqPacket1.PacketLength = sizeof(RAID_START);
-        raidStartReqPacket1.endTime = tempRoom->SetEndTime();
-        raidStartReqPacket1.mapNum = tempRoom->GetMapNum();
-        raidStartReqPacket1.mobHp = tempRoom->GetMobHp();
-
         for (int i = 1; i <= MAX_RAID_ROOM_PLAYERS; i++) {
+
+            RAID_START raidStartReqPacket1;
+            raidStartReqPacket1.PacketId = (uint16_t)PACKET_ID::RAID_START;
+            raidStartReqPacket1.PacketLength = sizeof(RAID_START);
+            raidStartReqPacket1.endTime = tempRoom->SetEndTime();
+            raidStartReqPacket1.mapNum = tempRoom->GetMapNum();
+            raidStartReqPacket1.mobHp = tempRoom->GetMobHp();
+
             connUsersManager->FindUser(tempRoom->GetUserInfoByObjNum(i)->userConnObjNum)->PushSendMsg(sizeof(RAID_START), (char*)&raidStartReqPacket1);
         }
 
@@ -270,7 +271,6 @@ void RedisManager::RaidTeamInfo(uint16_t connObjNum_, uint16_t packetSize_, char
 void RedisManager::RaidHit(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto raidHitReqPacket = reinterpret_cast<RAID_HIT_REQUEST*>(pPacket_);
     auto connUser = connUsersManager->FindUser(connObjNum_);
-
     auto tempRoom = roomManager->GetRoom(connUser->GetRoomNum());
 
     RAID_HIT_RESPONSE raidHitResPacket;
@@ -294,42 +294,51 @@ void RedisManager::RaidHit(uint16_t connObjNum_, uint16_t packetSize_, char* pPa
                 connUsersManager->FindUser(tempUser->userConnObjNum)->PushSendMsg(sizeof(RAID_END), (char*)&raidEndReqPacket);
             }
 
-            std::cout << "종료 메시지 전송 완료" << std::endl;
-
             try {
                 auto pipe = redis->pipeline("ranking");
 
                 for (int i = 1; i <= MAX_RAID_ROOM_PLAYERS; i++) { // Send scores of users who participated in the raid
-                    auto tempUser = tempRoom->GetUserInfoByObjNum(i);
+                    auto tempUser1 = tempRoom->GetUserInfoByObjNum(i);
 
-                    SEND_RAID_SCORE sendScoreReqPacket;
-                    sendScoreReqPacket.PacketId = (uint16_t)PACKET_ID::SEND_RAID_SCORE;
-                    sendScoreReqPacket.PacketLength = sizeof(SEND_RAID_SCORE);
-                    sendScoreReqPacket.userRaidServerObjNum = i;
-                    sendScoreReqPacket.userScore = tempUser->userScore.load();
+					for (int j = 1; j <= MAX_RAID_ROOM_PLAYERS; j++) {
+                        auto tempUser2 = tempRoom->GetUserInfoByObjNum(j);
 
-                    connUsersManager->FindUser(tempUser->userConnObjNum)->PushSendMsg(sizeof(SEND_RAID_SCORE), (char*)&sendScoreReqPacket);
+                        SEND_RAID_SCORE sendScoreReqPacket;
+                        sendScoreReqPacket.PacketId = (uint16_t)PACKET_ID::SEND_RAID_SCORE;
+                        sendScoreReqPacket.PacketLength = sizeof(SEND_RAID_SCORE);
+                        sendScoreReqPacket.userRaidServerObjNum = j;
+                        sendScoreReqPacket.userScore = tempUser2->userScore.load();
 
-					std::cout << tempUser->userId << " Score : " << tempUser->userScore.load() << std::endl;
+                        connUsersManager->FindUser(tempUser1->userConnObjNum)->PushSendMsg(sizeof(SEND_RAID_SCORE), (char*)&sendScoreReqPacket);
+					}
 
-                    if (tempUser->userScore.load() > tempUser->userMaxScore) {
-                        pipe.zadd("ranking", tempUser->userId, (double)(tempUser->userScore.load())); // Update Redis if new score exceeds previous best score
+                    if (tempUser1->userScore.load() > tempUser1->userMaxScore) {
+                        pipe.zadd("ranking", tempUser1->userId, (double)(tempUser1->userScore.load())); // Update Redis if new score exceeds previous best score
 
                         { // Send sync message to Center Server if new score exceeds previous best score
                             SYNC_HIGHSCORE_REQUEST shreq;
                             shreq.PacketId = (uint16_t)PACKET_ID::SYNC_HIGHSCORE_REQUEST;
                             shreq.PacketLength = sizeof(SYNC_HIGHSCORE_REQUEST);
-                            shreq.userScore = tempUser->userScore.load();
-                            strncpy_s(shreq.userId, tempUser->userId.c_str(), MAX_USER_ID_LEN);
+                            shreq.userScore = tempUser1->userScore.load();
+                            strncpy_s(shreq.userId, tempUser1->userId.c_str(), MAX_USER_ID_LEN);
 
                             connUsersManager->FindUser(centerServerObjNum)->PushSendMsg(sizeof(SYNC_HIGHSCORE_REQUEST), (char*)&shreq);
                         }
                     }
                 }
 
+                pipe.exec(); // Synchronize user rankings
+
+                RAID_END_REQUEST_TO_MATCHING_SERVER raidEndReq;
+                raidEndReq.PacketId = (uint16_t)PACKET_ID::RAID_END_REQUEST_TO_MATCHING_SERVER;
+                raidEndReq.PacketLength = sizeof(RAID_END_REQUEST_TO_MATCHING_SERVER);
+				raidEndReq.gameServerNum = GAME_SERVER_NUM;
+				raidEndReq.roomNum = tempRoom->GetRoomNum();
+
+                connUsersManager->FindUser(matchingServerObjNum)->PushSendMsg(sizeof(RAID_END_REQUEST_TO_MATCHING_SERVER), (char*)&raidEndReq);
+
                 tempRoom->SetGameRunning(false); // Set game end flag
                 roomManager->DeleteMob(tempRoom);
-                pipe.exec(); // Synchronize user rankings
                 return;
             }
             catch (const sw::redis::Error& e) {

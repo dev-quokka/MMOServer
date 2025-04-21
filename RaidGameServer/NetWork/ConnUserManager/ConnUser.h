@@ -163,6 +163,8 @@ public:
 	// =========================== SEND ===========================
 
 	void PushSendMsg(const uint32_t dataSize_, char* sendMsg) {
+		auto k = reinterpret_cast<PACKET_HEADER*>(sendMsg);
+		std::cout << std::endl;
 
 		OverlappedEx* tempOvLap = overLappedManager->getOvLap();
 

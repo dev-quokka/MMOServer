@@ -11,8 +11,8 @@ bool RoomManager::init() {
 
     sockaddr_in serverUdpAddr{};
     serverUdpAddr.sin_family = AF_INET;
-    serverUdpAddr.sin_addr.s_addr = INADDR_ANY;
     serverUdpAddr.sin_port = htons(UDP_PORT);
+    inet_pton(AF_INET, "127.0.0.1", &serverUdpAddr.sin_addr);
 
     if (bind(udpSkt, (sockaddr*)&serverUdpAddr, sizeof(serverUdpAddr))) {
         std::cout << "Failed to Bind UDP Socket:" << WSAGetLastError() << std::endl;
@@ -72,15 +72,17 @@ void RoomManager::TickRateThread() {
         }
 
         for (auto iter = roomMap.begin(); iter != roomMap.end(); iter++) { // Send synchronization data
+
             if (iter->second->IsGameRunning()) {
                 iter->second->SendSyncMsg();
             }
         }
 
-        auto currentTime = std::chrono::steady_clock::now();
+        auto timeEnd = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeCheck);
 
-        while (timeCheck > currentTime) {  // Sleep for the remaining time until the next tick
-            std::this_thread::sleep_for(timeCheck - currentTime);
+        if (elapsed < tickRate) {
+            std::this_thread::sleep_for(tickRate - elapsed);
         }
 
     }
@@ -88,7 +90,6 @@ void RoomManager::TickRateThread() {
 
 void RoomManager::TimeCheckThread() {
     Room* room_;
-
     while (timeChekcRun) {
         if (!endRoomCheckSet.empty()) { // Active room exists
             room_ = (*endRoomCheckSet.begin());
@@ -98,7 +99,6 @@ void RoomManager::TimeCheckThread() {
                 endRoomCheckSet.erase(endRoomCheckSet.begin());
             }
             else { // Game in progress
-                std::cout << "ÁøÇà Áß" << std::endl;
                 std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             }
         }
@@ -129,7 +129,6 @@ Room* RoomManager::GetRoom(uint16_t roomNum_) {
     tbb::concurrent_hash_map<uint16_t, Room*>::accessor accessor;
 
     if (!roomMap.find(accessor, roomNum_)) { // Return if the room does not exist
-        std::cout << "Room not found" << std::endl;
         return nullptr;
     }
 
@@ -140,12 +139,13 @@ void RoomManager::DeleteRoom(uint16_t roomNum_) {
     tbb::concurrent_hash_map<uint16_t, Room*>::accessor accessor;
 
     if (!roomMap.find(accessor, roomNum_)) { // Return if the room does not exist
-        std::cout << "Room not found" << std::endl;
         return;
     }
 
     delete accessor->second;
     roomMap.erase(accessor); // Remove the room from the map
+
+    std::cout << "Deleting Room : " << roomNum_ << std::endl;
 }
 
 
