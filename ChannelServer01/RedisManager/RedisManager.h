@@ -27,26 +27,41 @@ public:
             }
         }
     }
-
+    // ====================== INITIALIZATION =======================
     void init(const uint16_t RedisThreadCnt_);
     void SetManager(ConnUsersManager* connUsersManager_, InGameUserManager* inGameUserManager_);
+    
+
+    // ===================== PACKET MANAGEMENT =====================
     void PushRedisPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_);
+    
+
+	// ==================== INGAME MANAGEMENT ======================
+    bool EquipmentEnhance(uint16_t currentEnhanceCount_);
+
+
+    // ==================== CONNECTION INTERFACE ===================
     void Disconnect(uint16_t connObjNum_);
 
 private:
-    bool CreateRedisThread(const uint16_t RedisThreadCnt_);
-    bool EquipmentEnhance(uint16_t currentEnhanceCount_);
+    // ===================== REDIS MANAGEMENT =====================
     bool RedisRun(const uint16_t RedisThreadCnt_);
+    bool CreateRedisThread(const uint16_t RedisThreadCnt_);
     void RedisThread();
 
-    //SYSTEM
+
+    // ======================= CENTER SERVER =======================
     void ChannelServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+
+
+    // ======================= CHANNEL SERVER =======================
+    // SYSTEM
 	void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); 
     void UserDisConnect(uint16_t connObjNum_); 
     void SendChannelUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MoveChannel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
-    // USER STATUS
+	// USER STATUS
     void ExpUp(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
     // INVENTORY
@@ -60,6 +75,7 @@ private:
     void DeleteEquipment(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void EnhanceEquipment(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MoveEquipment(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+
 
     typedef void(RedisManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
 

@@ -12,6 +12,15 @@ public:
 		return userLevel;
 	}
 
+	void Reset() {
+		userLevel = 0;
+		userPk = 0;
+		userExp = 0;
+		channelNum = 0;
+	}
+
+	// ============================ SET ============================
+
 	void Set(std::string userId_, uint32_t userPk_, unsigned int userExp_, uint16_t userLevel_, unsigned int raidScore_) {
 		userLevel = userLevel_;
 		userExp = userExp_;
@@ -24,19 +33,15 @@ public:
 		channelNum = channelNum_;
 	}
 
-	uint16_t GetChannel() {
-		return channelNum;
-	}
 
-	void Reset() {
-		userLevel = 0;
-		userPk = 0;
-		userExp = 0;
-		channelNum = 0;
-	}
+	// ============================ GET ============================
 
 	bool CheckMatching() {
 		return raidMatching.load();
+	}
+
+	uint16_t GetChannel() {
+		return channelNum;
 	}
 
 	uint32_t GetPk() {
@@ -50,6 +55,9 @@ public:
 	unsigned int GetScore() {
 		return raidScore;
 	}
+
+
+	// ======================== USER STATUS ========================
 
 	std::pair<uint16_t, unsigned int> ExpUp(short mobExp_) {
 		userExp += mobExp_;

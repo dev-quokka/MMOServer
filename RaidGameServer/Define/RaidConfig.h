@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
-#include <atomic>
 #include <string>
+#include <atomic>
 #include <iostream>
 
 constexpr uint16_t MAX_RAID_ROOM_PLAYERS = 2;

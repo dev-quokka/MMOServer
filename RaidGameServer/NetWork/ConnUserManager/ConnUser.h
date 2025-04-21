@@ -221,7 +221,7 @@ private:
 	}
 
 	// 1024 bytes
-	char readData[1024] = { 0 };
+	char readData[MAX_RECV_SIZE] = { 0 };
 
 	// 136 bytes 
 	boost::lockfree::queue<OverlappedEx*> sendQueue{ 10 };

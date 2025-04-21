@@ -45,6 +45,7 @@ private:
     // ======================= RAID GAME SERVER =======================
     void MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void RaidEnd(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
 
     typedef void(RedisManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);

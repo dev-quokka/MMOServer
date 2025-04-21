@@ -11,6 +11,7 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
     packetIDTable[(uint16_t)PACKET_ID::MATCHING_REQUEST_TO_MATCHING_SERVER] = &RedisManager::MatchStart;
     packetIDTable[(uint16_t)PACKET_ID::MATCHING_CANCEL_REQUEST_TO_MATCHING_SERVER] = &RedisManager::MatchingCancel;
     packetIDTable[(uint16_t)PACKET_ID::MATCHING_SERVER_CONNECT_REQUEST_FROM_RAID_SERVER] = &RedisManager::ImGameRequest;
+    packetIDTable[(uint16_t)PACKET_ID::RAID_END_REQUEST_TO_MATCHING_SERVER] = &RedisManager::RaidEnd;
 
     RedisRun(RedisThreadCnt_);
 }
@@ -152,4 +153,11 @@ void RedisManager::MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, ch
     else matchCancelResPacket.isSuccess = true;
 
     connServersManager->FindServer(connObjNum_)->PushSendMsg(sizeof(MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER), (char*)&matchCancelResPacket);
+}
+
+void RedisManager::RaidEnd(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    auto matchingReqPacket = reinterpret_cast<RAID_END_REQUEST_TO_MATCHING_SERVER*>(pPacket_);
+
+    matchingManager->InserRoomNum(matchingReqPacket->roomNum);
+	std::cout << "Raid Ended. Get RoomNum : " << matchingReqPacket->roomNum << std::endl;
 }

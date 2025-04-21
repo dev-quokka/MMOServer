@@ -1,15 +1,18 @@
 #include "RedisManager.h"
 
+// ========================== INITIALIZATION =========================
+
 thread_local std::mt19937 RedisManager::gen(std::random_device{}());
 
 void RedisManager::init(const uint16_t RedisThreadCnt_) {
 
-    // ---------- SET PACKET PROCESS ---------- 
+    // -------------------- SET PACKET HANDLERS ----------------------
     packetIDTable = std::unordered_map<uint16_t, RECV_PACKET_FUNCTION>();
 
-    // SYSTEM
+    // CENTER
     packetIDTable[(UINT16)PACKET_ID::USER_CONNECT_CHANNEL_REQUEST] = &RedisManager::UserConnect;
-
+    
+    // SYSTEM
     packetIDTable[(UINT16)PACKET_ID::CHANNEL_SERVER_CONNECT_RESPONSE] = &RedisManager::ChannelServerConnectRequest;
     packetIDTable[(UINT16)PACKET_ID::CHANNEL_USER_COUNTS_REQUEST] = &RedisManager::SendChannelUserCounts;
     packetIDTable[(UINT16)PACKET_ID::MOVE_CHANNEL_REQUEST] = &RedisManager::MoveChannel;
@@ -34,6 +37,42 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
     channelManager->init();
 }
 
+void RedisManager::SetManager(ConnUsersManager* connUsersManager_, InGameUserManager* inGameUserManager_) {
+    connUsersManager = connUsersManager_;
+    inGameUserManager = inGameUserManager_;
+}
+
+
+// ===================== PACKET MANAGEMENT =====================
+
+void RedisManager::PushRedisPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_) {
+    ConnUser* TempConnUser = connUsersManager->FindUser(connObjNum_);
+    TempConnUser->WriteRecvData(recvData_, size_); // Push Data in Circualr Buffer
+    DataPacket tempD(size_, connObjNum_);
+    procSktQueue.push(tempD);
+}
+
+
+// ==================== INGAME MANAGEMENT ======================
+
+bool RedisManager::EquipmentEnhance(uint16_t currentEnhanceCount_) {
+    if (currentEnhanceCount_ < 0 || currentEnhanceCount_ >= enhanceProbabilities.size()) {
+        return false;
+    }
+
+    std::uniform_int_distribution<int> dist(1, 100);
+    return dist(gen) <= enhanceProbabilities[currentEnhanceCount_];
+}
+
+
+// ==================== CONNECTION INTERFACE ===================
+
+void RedisManager::Disconnect(uint16_t connObjNum_) {
+    UserDisConnect(connObjNum_);
+}
+
+// ====================== REDIS MANAGEMENT =====================
+
 bool RedisManager::RedisRun(const uint16_t RedisThreadCnt_) { // Connect Redis Server
     try {
         connection_options.host = "127.0.0.1";  // Redis Cluster IP
@@ -54,18 +93,9 @@ bool RedisManager::RedisRun(const uint16_t RedisThreadCnt_) { // Connect Redis S
 	return true;
 }
 
-void RedisManager::Disconnect(uint16_t connObjNum_) {
-    UserDisConnect(connObjNum_);
-}
-
-void RedisManager::SetManager(ConnUsersManager* connUsersManager_, InGameUserManager* inGameUserManager_) {
-    connUsersManager = connUsersManager_;
-    inGameUserManager = inGameUserManager_;
-}
-
 bool RedisManager::CreateRedisThread(const uint16_t RedisThreadCnt_) {
     redisRun = true;
-    
+
     try {
         for (int i = 0; i < RedisThreadCnt_; i++) {
             redisThreads.emplace_back(std::thread([this]() { RedisThread(); }));
@@ -77,15 +107,6 @@ bool RedisManager::CreateRedisThread(const uint16_t RedisThreadCnt_) {
     }
 
     return true;
-}
-
-bool RedisManager::EquipmentEnhance(uint16_t currentEnhanceCount_) {
-    if (currentEnhanceCount_ < 0 || currentEnhanceCount_ >= enhanceProbabilities.size()) {
-        return false;
-    }
-
-    std::uniform_int_distribution<int> dist(1, 100);
-    return dist(gen) <= enhanceProbabilities[currentEnhanceCount_];
 }
 
 void RedisManager::RedisThread() {
@@ -106,16 +127,8 @@ void RedisManager::RedisThread() {
     }
 }
 
-void RedisManager::PushRedisPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_) {
-    ConnUser* TempConnUser = connUsersManager->FindUser(connObjNum_);
-    TempConnUser->WriteRecvData(recvData_, size_); // Push Data in Circualr Buffer
-    DataPacket tempD(size_, connObjNum_);
-    procSktQueue.push(tempD);
-}
 
-// ============================== PACKET ==============================
-
-//  ---------------------------- SYSTEM  ----------------------------
+// ======================================================= CENTER SERVER =======================================================
 
 void RedisManager::ChannelServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto centerConn = reinterpret_cast<CHANNEL_SERVER_CONNECT_RESPONSE*>(pPacket_);
@@ -127,6 +140,9 @@ void RedisManager::ChannelServerConnectRequest(uint16_t connObjNum_, uint16_t pa
 
     std::cout << "Successfully Authenticated with Center Server" << std::endl;
 }
+
+
+// ======================================================= CHANNEL SERVER =======================================================
 
 void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
 

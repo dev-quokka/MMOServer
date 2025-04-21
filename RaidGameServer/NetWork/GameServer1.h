@@ -19,7 +19,6 @@ public:
     bool StartWork();
     void ServerEnd();
 
-
 	// ==================== SERVER CONNECTION ======================
     bool CenterServerConnect();
     bool MatchingServerConnect();

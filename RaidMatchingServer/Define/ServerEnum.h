@@ -12,11 +12,11 @@ enum class ServerType : uint16_t {
 	// Center Server (0)
 	CenterServer = 0,
 
-	// Game Server (51~)
-	RaidGameServer01 = 51,
+	// Game Server (3~)
+	RaidGameServer01 = 3,
 
-	// Matching Server (111~)
-	MatchingServer = 111,
+	// Matching Server (5)
+	MatchingServer = 5,
 };
 
 struct ServerAddress {

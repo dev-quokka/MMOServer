@@ -4,7 +4,6 @@
 #include <winsock2.h>
 #include <cstdint>
 #include <string>
-#include <vector>
 #include <chrono>
 
 struct DataPacket {
@@ -81,6 +80,11 @@ struct MATCHING_REQUEST_TO_GAME_SERVER : PACKET_HEADER {
 	uint16_t roomNum;
 };
 
+struct RAID_END_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
+	uint16_t gameServerNum;
+	uint16_t roomNum;
+};
+
 
 enum class PACKET_ID : uint16_t {
 	//SYSTEM (5001~)
@@ -102,4 +106,5 @@ enum class PACKET_ID : uint16_t {
 
 	MATCHING_REQUEST_TO_GAME_SERVER = 8011,
 
+	RAID_END_REQUEST_TO_MATCHING_SERVER = 8111,
 };

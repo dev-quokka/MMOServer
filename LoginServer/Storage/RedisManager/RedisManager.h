@@ -4,14 +4,12 @@
 #include <jwt-cpp/jwt.h>
 #include <winsock2.h>
 #include <windef.h>
-#include <cstdint>
-#include <iostream>
 #include <random>
-#include <unordered_map>
 #include <sw/redis++/redis++.h>
 
 #include "Packet.h"
 #include "UserSyncData.h"
+#include "ServerEnum.h"
 #include "ConnUsersManager.h"
 #include "MySQLManager.h"
 
@@ -77,6 +75,6 @@ private:
     uint16_t centerServerObjNum = 0;
 
     // 1 bytes
-    bool redisRun = false;
+    std::atomic<bool>  redisRun = false;
 };
 

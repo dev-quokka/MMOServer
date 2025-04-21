@@ -65,7 +65,7 @@ private:
     void GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
 
-    // ======================= LOGIN SERVER =======================
+    // ======================== LOGIN SERVER =======================
     void LoginServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
 

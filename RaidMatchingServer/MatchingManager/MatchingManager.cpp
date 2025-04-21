@@ -83,6 +83,10 @@ uint16_t MatchingManager::CancelMatching(uint16_t userCenterObjNum_, uint16_t us
     return false;
 }
 
+void MatchingManager::InserRoomNum(uint16_t roomNum_) {
+	roomNumQueue.push(roomNum_); // Insert room number
+}
+
 void MatchingManager::MatchingThread(uint16_t groupStartIdx_, uint16_t groupEndIdx_) {
     uint16_t cnt = groupStartIdx_;
     uint16_t tempRoomNum = 0;
@@ -118,7 +122,7 @@ void MatchingManager::MatchingThread(uint16_t groupStartIdx_, uint16_t groupEndI
                             delete tempMatchedUser[k];
                         }
 
-                        std::cout << "Matched Success" << std::endl;
+						std::cout << "Matched Success Room Num : " << tempRoomNum << std::endl;
 
                         tempRoomNum = 0; // If roomNum is used, reset it to 0
                         tempMatchedUser.clear();
@@ -162,7 +166,7 @@ void MatchingManager::MatchingThread(uint16_t groupStartIdx_, uint16_t groupEndI
                         delete tempMatchedUser[k];
                     }
 
-                    std::cout << "Matched Success" << std::endl;
+                    std::cout << "Matched Success Room Num : " << tempRoomNum << std::endl;
 
                     tempRoomNum = 0; // If roomNum is used, reset it to 0
                     tempMatchedUser.clear();

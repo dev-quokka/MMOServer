@@ -2,7 +2,6 @@
 #pragma comment (lib, "libmysql.lib")
 
 #include <iostream>
-#include <cstdint>
 #include <string>
 #include <mysql.h>
 #include <vector>

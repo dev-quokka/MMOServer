@@ -1,5 +1,7 @@
 #include "ChannelManager.h"
 
+// ========================== INITIALIZATION ==========================
+
 bool ChannelManager::init() {
 	channels.resize(MAX_CHANNEL);
 	channels[0] = nullptr;
@@ -10,6 +12,9 @@ bool ChannelManager::init() {
 	}
 	return true;
 }
+
+
+// ======================== CHANNEL MANAGEMENT ========================
 
 bool ChannelManager::InsertChannel(uint16_t channelNum, uint16_t userObjNum_, InGameUser* user_) {
 	if (channels[channelNum]->GetUserCount() > MAX_CHANNEL_USERS) { // Channel is full, return fail

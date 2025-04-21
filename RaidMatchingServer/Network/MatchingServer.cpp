@@ -142,7 +142,7 @@ bool MatchingServer::CenterServerConnect() {
     ZeroMemory(&addr, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(ServerAddressMap[ServerType::CenterServer].port);
-    inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr.s_addr);
+    inet_pton(AF_INET, ServerAddressMap[ServerType::CenterServer].ip.c_str(), &addr.sin_addr.s_addr);
 
     std::cout << "Connecting To Center Server" << std::endl;
 

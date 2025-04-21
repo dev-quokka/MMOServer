@@ -1,5 +1,7 @@
 #include "ChannelServer1.h"
 
+// ========================== INITIALIZATION ===========================
+
 bool ChannelServer1::init(const uint16_t MaxThreadCnt_, int port_) {
     WSAData wsadata;
     MaxThreadCnt = MaxThreadCnt_; // Set the number of worker threads
@@ -48,6 +50,73 @@ bool ChannelServer1::init(const uint16_t MaxThreadCnt_, int port_) {
     return true;
 }
 
+bool ChannelServer1::StartWork() {
+    if (!CreateWorkThread()) {
+        return false;
+    }
+
+    if (!CreateAccepterThread()) {
+        return false;
+    }
+
+    connUsersManager = new ConnUsersManager(MAX_USERS_OBJECT);
+    inGameUserManager = new InGameUserManager;
+    redisManager = new RedisManager;
+
+    // 0 : Center Server
+    ConnUser* centerConnUser = new ConnUser(MAX_CIRCLE_SIZE, 0, sIOCPHandle, overLappedManager);
+    connUsersManager->InsertUser(0, centerConnUser);
+
+    for (int i = 1; i < MAX_USERS_OBJECT; i++) { // Make ConnUsers Queue
+        ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE, i, sIOCPHandle, overLappedManager);
+
+        AcceptQueue.push(connUser); // Push ConnUser
+        connUsersManager->InsertUser(i, connUser); // Init ConnUsers
+    }
+
+    redisManager->init(MaxThreadCnt);
+    inGameUserManager->Init(MAX_USERS_OBJECT);
+    redisManager->SetManager(connUsersManager, inGameUserManager);
+
+    CenterServerConnect();
+
+    return true;
+}
+
+void ChannelServer1::ServerEnd() {
+    WorkRun = false;
+    AccepterRun = false;
+
+    for (int i = 0; i < workThreads.size(); i++) {
+        PostQueuedCompletionStatus(sIOCPHandle, 0, 0, nullptr);
+    }
+
+    for (int i = 0; i < workThreads.size(); i++) { // Shutdown worker threads
+        if (workThreads[i].joinable()) {
+            workThreads[i].join();
+        }
+    }
+    for (int i = 0; i < acceptThreads.size(); i++) { // Shutdown accept threads
+        if (acceptThreads[i].joinable()) {
+            acceptThreads[i].join();
+        }
+    }
+
+    delete redisManager;
+    delete inGameUserManager;
+
+    CloseHandle(sIOCPHandle);
+    closesocket(serverSkt);
+    WSACleanup();
+
+    std::cout << "Wait 5 Seconds Before Shutdown" << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait 5 seconds before server shutdown
+    std::cout << "Game Server1 Shutdown" << std::endl;
+}
+
+
+// ======================== SERVER CONNECTION ==========================
+
 bool ChannelServer1::CenterServerConnect() {
     auto centerObj = connUsersManager->FindUser(0);
 
@@ -55,7 +124,7 @@ bool ChannelServer1::CenterServerConnect() {
     ZeroMemory(&addr, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(ServerAddressMap[ServerType::CenterServer].port);
-    inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr.s_addr);
+    inet_pton(AF_INET, ServerAddressMap[ServerType::CenterServer].ip.c_str(), &addr.sin_addr.s_addr);
 
     std::cout << "Connecting To Center Server" << std::endl;
 
@@ -79,38 +148,7 @@ bool ChannelServer1::CenterServerConnect() {
 }
 
 
-bool ChannelServer1::StartWork() {
-    if (!CreateWorkThread()) {
-        return false;
-    }
-
-    if (!CreateAccepterThread()) {
-        return false;
-    }
-
-    connUsersManager = new ConnUsersManager(MAX_USERS_OBJECT);
-    inGameUserManager = new InGameUserManager;
-    redisManager = new RedisManager;
-
-    // 0 : Center Server
-    ConnUser* centerConnUser = new ConnUser(MAX_CIRCLE_SIZE, 0, sIOCPHandle, overLappedManager);
-    connUsersManager->InsertUser(0, centerConnUser);
-
-    for (int i = 1; i <= MAX_USERS_OBJECT; i++) { // Make ConnUsers Queue
-        ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE, i, sIOCPHandle, overLappedManager);
-
-        AcceptQueue.push(connUser); // Push ConnUser
-        connUsersManager->InsertUser(i, connUser); // Init ConnUsers
-    }
-
-    redisManager->init(MaxThreadCnt);
-    inGameUserManager->Init(MAX_USERS_OBJECT + 1);
-    redisManager->SetManager(connUsersManager, inGameUserManager);
-
-    CenterServerConnect();
-
-    return true;
-}
+// ========================= THREAD MANAGEMENT =========================
 
 bool ChannelServer1::CreateWorkThread() {
     WorkRun = true;
@@ -239,37 +277,5 @@ void ChannelServer1::AccepterThread() {
             //}
         }
     }
-}
-
-void ChannelServer1::ServerEnd() {
-    WorkRun = false;
-    AccepterRun = false;
-
-    for (int i = 0; i < workThreads.size(); i++) {
-        PostQueuedCompletionStatus(sIOCPHandle, 0, 0, nullptr);
-    }
-
-    for (int i = 0; i < workThreads.size(); i++) { // Shutdown worker threads
-        if (workThreads[i].joinable()) {
-            workThreads[i].join();
-        }
-    }
-    for (int i = 0; i < acceptThreads.size(); i++) { // Shutdown accept threads
-        if (acceptThreads[i].joinable()) {
-            acceptThreads[i].join();
-        }
-    }
-
-    ConnUser* connUser;
-
-    delete redisManager;
-    delete inGameUserManager;
-    CloseHandle(sIOCPHandle);
-    closesocket(serverSkt);
-    WSACleanup();
-
-    std::cout << "Wait 5 Seconds Before Shutdown" << std::endl;
-    std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait 5 seconds before server shutdown
-    std::cout << "Game Server1 Shutdown" << std::endl;
 }
 

@@ -1,6 +1,6 @@
 #include "QuokkaServer.h"
 
-// ====================== INITIALIZATION =======================
+// ========================== INITIALIZATION ===========================
 
 bool QuokkaServer::init(const uint16_t MaxThreadCnt_, int port_) {
     WSADATA wsadata;
@@ -124,7 +124,7 @@ void QuokkaServer::ServerEnd() {
 }
 
 
-// ===================== THREAD MANAGEMENT =====================
+// ========================= THREAD MANAGEMENT =========================
 
 bool QuokkaServer::CreateWorkThread() {
     WorkRun = true;

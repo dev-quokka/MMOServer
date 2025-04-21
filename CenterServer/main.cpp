@@ -18,7 +18,7 @@ int main() {
     server.init(maxThreadCount, ServerAddressMap[ServerType::CenterServer].port);
     server.StartWork();
 
-    std::cout << "=== CENTER SERVER START ===" << std::endl;
+    std::cout << "========= CENTER SERVER START ========" << std::endl;
     std::cout << "=== If You Want Exit, Write quokka ===" << std::endl;
     std::string k = "";
 

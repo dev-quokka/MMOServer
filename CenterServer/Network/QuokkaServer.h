@@ -2,8 +2,6 @@
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "mswsock.lib")
 
-#include <tbb/concurrent_hash_map.h>
-
 #include "Define.h"
 #include "ConnUser.h"
 #include "OverLappedManager.h"

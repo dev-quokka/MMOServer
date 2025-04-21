@@ -1,8 +1,4 @@
 #pragma once
-
-#include <iostream>
-#include <boost/lockfree/queue.hpp>
-
 #include "Define.h"
 
 constexpr uint16_t OVERLAPPED_QUEUE_SIZE = 10;

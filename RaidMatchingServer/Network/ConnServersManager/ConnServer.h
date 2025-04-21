@@ -1,14 +1,10 @@
 #pragma once
+#include <atomic>
 
 #include "Packet.h"
 #include "Define.h"
 #include "CircularBuffer.h"
 #include "overLappedManager.h"
-
-#include <cstdint>
-#include <iostream>
-#include <atomic>
-#include <boost/lockfree/queue.hpp>
 
 class ConnServer {
 public:

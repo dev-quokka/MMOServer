@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 
 #include "ConnUser.h"
 
@@ -11,10 +12,11 @@ public:
         }
     }
 
-    void InsertUser(uint16_t connObjNum, ConnUser* connUser); // Init ConnUsers
+    // ================== CONNECTION USER MANAGEMENT ==================
+    void InsertUser(uint16_t connObjNum, ConnUser* connUser);
     ConnUser* FindUser(uint16_t connObjNum);
 
+
 private:
-    // 576 bytes
     std::vector<ConnUser*> ConnUsers; // ConnUsers Obj
 };

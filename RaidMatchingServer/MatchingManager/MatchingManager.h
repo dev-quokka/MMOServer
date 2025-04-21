@@ -1,12 +1,6 @@
 #pragma once
-
-#include <set>
 #include <thread>
-#include <chrono>
-#include <mutex>
-#include <cstdint>
-#include <iostream>
-#include <boost/lockfree/queue.hpp>
+#include <set>
 #include <tbb/concurrent_hash_map.h>
 
 #include "Packet.h"
@@ -48,6 +42,7 @@ public:
 
 	uint16_t Insert(uint16_t userPk_, uint16_t userCenterObjNum, uint16_t userGroupNum_);
 	uint16_t CancelMatching(uint16_t userCenterObjNum_, uint16_t userGroupNum_);
+	void InserRoomNum(uint16_t roomNum_);
 
 private:
 	// 576 bytes
