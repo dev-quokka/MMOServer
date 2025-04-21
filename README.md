@@ -173,8 +173,9 @@
 
 <br>
 
-- #### Raid Start & Raid End & Ranking Update (Mob Hp 0)
-![레이드 몹 잡고 랭킹 확인](https://github.com/user-attachments/assets/94eafd7f-08e5-416b-9731-b4465a948b1d)
+- #### Raid Start & Raid End (Mob Hp 0)
+![Raid Start   Raid End (Mob Hp 0)](https://github.com/user-attachments/assets/e2c99091-fabb-4900-b39a-fbed30f885d6)
+
 
 1. 레이드 몬스터의 HP가 0이 되면 레이드가 종료되며, 내 점수와 다른 유저의 점수를 반환받아 확인할 수 있습니다.
  
@@ -185,7 +186,8 @@
 <br>
 
 - #### Raid Start & Raid End (Time Out)
-![타임아웃되면 0점마무리](https://github.com/user-attachments/assets/92dce42d-1204-4fd6-9ccc-69ecd7b07bfb)
+![Raid Start   Raid End (Time Out)](https://github.com/user-attachments/assets/30675120-415f-4f0a-97ec-84087febf25a)
+
 
 1. 제한시간이 종료되면 레이드가 자동으로 종료됩니다.
  
