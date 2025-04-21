@@ -7,8 +7,8 @@
 ### ㅇMMO Server
  
   #### 1. 성능 최적화 (Performance Optimization)
-    - Circular Buffer 및 객체 풀(Object Pool)을 활용하여 메모리 사용 효율화
-    - new/delete 호출 최소화 및 메모리 외부 단편화(Fragmentation) 방지를 위한 객체 풀 설계 적용
+    - Circular Buffer를 활용하여 메모리 사용 효율화
+    - new/delete 호출 최소화 및 메모리 외부 단편화(Fragmentation) 방지를 위한 객체 풀(Object Pool) 설계 적용
     - 대량 데이터 송수신 시 char*기반 처리로 오버헤드 최소화
     - atomic, boost::lockfree_queue, tbb::concurrent_hash_map 등을 활용하여 mutex 사용 최소화
 
