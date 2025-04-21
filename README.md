@@ -6,79 +6,79 @@
 
 ### ㅇMMO Server
  
-  #### 1. 네트워크 최적화
-    - Circular Buffer를 활용하여 메모리 사용 최적화
-    - 동적 할당 최소화를 위한 객체 풀 설계 적용
-    - 대량 데이터 송수신 시 vector 대신 char*형 활용으로 성능 최적화
+  #### 1. 성능 최적화 (Performance Optimization)
+    - Circular Buffer 및 객체 풀(Object Pool)을 활용하여 메모리 사용 효율화
+    - new/delete 호출 최소화 및 메모리 외부 단편화(Fragmentation) 방지를 위한 객체 풀 설계 적용
+    - 대량 데이터 송수신 시 char*기반 처리 오버헤드 최소화
     - atomic, boost::lockfree_queue, tbb::concurrent_hash_map 등을 활용하여 mutex 사용 최소화
-    - try-catch 문 적용으로 예외 처리 강화
-    - MySQL 동기화가 필요한 데이터는 Gateway Server를 통해 처리하여 부하 분산
 
-  #### 2. 인벤토리 (장비, 소비, 재료)
-    - 아이템 획득, 삭제, 슬롯 이동, 장비 강화 시스템 구현
-    - 난수 생성 엔진을 활용한 장비 강화 성공 확률 차등 적용
+  #### 2. 보안 & 인증 (Security & Authentication)
+    - 게임 시작 시 Login Server에서 JWT 토큰 발급 → Game Server에 인증 요청
+    - 서버 간 이동 시 JWT 토큰 기반 인증 시스템으로 유저 식별 및 보안 강화
+    - 레이드 점수, 장비 강화 상태 등 핵심 유저 데이터는 서버 중심 연산 구조로 클라이언트 조작 방지
 
-  #### 3. 레이드
+  #### 3. 서버 구조 및 확장성 설계 (Scalable Multi-Server Architecture)
+    - Center Server를 중심으로 Login, Matching, Raid, Channel Server 등 역할 분리
+    - 기능별 서버 간 통신 구조를 통해 확장성, 유지보수성, 부하 분산 확보
+    - 모든 서버에 고유 enum 번호를 부여하여, 서버 간 통신의 일관성과 향후 서버 추가에 대비한 유연한 구조 설계
+
+  #### 3. 실시간 동기화 & 데이터 무결성 (Real-time Sync & Data Integrity)
+    - 주요 데이터(레이드 점수, 장비 강화 등)는 Redis Cluster와 MySQL을 연동하여 실시간 저장 및 이중 동기화 
+    - TCP 기반 IOCP 통신으로 유저의 전투 이벤트를 서버에서 연산하고 데미지 및 몬스터 HP 반영  
+    - 틱레이트 기반 UDP 전송을 통해 유저 간 전투 상태를 주기적으로 동기화 
+    - 실시간 레이드 전투 시스템 구현 (제한 시간 초과 또는 몬스터 HP 0 시 종료)
+
+  #### 4. 게임 시스템 로직 (Game System Logic)
+    - 인벤토리 시스템: 아이템 획득, 삭제, 슬롯 이동, 장비 강화
+    - 장비 강화 시스템: 난수 엔진 기반 확률 적용
     - 레벨 그룹별 레이드 매칭 시스템 구현 
-    - 실시간 레이드 전투 시스템 구현 (제한 시간 초과 또는 몬스터 HP 0시 종료) 
-    - TCP와 UDP를 활용한 하이브리드 IOCP 통신을 통해 몬스터 HP 및 전투 정보 실시간 동기화
-    - 레이드 랭킹 시스템 구현
-
-  #### 4. 유저 시스템
-    - Login Server에서 생성된 JWT 토큰 검증을 통해 접속 요청 유저를 이중 확인하여 보안성 강화
-    - 경험치 증가, 레벨업 알고리즘 구현
+    - 경험치 획득 및 레벨업 시스템 구현
 
 <br> 
 
 ### ㅇCenter Server - User Connection Management & Server Migration with JWT Issuance
-   - 유저 게임 접속 관리 및 인증 처리
+   - 전체 유저 접속 관리 및 인증 처리
+   - JWT 발급을 통한 서버 간 이동 및 보안 강화
    - 채널 서버별 유저 수 상태 관리 및 전달
-   - 레이드 매칭 요청 수신 및 매칭 완료 후 게임 서버 주소 전달
-   - 레이드 랭킹 조회
-   - 서버 이동 시 JWT 토큰 생성 및 발급을 통한 보안 강화
-   - 유저 핵심 데이터 MySQL 데이터베이스에 실시간 동기화
-   - 유저 로그아웃 시 Redis Cluster → MySQL 데이터 일괄 동기화 (Batch Update)
+   - 중요 데이터 Redis와 MySQL에 실시간 이중 동기화
+   - 로그아웃시, Redis → MySQL 일괄 데이터 저장 처리
+<br> 
 
+### ㅇLogin Server - User Authentication & Session Initialization
+   - 유저 로그인 요청 시, MySQL → Redis Cluster로 유저 데이터 로드  
+   - JWT 토큰을 생성하여 Redis에 저장하고 유저에게 전달
+   - 인증 및 초기화 완료 후 유저와 연결을 종료
 <br> 
 
 ### ㅇChannel Server - Monster Hunting, Inventory Management, and Equipment Enhancement System
    - 서버 내 채널 이동 관리
-   - 몬스터 사냥을 통한 경험치 획득 및 레벨업
-   - 인벤토리 내 아이템 획득, 삭제, 이동 관리
-   - 장비 강화 시스템 제공
+   - 몬스터 사냥을 통한 경험치 획득 및 레벨업 처리
+   - 인벤토리 아이템 획득/삭제/이동 처리
+   - 장비 강화 기능 처리
+   - 레이드 랭킹 조회
 
 <br> 
 
-### ㅇLogin Server - User Authentication & Connection Game Server For Syncronization
-   - 유저 게임 시작 요청 시 MySQL → Redis Cluster 데이터 로드
-   - JWT 토큰을 활용한 유저 인증 보안 강화
-
-<br> 
-
-### ㅇㅇMatching Server - User Group Matching & Room Assignment for Game Initialization
-   - 레벨 그룹 단위 매칭 수행
-   - 매칭 성공 시 중앙 서버 및 게임 서버로 방 번호 전달
-   - 레이드 종료 후 방 번호 재등록
+### ㅇMatching Server - User Group Matching & Room Assignment for Game Initialization
+   - 레벨 그룹 단위 유저 매칭
+   - 매칭 성공 시, 생성 가능한 방 번호와 매칭에 사용된 유저들의 PK를 게임 서버에 전달 
+   - 레이드 종료 후, 게임 서버로부터 종료된 방 번호를 수신하여 재등록
 
 <br> 
 
 ### ㅇGame Server - Room Data Generation & User Synchronization for Gameplay
-   - 매칭 서버로부터 방 번호 및 유저 정보 수신 후 게임 방 생성 (Mob HP, Timeout Duration)
-   - 틱 레이트 기반 게임 상태 실시간 동기화
-   - 레이드 진행 상태 및 종료 조건 관리 (Mob HP 0 or Time Out)
-     
-<br> 
-
-### ㅇClient
-   - 게임 시작 요청시 Login Server에서 JWT 토큰을 발급 받아 Game Server에 인증 요청
-   - 보안을 강화하기 위해 클라이언트의 연산 처리를 최소화하는 설계를 적용
+   - 매칭 서버로부터 방 번호 및 유저 PK 수신 후, 방 생성
+   - 방 생성 완료 시, 중앙 서버에 유저 입장 준비 완료 신호 전달    
+   - 모든 매칭 유저가 접속하면, 확률 기반으로 랜덤 맵을 생성하고 몬스터 HP 및 제한 시간 설정 후 유저에게 정보 전송 
+   - 전투 중 틱레이트 기반의 실시간 게임 상태 동기화
+   - 몬스터 HP가 0이 되거나 제한 시간이 초과되면 레이드 종료 처리
 
 <br> 
 
 #### ㅇ기술스택 - C++, IOCP, MySQL, Redis Cluster, Docker, Boost, TBB, JWT
 
 
-#### ㅇ 프로젝트 소개서 - [IOCP & Redis Cluster를 활용한 MMO 게임 서버 프로젝트.pdf](https://github.com/user-attachments/files/19143541/IOCP.Redis.Cluster.MMO.pdf)
+#### ㅇ 프로젝트 소개서 - 
 
 
 <br>  
@@ -92,6 +92,11 @@
 
 - #### User Connect
 ![Game Server Connect drawio](https://github.com/user-attachments/assets/efa77c95-aed4-487f-9d56-eb2d21af1d27)
+
+<br>
+
+- #### User Logout or Disconnect
+![logout drawio](https://github.com/user-attachments/assets/3428ac25-9ae1-4800-acb5-5b5cbc9dd620)
 
 <br>
 
@@ -110,24 +115,6 @@
 - #### Raid Start
 ![Raid Game Start drawio](https://github.com/user-attachments/assets/6a371c20-4ef5-4c1b-beaf-baa65cbcfd7c)
 
-
-<br>
-
-- #### Raid End (Time Out)
-![Raid Time End](https://github.com/user-attachments/assets/f6fdd216-52fe-40bd-b2b4-600e57a04169)
-
-
-<br>
-
-- #### Raid End (Mob HP 0)
-![Raid mob dead drawio](https://github.com/user-attachments/assets/20b7c6db-6fc4-4d8e-a8cb-eabe75cf01da)
-
-
-
-<br>
-
-- #### User Logout or Disconnect
-![logout drawio](https://github.com/user-attachments/assets/3428ac25-9ae1-4800-acb5-5b5cbc9dd620)
 
 
 
