@@ -13,13 +13,14 @@
     - atomic, boost::lockfree_queue, tbb::concurrent_hash_map 등을 활용하여 mutex 사용 최소화
 
   #### 2. 보안 & 인증 (Security & Authentication)
-    - 게임 시작 시 Login Server에서 JWT 토큰 발급 → Game Server에 인증 요청
+    - 게임 시작 시 Login Server에서 JWT 토큰 발급 → Center Server에 인증 요청
     - 서버 간 이동 시 JWT 토큰 기반 인증 시스템으로 유저 식별 및 보안 강화
 
   #### 3. 서버 구조 및 확장성 설계 (Scalable Multi-Server Architecture)
     - Center Server를 중심으로 Login, Matching, Raid, Channel Server 등 역할 분리
     - 기능별 서버 간 통신 구조를 통해 확장성, 유지보수성, 부하 분산 확보
     - 모든 서버에 고유 번호를 부여하여, 서버 간 통신의 일관성과 향후 서버 추가에 대비한 유연한 구조 설계
+    
   #### 4. 게임 시스템 로직 (Game System Logic)
     - 인벤토리 시스템: 아이템 획득, 삭제, 슬롯 이동, 장비 강화
     - 장비 강화 시스템: 난수 엔진 기반 확률 적용
