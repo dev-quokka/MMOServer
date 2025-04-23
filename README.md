@@ -2,6 +2,14 @@
 
 <br> 
 
+> **⏱️ 프로젝트 기간**: 2025.01.14 ~ 2025.04.22
+>  
+> **🛠️ 사용 기술**: C++, IOCP, MySQL, Redis Cluster, Docker, Boost, TBB, JWT
+> 
+> **📌 주요 내용**: 분산 MMO 서버 설계 및 구현 / 실시간 레이드 전투 동기화 / JWT 인증 기반 서버 이동 & 중요 데이터 실시간 동기화
+
+<br>
+
 ## [소개]
 
 ### ㅇMMO Server
@@ -68,8 +76,6 @@
    - 몬스터 HP가 0이 되거나 제한 시간이 초과되면, 조건에 따라 다른 방식으로 레이드 종료 처리
 
 <br> 
-
-#### ㅇ기술스택 - C++, IOCP, MySQL, Redis Cluster, Docker, Boost, TBB, JWT
 
 
 #### ㅇ 프로젝트 소개서 - [MMOServer_Project_Intro.pdf](https://github.com/user-attachments/files/19869179/MMOServer_Project_Intro.pdf)
