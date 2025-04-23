@@ -7,6 +7,7 @@
 #include <vector>
 #include <chrono>
 
+constexpr uint16_t RANKING_USER_COUNT = 3; // Number of users to display per ranking page
 const int MAX_USER_ID_LEN = 32;
 const int MAX_SERVER_USERS = 128;
 const int MAX_JWT_TOKEN_LEN = 256;
@@ -82,6 +83,15 @@ struct MOVE_CHANNEL_RESPONSE : PACKET_HEADER {
 	bool isSuccess;
 };
 
+struct RAID_RANKING_REQUEST : PACKET_HEADER {
+	uint16_t startRank;
+};
+
+struct RAID_RANKING_RESPONSE : PACKET_HEADER {
+	uint16_t rkCount;
+	char reqScore[MAX_SCORE_SIZE + 1];
+};
+
 //  ---------------------------- USER STATUS  ----------------------------
 
 struct EXP_UP_REQUEST : PACKET_HEADER {
@@ -96,9 +106,9 @@ struct EXP_UP_RESPONSE : PACKET_HEADER {
 //  ---------------------------- INVENTORY  ----------------------------
 
 struct ADD_ITEM_REQUEST : PACKET_HEADER {
-	uint16_t itemType; 
+	uint16_t itemType;
 	uint16_t itemPosition;
-	uint16_t itemCount; 
+	uint16_t itemCount;
 	uint16_t itemCode;
 };
 
@@ -107,8 +117,8 @@ struct ADD_ITEM_RESPONSE : PACKET_HEADER {
 };
 
 struct DEL_ITEM_REQUEST : PACKET_HEADER {
-	uint16_t itemType; 
-	uint16_t itemPosition; 
+	uint16_t itemType;
+	uint16_t itemPosition;
 };
 
 struct DEL_ITEM_RESPONSE : PACKET_HEADER {
@@ -116,10 +126,10 @@ struct DEL_ITEM_RESPONSE : PACKET_HEADER {
 };
 
 struct MOD_ITEM_REQUEST : PACKET_HEADER {
-	uint16_t itemType; 
+	uint16_t itemType;
 	uint16_t itemPosition;
 	uint16_t itemCount;
-	uint16_t itemCode; 
+	uint16_t itemCode;
 };
 
 struct MOD_ITEM_RESPONSE : PACKET_HEADER {
@@ -127,15 +137,15 @@ struct MOD_ITEM_RESPONSE : PACKET_HEADER {
 };
 
 struct MOV_ITEM_REQUEST : PACKET_HEADER {
-	uint16_t ItemType; 
+	uint16_t ItemType;
 
 	uint16_t dragItemPos;
 	uint16_t dragItemCode;
 	uint16_t dragItemCount;
 
-	uint16_t targetItemPos; 
+	uint16_t targetItemPos;
 	uint16_t targetItemCode;
-	uint16_t targetItemCount; 
+	uint16_t targetItemCount;
 };
 
 struct MOV_ITEM_RESPONSE : PACKET_HEADER {
@@ -145,8 +155,8 @@ struct MOV_ITEM_RESPONSE : PACKET_HEADER {
 //  ---------------------------- INVENTORY:EQUIPMENT  ----------------------------
 
 struct ADD_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t itemPosition; 
-	uint16_t Enhancement; 
+	uint16_t itemPosition;
+	uint16_t Enhancement;
 	uint16_t itemCode;
 };
 
@@ -155,7 +165,7 @@ struct ADD_EQUIPMENT_RESPONSE : PACKET_HEADER {
 };
 
 struct DEL_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t itemPosition; 
+	uint16_t itemPosition;
 };
 
 struct DEL_EQUIPMENT_RESPONSE : PACKET_HEADER {
@@ -163,7 +173,7 @@ struct DEL_EQUIPMENT_RESPONSE : PACKET_HEADER {
 };
 
 struct ENH_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t itemPosition; 
+	uint16_t itemPosition;
 };
 
 struct ENH_EQUIPMENT_RESPONSE : PACKET_HEADER {
@@ -171,8 +181,14 @@ struct ENH_EQUIPMENT_RESPONSE : PACKET_HEADER {
 	bool isSuccess;
 };
 
+struct SYNC_EQUIPMENT_ENHANCE_REQUEST : PACKET_HEADER {
+	uint16_t itemPosition;
+	uint16_t enhancement;
+	uint16_t userPk;
+};
+
 struct MOV_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t dragItemPos; 
+	uint16_t dragItemPos;
 	uint16_t dragItemCode;
 	uint16_t dragItemEnhancement;
 
@@ -202,6 +218,8 @@ enum class PACKET_ID : uint16_t {
 	CHANNEL_USER_COUNTS_RESPONSE = 1514,
 	MOVE_CHANNEL_REQUEST = 1515,
 	MOVE_CHANNEL_RESPONSE = 1516,
+	RAID_RANKING_REQUEST = 1517,
+	RAID_RANKING_RESPONSE = 1518,
 
 	// USER STATUS (1521~)
 	EXP_UP_REQUEST = 1521,
@@ -228,4 +246,5 @@ enum class PACKET_ID : uint16_t {
 	ENH_EQUIPMENT_RESPONSE = 1538,
 	MOV_EQUIPMENT_REQUEST = 1539,
 	MOV_EQUIPMENT_RESPONSE = 1540,
+	SYNC_EQUIPMENT_ENHANCE_REQUEST = 1541,
 };

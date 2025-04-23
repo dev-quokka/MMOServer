@@ -19,6 +19,7 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
     // CHANNEL
     packetIDTable[(uint16_t)PACKET_ID::CHANNEL_SERVER_CONNECT_REQUEST] = &RedisManager::ChannelServerConnectRequest;
     packetIDTable[(uint16_t)PACKET_ID::USER_DISCONNECT_AT_CHANNEL_REQUEST] = &RedisManager::ChannelDisConnect;
+    packetIDTable[(uint16_t)PACKET_ID::SYNC_EQUIPMENT_ENHANCE_REQUEST] = &RedisManager::SyncEqipmentEnhace;
 
     // MATCHING
     packetIDTable[(uint16_t)PACKET_ID::MATCHING_SERVER_CONNECT_REQUEST] = &RedisManager::MatchingServerConnectRequest;
@@ -31,8 +32,6 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
     packetIDTable[(uint16_t)PACKET_ID::RAID_SERVER_CONNECT_REQUEST] = &RedisManager::GameServerConnectRequest;
     packetIDTable[(uint16_t)PACKET_ID::MATCHING_RESPONSE_FROM_GAME_SERVER] = &RedisManager::CheckMatchSuccess;
     packetIDTable[(uint16_t)PACKET_ID::SYNC_HIGHSCORE_REQUEST] = &RedisManager::SyncUserRaidScore;
-    packetIDTable[(uint16_t)PACKET_ID::RAID_RANKING_REQUEST] = &RedisManager::GetRanking;
-
 
     channelServerObjNums.resize(3, 0); // Channel Server ID start from 1 (index 0 is not used)
     raidGameServerObjNums.resize(2, 0); // Raid Game Server ID start from 1 (index 0 is not used)
@@ -94,7 +93,7 @@ void RedisManager::RedisRun(const uint16_t RedisThreadCnt_) { // Connect Redis S
 
 bool RedisManager::CreateRedisThread(const uint16_t RedisThreadCnt_) {
     redisRun = true;
-    
+
     try {
         for (int i = 0; i < RedisThreadCnt_; i++) {
             redisThreads.emplace_back(std::thread([this]() { RedisThread(); }));
@@ -109,9 +108,9 @@ bool RedisManager::CreateRedisThread(const uint16_t RedisThreadCnt_) {
 }
 
 void RedisManager::RedisThread() {
-    DataPacket tempD(0,0);
+    DataPacket tempD(0, 0);
     ConnUser* TempConnUser = nullptr;
-    char tempData[1024] = {0};
+    char tempData[1024] = { 0 };
 
     while (redisRun) {
         if (procSktQueue.pop(tempD)) {
@@ -132,7 +131,7 @@ void RedisManager::RedisThread() {
 USERINFO RedisManager::GetUpdatedUserInfo(uint16_t userPk_) {
     std::string userInfokey = "userinfo:{" + std::to_string(userPk_) + "}";
     std::unordered_map<std::string, std::string> userData;
-    
+
     USERINFO tempUser;
 
     try {
@@ -180,7 +179,7 @@ std::vector<EQUIPMENT> RedisManager::GetUpdatedEquipment(uint16_t userPk_) {
             tempEqv.emplace_back(eq);
         }
     }
-    catch(const sw::redis::Error& e) {
+    catch (const sw::redis::Error& e) {
         std::cerr << "Redis error: " << e.what() << std::endl;
         std::cout << "Failed to Get Equipment for UserPk: " << userPk_ << std::endl;
         return tempEqv;
@@ -216,7 +215,7 @@ std::vector<CONSUMABLES> RedisManager::GetUpdatedConsumables(uint16_t userPk_) {
             tempCsv.emplace_back(cs);
         }
     }
-    catch(const sw::redis::Error& e) {
+    catch (const sw::redis::Error& e) {
         std::cerr << "Redis error: " << e.what() << std::endl;
         std::cout << "Failed to Get Consumables for UserPk: " << userPk_ << std::endl;
         return tempCsv;
@@ -257,7 +256,7 @@ std::vector<MATERIALS> RedisManager::GetUpdatedMaterials(uint16_t userPk_) {
 
             tempMtv.emplace_back(cs);
         }
-        catch(const sw::redis::Error& e) {
+        catch (const sw::redis::Error& e) {
             std::cerr << "Redis error: " << e.what() << std::endl;
             std::cout << "Failed to Get Materials for UserPk: " << userPk_ << std::endl;
             continue;
@@ -283,6 +282,7 @@ void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char*
 
     try {
         auto pk = static_cast<uint32_t>(std::stoul(*redis->hget(key, (std::string)userConn->userToken)));
+
         if (pk) {
             std::string key = "userinfo:{" + std::to_string(pk) + "}";
             std::unordered_map<std::string, std::string> userData;
@@ -292,7 +292,7 @@ void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char*
 
             connUsersManager->FindUser(connObjNum_)->SetPk(pk);
             tempUser->Set(pk, std::stoul(userData["exp"]),
-            static_cast<uint16_t>(std::stoul(userData["level"])), std::stoul(userData["raidScore"]),(std::string)userConn->userId);
+                static_cast<uint16_t>(std::stoul(userData["level"])), std::stoul(userData["raidScore"]), (std::string)userConn->userId);
 
             redis->hset(key, "userstate", "online"); // Set user status to "online" in Redis Cluster
             tempUser->SetUserState(UserState::online); // Set user status to "online" in InGameUser object
@@ -323,58 +323,26 @@ void RedisManager::UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char*
     }
 }
 
-void RedisManager::Logout(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) { // Normal Disconnect
+void RedisManager::UserDisConnect(uint16_t connObjNum_) {
     auto tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
     auto tempPk = tempUser->GetPk();
 
-    {  // Send User PK to the Session Server for Synchronization with MySQL
-        SYNCRONIZE_LOGOUT_REQUEST syncLogoutReqPacket;
-        syncLogoutReqPacket.PacketId = (uint16_t)PACKET_ID::SYNCRONIZE_LOGOUT_REQUEST;
-        syncLogoutReqPacket.PacketLength = sizeof(SYNCRONIZE_LOGOUT_REQUEST);
-        syncLogoutReqPacket.userPk = tempPk;
-        connUsersManager->FindUser(GatewayServerObjNum)->PushSendMsg(sizeof(SYNCRONIZE_LOGOUT_REQUEST), (char*)&syncLogoutReqPacket);
-
-        try {
-            redis->hset("userinfo:{" + std::to_string(tempPk) + "}", "userstate", "offline"); // Set user status to "offline" in Redis Cluster
-            mySQLManager->LogoutSync(tempPk, GetUpdatedUserInfo(tempPk), GetUpdatedEquipment(tempPk), GetUpdatedConsumables(tempPk), GetUpdatedMaterials(tempPk));
-        }
-        catch (const sw::redis::Error& e) {
-            std::cerr << "Redis error : " << e.what() << std::endl;
-            return;
-        }
-        catch (const std::exception& e) {
-            std::cerr << "Exception error : " << e.what() << std::endl;
-        }
+    try {
+        redis->hset("userinfo:{" + std::to_string(tempPk) + "}", "userstate", "offline"); // Set user status to "offline" in Redis Cluster
+        mySQLManager->LogoutSync(tempPk, GetUpdatedUserInfo(tempPk),
+            GetUpdatedEquipment(tempPk), GetUpdatedConsumables(tempPk), GetUpdatedMaterials(tempPk));
     }
-}
-
-void RedisManager::UserDisConnect(uint16_t connObjNum_) { // Abnormal Disconnect
-    auto tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
-    auto tempPk = tempUser->GetPk();
-
-    {  // Send User PK to the Session Server for Synchronization with MySQL
-        SYNCRONIZE_LOGOUT_REQUEST syncLogoutReqPacket;
-        syncLogoutReqPacket.PacketId = (uint16_t)PACKET_ID::SYNCRONIZE_LOGOUT_REQUEST;
-        syncLogoutReqPacket.PacketLength = sizeof(SYNCRONIZE_LOGOUT_REQUEST);
-        syncLogoutReqPacket.userPk = tempPk;
-        connUsersManager->FindUser(GatewayServerObjNum)->PushSendMsg(sizeof(SYNCRONIZE_LOGOUT_REQUEST), (char*)&syncLogoutReqPacket);
-
-        try {
-            redis->hset("userinfo:{" + std::to_string(tempPk) + "}", "userstate", "offline"); // Set user status to "offline" in Redis Cluster
-            mySQLManager->LogoutSync(tempPk, GetUpdatedUserInfo(tempPk), GetUpdatedEquipment(tempPk), GetUpdatedConsumables(tempPk), GetUpdatedMaterials(tempPk));
-        }
-        catch (const sw::redis::Error& e) {
-            std::cerr << "Redis error : " << e.what() << std::endl;
-            return;
-        }
-        catch (const std::exception& e) {
-            std::cerr << "Exception error : " << e.what() << std::endl;
-        }
+    catch (const sw::redis::Error& e) {
+        std::cerr << "Redis error : " << e.what() << std::endl;
+        return;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Exception error : " << e.what() << std::endl;
     }
 }
 
 void RedisManager::SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
-	SERVER_USER_COUNTS_RESPONSE serverUserCountsResPacket;
+    SERVER_USER_COUNTS_RESPONSE serverUserCountsResPacket;
     serverUserCountsResPacket.PacketId = (uint16_t)PACKET_ID::SERVER_USER_COUNTS_RESPONSE;
     serverUserCountsResPacket.PacketLength = sizeof(SERVER_USER_COUNTS_RESPONSE);
 
@@ -385,7 +353,7 @@ void RedisManager::SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSiz
     uint16_t cnt = tempV.size();
 
     for (int i = 1; i < cnt; i++) {
-		uint16_t userCount = tempV[i];
+        uint16_t userCount = tempV[i];
         memcpy(tc, (char*)&userCount, sizeof(uint16_t));
         tc += sizeof(uint16_t);
     }
@@ -420,7 +388,7 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
     MOVE_SERVER_RESPONSE moveCHResPacket;
     std::string tag;
 
-	auto moveServerNum = MoveCHReqPacket->serverNum + CHANNEL_SERVER_START_NUMBER;
+    auto moveServerNum = MoveCHReqPacket->serverNum + CHANNEL_SERVER_START_NUMBER;
 
     moveCHResPacket.PacketId = (uint16_t)PACKET_ID::MOVE_SERVER_RESPONSE;
     moveCHResPacket.PacketLength = sizeof(MOVE_SERVER_RESPONSE);
@@ -429,7 +397,8 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
 
     if (!channelServersManager->EnterChannelServer(moveServerNum)) { // Failed to move to channel server 1
         moveCHResPacket.port = 0;
-        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_SERVER_RESPONSE), (char*)&moveCHResPacket);
+        connUsersManager->FindUser(connObjNum_)->
+            PushSendMsg(sizeof(MOVE_SERVER_RESPONSE), (char*)&moveCHResPacket);
         return;
     };
 
@@ -449,17 +418,15 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
         std::string key = "jwtcheck:" + tag;
 
         auto pipe = redis->pipeline(tag);
-
         pipe.hset(key, token, std::to_string(tempUser->GetPk()))
             .expire(key, 300);
-
         pipe.exec();
 
         strncpy_s(moveCHResPacket.serverToken, token.c_str(), MAX_JWT_TOKEN_LEN + 1);
-
-        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_SERVER_RESPONSE), (char*)&moveCHResPacket); // Send Channel Server address and JWT token to the user
+        connUsersManager->FindUser(connObjNum_)-> // Send Channel Server address and JWT token to the user
+            PushSendMsg(sizeof(MOVE_SERVER_RESPONSE), (char*)&moveCHResPacket);
     }
-    catch (const sw::redis::Error& e) { 
+    catch (const sw::redis::Error& e) {
         std::cerr << "Redis error : " << e.what() << std::endl;
 
         // Send 0 when JWT token generation fails
@@ -473,48 +440,6 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
         // Send 0 when JWT token generation fails
         memset(moveCHResPacket.serverToken, 0, sizeof(moveCHResPacket.serverToken));
         connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_SERVER_RESPONSE), (char*)&moveCHResPacket);
-    }
-}
-
-void RedisManager::GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
-    auto delEquipReqPacket = reinterpret_cast<RAID_RANKING_REQUEST*>(pPacket_);
-    InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
-
-    RAID_RANKING_RESPONSE raidRankResPacket;
-    raidRankResPacket.PacketId = (uint16_t)PACKET_ID::RAID_RANKING_RESPONSE;
-    raidRankResPacket.PacketLength = sizeof(RAID_RANKING_RESPONSE);
-
-    std::vector<std::pair<std::string, double>> scores;
-
-    try {
-        redis->zrevrange("ranking", delEquipReqPacket->startRank,
-            delEquipReqPacket->startRank + RANKING_USER_COUNT, std::back_inserter(scores));
-
-        char* tempC = new char[MAX_SCORE_SIZE + 1];
-        char* tc = tempC;
-        uint16_t cnt = scores.size();
-
-        for (int i = 0; i < cnt; i++) {
-            RANKING ranking;
-            strncpy_s(ranking.userId, scores[i].first.c_str(), MAX_USER_ID_LEN);
-            ranking.score = scores[i].second;
-            memcpy(tc, (char*)&ranking, sizeof(RANKING));
-            tc += sizeof(RANKING);
-        }
-
-        raidRankResPacket.rkCount = cnt;
-        std::memcpy(raidRankResPacket.reqScore, tempC, MAX_SCORE_SIZE + 1);
-
-        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(RAID_RANKING_RESPONSE), (char*)&raidRankResPacket);
-
-        delete[] tempC;
-    }
-    catch (const sw::redis::Error& e) {
-        raidRankResPacket.rkCount = 0;
-        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(RAID_RANKING_RESPONSE), (char*)&raidRankResPacket);
-
-        std::cerr << "Redis error: " << e.what() << std::endl;
-        return;
     }
 }
 
@@ -554,6 +479,12 @@ void RedisManager::ChannelServerConnectRequest(uint16_t connObjNum_, uint16_t pa
     std::cout << "Channel Server" << imChReqPacket->channelServerNum << " Authentication Successful" << std::endl;
 }
 
+void RedisManager::SyncEqipmentEnhace(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    auto syncEquipReqPacket = reinterpret_cast<SYNC_EQUIPMENT_ENHANCE_REQUEST*>(pPacket_);
+
+    mySQLManager->MySQLSyncEqipmentEnhace(syncEquipReqPacket->userPk, syncEquipReqPacket->itemPosition, syncEquipReqPacket->enhancement);
+}
+
 
 // ======================================================= MATCHING SERVER =======================================================
 
@@ -572,14 +503,14 @@ void RedisManager::MatchingServerConnectRequest(uint16_t connObjNum_, uint16_t p
     std::cout << "Matching Server Authentication Successful" << std::endl;
 }
 
-void RedisManager::MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) { 
+void RedisManager::MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
     MATCHING_REQUEST_TO_MATCHING_SERVER matchReqPacket;
     matchReqPacket.PacketId = (uint16_t)PACKET_ID::MATCHING_REQUEST_TO_MATCHING_SERVER;
     matchReqPacket.PacketLength = sizeof(MATCHING_REQUEST_TO_MATCHING_SERVER);
     matchReqPacket.userPk = tempUser->GetPk();
-	matchReqPacket.userCenterObjNum = connObjNum_;
+    matchReqPacket.userCenterObjNum = connObjNum_;
     matchReqPacket.userGroupNum = tempUser->GetUserGroupNum();
 
     connUsersManager->FindUser(MatchingServerObjNum)->PushSendMsg(sizeof(MATCHING_REQUEST_TO_MATCHING_SERVER), (char*)&matchReqPacket);
@@ -708,7 +639,7 @@ void RedisManager::CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_,
         catch (const sw::redis::Error& e) {
             raidReadyReqPacket.roomNum = 0;
             connUsersManager->FindUser(matchSuccessReqPacket->userCenterObjNum)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&raidReadyReqPacket);
-            
+
             redis->hset("userinfo:{" + std::to_string(tempUser->GetPk()) + "}", "userstate", "online"); // Set user status to "online" in Redis Cluster
 
             { // Send failed raid ready userObjNum to the game server
@@ -768,7 +699,7 @@ void RedisManager::SyncUserRaidScore(uint16_t connObjNum_, uint16_t packetSize_,
     auto delEquipReqPacket = reinterpret_cast<SYNC_HIGHSCORE_REQUEST*>(pPacket_);
 
     try {
-        mySQLManager->SyncUserRaidScore(delEquipReqPacket->userPk, delEquipReqPacket->userScore, std::string(delEquipReqPacket->userId));
+        mySQLManager->MySQLSyncUserRaidScore(delEquipReqPacket->userPk, delEquipReqPacket->userScore, std::string(delEquipReqPacket->userId));
     }
     catch (const std::exception& e) {
         std::cout << "(MySQL Sync Fail) UserPK : " << delEquipReqPacket->userPk << ", Score: " << delEquipReqPacket->userScore << std::endl;

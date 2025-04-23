@@ -58,11 +58,9 @@ private:
 
     // ======================= CENTER SERVER =======================
     void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    void Logout(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void UserDisConnect(uint16_t connObjNum_);
     void SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    void GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
 
     // ======================== LOGIN SERVER =======================
@@ -72,6 +70,7 @@ private:
     // ======================= CHANNEL SERVER =======================
     void ChannelServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void ChannelDisConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void SyncEqipmentEnhace(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
 
     // ======================= MATCHING SERVER =======================
@@ -80,8 +79,8 @@ private:
     void MatchStartResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MatchingCancelResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-	void CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    
+    void CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+
 
     // ======================= RAID GAME SERVER =======================
     void GameServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
@@ -103,7 +102,7 @@ private:
     std::vector<uint16_t> channelServerObjNums;
     std::vector<uint16_t> raidGameServerObjNums;
     std::vector<std::thread> redisThreads;
-    
+
     // 16 bytes
     std::unique_ptr<sw::redis::RedisCluster> redis;
 
@@ -113,7 +112,6 @@ private:
     ChannelServersManager* channelServersManager;
 
     // 2 bytes
-    uint16_t GatewayServerObjNum = 0;
     uint16_t MatchingServerObjNum = 0;
 
     // 1 bytes

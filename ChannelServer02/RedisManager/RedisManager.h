@@ -60,6 +60,7 @@ private:
     void UserDisConnect(uint16_t connObjNum_);
     void SendChannelUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MoveChannel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
     // USER STATUS
     void ExpUp(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);

@@ -1,7 +1,6 @@
 #pragma once
 #include <cstdint>
 
-constexpr uint16_t RANKING_USER_COUNT = 3; // Number of users to display per ranking page
 constexpr uint16_t INVENTORY_SIZE = 11; // Inventory start from 1 (index 0 is not used)
 constexpr uint16_t MAX_USER_ID_LEN = 32;
 constexpr uint16_t MAX_INVEN_SIZE = 512;

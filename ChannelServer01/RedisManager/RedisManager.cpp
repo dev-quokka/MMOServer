@@ -11,11 +11,12 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
 
     // CENTER
     packetIDTable[(UINT16)PACKET_ID::USER_CONNECT_CHANNEL_REQUEST] = &RedisManager::UserConnect;
-    
+
     // SYSTEM
     packetIDTable[(UINT16)PACKET_ID::CHANNEL_SERVER_CONNECT_RESPONSE] = &RedisManager::ChannelServerConnectRequest;
     packetIDTable[(UINT16)PACKET_ID::CHANNEL_USER_COUNTS_REQUEST] = &RedisManager::SendChannelUserCounts;
     packetIDTable[(UINT16)PACKET_ID::MOVE_CHANNEL_REQUEST] = &RedisManager::MoveChannel;
+    packetIDTable[(uint16_t)PACKET_ID::RAID_RANKING_REQUEST] = &RedisManager::GetRanking;
 
     // USER STATUS
     packetIDTable[(UINT16)PACKET_ID::EXP_UP_REQUEST] = &RedisManager::ExpUp;
@@ -87,10 +88,10 @@ bool RedisManager::RedisRun(const uint16_t RedisThreadCnt_) { // Connect Redis S
     }
     catch (const  sw::redis::Error& err) {
         std::cout << "Redis Connect Error : " << err.what() << std::endl;
-		return false;
+        return false;
     }
 
-	return true;
+    return true;
 }
 
 bool RedisManager::CreateRedisThread(const uint16_t RedisThreadCnt_) {
@@ -256,13 +257,56 @@ void RedisManager::MoveChannel(uint16_t connObjNum_, uint16_t packetSize_, char*
         moveChRes.isSuccess = true;
 
         if (tempUser->GetChannel() != 0) channelManager->LeaveChannel(tempUser->GetChannel(), connObjNum_);
-        tempUser->SetChannel(1);
+
+        tempUser->SetChannel(moveChannelNum);
 
         std::cout << "Move " << tempUser->GetId() << " to channel" << moveChannelNum << std::endl;
     }
     else moveChRes.isSuccess = false;
 
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MOVE_CHANNEL_RESPONSE), (char*)&moveChRes);
+}
+
+void RedisManager::GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    auto delEquipReqPacket = reinterpret_cast<RAID_RANKING_REQUEST*>(pPacket_);
+    InGameUser* tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
+
+    RAID_RANKING_RESPONSE raidRankResPacket;
+    raidRankResPacket.PacketId = (uint16_t)PACKET_ID::RAID_RANKING_RESPONSE;
+    raidRankResPacket.PacketLength = sizeof(RAID_RANKING_RESPONSE);
+
+    std::vector<std::pair<std::string, double>> scores;
+
+    try {
+        redis->zrevrange("ranking", delEquipReqPacket->startRank,
+            delEquipReqPacket->startRank + RANKING_USER_COUNT, std::back_inserter(scores));
+
+        char* tempC = new char[MAX_SCORE_SIZE + 1];
+        char* tc = tempC;
+        uint16_t cnt = scores.size();
+
+        for (int i = 0; i < cnt; i++) {
+            RANKING ranking;
+            strncpy_s(ranking.userId, scores[i].first.c_str(), MAX_USER_ID_LEN);
+            ranking.score = scores[i].second;
+            memcpy(tc, (char*)&ranking, sizeof(RANKING));
+            tc += sizeof(RANKING);
+        }
+
+        raidRankResPacket.rkCount = cnt;
+        std::memcpy(raidRankResPacket.reqScore, tempC, MAX_SCORE_SIZE + 1);
+
+        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(RAID_RANKING_RESPONSE), (char*)&raidRankResPacket);
+
+        delete[] tempC;
+    }
+    catch (const sw::redis::Error& e) {
+        raidRankResPacket.rkCount = 0;
+        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(RAID_RANKING_RESPONSE), (char*)&raidRankResPacket);
+
+        std::cerr << "Redis error: " << e.what() << std::endl;
+        return;
+    }
 }
 
 //  ---------------------------- USER_STATUS  ----------------------------
@@ -509,11 +553,22 @@ void RedisManager::EnhanceEquipment(uint16_t connObjNum_, uint16_t packetSize_, 
                     uint16_t f = static_cast<uint16_t>(std::stoi(first));
                     uint16_t s = static_cast<uint16_t>(std::stoi(second));
 
-                    std::cout << tempUser->GetId() <<" reinforcement attempt with " << enhanceProbabilities[s] << "% success rate" << std::endl;
+                    std::cout << tempUser->GetId() << " reinforcement attempt with " << enhanceProbabilities[s] << "% success rate" << std::endl;
 
                     if (EquipmentEnhance(s)) {
                         redis->hset(inventory_slot, std::to_string(enhEquipReqPacket->itemPosition),
                             first + ":" + std::to_string(s + 1)); // Reinforcement successful
+
+                        SYNC_EQUIPMENT_ENHANCE_REQUEST syncEquipReqPacket;
+                        syncEquipReqPacket.PacketId = (uint16_t)PACKET_ID::SYNC_EQUIPMENT_ENHANCE_REQUEST;
+                        syncEquipReqPacket.PacketLength = sizeof(SYNC_EQUIPMENT_ENHANCE_REQUEST);
+                        syncEquipReqPacket.itemPosition = enhEquipReqPacket->itemPosition;
+                        syncEquipReqPacket.enhancement = s + 1;
+                        syncEquipReqPacket.userPk = tempUser->GetPk();
+
+                        connUsersManager->FindUser(centerServerObjNum)->
+                            PushSendMsg(sizeof(SYNC_EQUIPMENT_ENHANCE_REQUEST), (char*)&enhEquipResPacket);
+
                         enhEquipResPacket.isSuccess = true;
                         enhEquipResPacket.Enhancement = s + 1;
                         std::cout << "Reinforcement successful" << std::endl;
@@ -523,7 +578,8 @@ void RedisManager::EnhanceEquipment(uint16_t connObjNum_, uint16_t packetSize_, 
                         std::cout << "Reinforcement failed" << std::endl;
                     }
 
-                    connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(ENH_EQUIPMENT_RESPONSE), (char*)&enhEquipResPacket);
+                    connUsersManager->FindUser(connObjNum_)->
+                        PushSendMsg(sizeof(ENH_EQUIPMENT_RESPONSE), (char*)&enhEquipResPacket);
                     return;
                 }
             }

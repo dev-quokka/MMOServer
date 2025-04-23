@@ -394,7 +394,6 @@ int main() {
 //    return 0;
 //}
 
-
 //<서버쪽 코드>
 //void ParseCustomUUID(const std::string& customUUID, int& pk, std::string& id, int& level) {
 //    size_t pkPos = customUUID.find("|pk:");

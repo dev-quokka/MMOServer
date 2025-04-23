@@ -10,7 +10,6 @@ std::unordered_map<ServerType, ServerAddress> ServerAddressMap = { // Set server
 };
 
 int main() {
-
 	MatchingServer matchingServer;
     matchingServer.Init(maxThreadCount, ServerAddressMap[ServerType::MatchingServer].port);
     matchingServer.StartWork();

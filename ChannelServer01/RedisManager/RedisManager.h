@@ -30,13 +30,13 @@ public:
     // ====================== INITIALIZATION =======================
     void init(const uint16_t RedisThreadCnt_);
     void SetManager(ConnUsersManager* connUsersManager_, InGameUserManager* inGameUserManager_);
-    
+
 
     // ===================== PACKET MANAGEMENT =====================
     void PushRedisPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_);
-    
 
-	// ==================== INGAME MANAGEMENT ======================
+
+    // ==================== INGAME MANAGEMENT ======================
     bool EquipmentEnhance(uint16_t currentEnhanceCount_);
 
 
@@ -56,12 +56,13 @@ private:
 
     // ======================= CHANNEL SERVER =======================
     // SYSTEM
-	void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); 
-    void UserDisConnect(uint16_t connObjNum_); 
+    void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void UserDisConnect(uint16_t connObjNum_);
     void SendChannelUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MoveChannel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
-	// USER STATUS
+    // USER STATUS
     void ExpUp(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
     // INVENTORY
