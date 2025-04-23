@@ -72,7 +72,8 @@
 #### ㅇ기술스택 - C++, IOCP, MySQL, Redis Cluster, Docker, Boost, TBB, JWT
 
 
-#### ㅇ 프로젝트 소개서 - 
+#### ㅇ 프로젝트 소개서 - [MMOServer_Project_Intro.pdf](https://github.com/user-attachments/files/19869179/MMOServer_Project_Intro.pdf)
+
 
 
 <br>  
