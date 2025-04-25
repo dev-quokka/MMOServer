@@ -67,11 +67,12 @@ bool GameServer1::StartWork() {
     ConnUser* centerConnUser = new ConnUser(MAX_CIRCLE_SIZE, 0, sIOCPHandle, overLappedManager);
     connUsersManager->InsertUser(0, centerConnUser);
 
-    // 1 : Matching Server
-    ConnUser* matchingConnUser = new ConnUser(MAX_CIRCLE_SIZE, 1, sIOCPHandle, overLappedManager);
+    // 5 : Matching Server
+    ConnUser* matchingConnUser = new ConnUser(MAX_CIRCLE_SIZE, 5, sIOCPHandle, overLappedManager);
     connUsersManager->InsertUser(1, matchingConnUser);
 
-    for (int i = 2; i < MAX_USERS_OBJECT; i++) { // Make ConnUsers Queue
+    for (int i = 1; i < MAX_USERS_OBJECT; i++) { // Make ConnUsers Queue
+        if (i == 5) continue;
         ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE, i, sIOCPHandle, overLappedManager);
 
         AcceptQueue.push(connUser); // Push ConnUser

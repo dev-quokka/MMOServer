@@ -109,9 +109,6 @@ private:
     InGameUserManager* inGameUserManager;
     ChannelManager* channelManager;
 
-    // 2 bytes
-    uint16_t centerServerObjNum = 0;
-
     // 1 bytes
     bool redisRun = false;
 };

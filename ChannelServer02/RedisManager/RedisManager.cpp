@@ -210,7 +210,7 @@ void RedisManager::UserDisConnect(uint16_t connObjNum_) {
     userDisconnReqPacket.PacketLength = sizeof(USER_DISCONNECT_AT_CHANNEL_REQUEST);
     userDisconnReqPacket.channelServerNum = CHANNEL_SERVER_NUM;
 
-    connUsersManager->FindUser(centerServerObjNum)->PushSendMsg(sizeof(USER_DISCONNECT_AT_CHANNEL_REQUEST), (char*)&userDisconnReqPacket);
+    connUsersManager->FindUser(static_cast<uint16_t>(ServerType::CenterServer))->PushSendMsg(sizeof(USER_DISCONNECT_AT_CHANNEL_REQUEST), (char*)&userDisconnReqPacket);
 }
 
 void RedisManager::SendChannelUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
@@ -553,11 +553,11 @@ void RedisManager::EnhanceEquipment(uint16_t connObjNum_, uint16_t packetSize_, 
                     uint16_t f = static_cast<uint16_t>(std::stoi(first));
                     uint16_t s = static_cast<uint16_t>(std::stoi(second));
 
-                    std::cout << tempUser->GetId() << " reinforcement attempt with " << enhanceProbabilities[s] << "% success rate" << std::endl;
+                    std::cout << tempUser->GetId() << " enhancement attempt with " << enhanceProbabilities[s] << "% success rate" << std::endl;
 
                     if (EquipmentEnhance(s)) {
                         redis->hset(inventory_slot, std::to_string(enhEquipReqPacket->itemPosition),
-                            first + ":" + std::to_string(s + 1)); // Reinforcement successful
+                            first + ":" + std::to_string(s + 1)); // Enhancement successful
 
                         SYNC_EQUIPMENT_ENHANCE_REQUEST syncEquipReqPacket;
                         syncEquipReqPacket.PacketId = (uint16_t)PACKET_ID::SYNC_EQUIPMENT_ENHANCE_REQUEST;
@@ -566,16 +566,16 @@ void RedisManager::EnhanceEquipment(uint16_t connObjNum_, uint16_t packetSize_, 
                         syncEquipReqPacket.enhancement = s + 1;
                         syncEquipReqPacket.userPk = tempUser->GetPk();
 
-                        connUsersManager->FindUser(centerServerObjNum)->
+                        connUsersManager->FindUser(static_cast<uint16_t>(ServerType::CenterServer))->
                             PushSendMsg(sizeof(SYNC_EQUIPMENT_ENHANCE_REQUEST), (char*)&enhEquipResPacket);
 
                         enhEquipResPacket.isSuccess = true;
                         enhEquipResPacket.Enhancement = s + 1;
-                        std::cout << "Reinforcement successful" << std::endl;
+                        std::cout << "Enhancement successful" << std::endl;
                     }
                     else {
                         enhEquipResPacket.isSuccess = false;
-                        std::cout << "Reinforcement failed" << std::endl;
+                        std::cout << "Enhancement Failed" << std::endl;
                     }
 
                     connUsersManager->FindUser(connObjNum_)->
@@ -590,7 +590,7 @@ void RedisManager::EnhanceEquipment(uint16_t connObjNum_, uint16_t packetSize_, 
         }
         else { // When the item cannot be found in Redis
             enhEquipResPacket.isSuccess = false;
-            std::cout << "강화 실패" << std::endl;
+            std::cout << "Enhancement Failed" << std::endl;
             connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(ENH_EQUIPMENT_RESPONSE), (char*)&enhEquipResPacket);
             return;
         }

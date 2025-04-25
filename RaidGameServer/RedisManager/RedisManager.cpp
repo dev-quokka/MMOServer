@@ -160,13 +160,15 @@ void RedisManager::MakeRoom(uint16_t connObjNum_, uint16_t packetSize_, char* pP
         tempUser->userLevel = static_cast<uint16_t>(std::stoul(*values[1]));
         tempUser->userMaxScore = std::stoul(*values[2]);
     }
+
     catch (const sw::redis::Error& e) {
         std::cerr << "Redis error: " << e.what() << std::endl;
         std::cout << "Failed to Get Matched UserInfo" << std::endl;
     }
 
     if (tempRaidNum == MAX_RAID_ROOM_PLAYERS) { // When all users have been set in the room
-        std::discrete_distribution<int> dist(mapProbabilities.begin(), mapProbabilities.end()); // Randomly select map by probability
+        // Randomly select map by probability
+        std::discrete_distribution<int> dist(mapProbabilities.begin(), mapProbabilities.end());
 
         tempRoom->Set(dist(gen), 30);
 
@@ -175,12 +177,14 @@ void RedisManager::MakeRoom(uint16_t connObjNum_, uint16_t packetSize_, char* pP
         matchResPacket.PacketLength = sizeof(MATCHING_RESPONSE_FROM_GAME_SERVER);
         matchResPacket.serverNum = GAME_SERVER_NUM;
 
-        for (int i = 1; i <= MAX_RAID_ROOM_PLAYERS; i++) { // Send raid room setup completion message to the center server to notify matched users that the raid is ready
+        // Send raid room setup completion message to the center server to notify matched users that the raid is ready
+        for (int i = 1; i <= MAX_RAID_ROOM_PLAYERS; i++) {
             matchResPacket.userCenterObjNum = tempRoom->GetUserInfoByObjNum(i)->userCenterObjNum;
             matchResPacket.roomNum = matchReqPacket->roomNum;
             matchResPacket.userRaidServerObjNum = i;
 
-            connUsersManager->FindUser(centerServerObjNum)->PushSendMsg(sizeof(MATCHING_RESPONSE_FROM_GAME_SERVER), (char*)&matchResPacket);
+            connUsersManager->FindUser(static_cast<uint16_t>(ServerType::CenterServer))->
+                PushSendMsg(sizeof(MATCHING_RESPONSE_FROM_GAME_SERVER), (char*)&matchResPacket);
         }
     }
 }
@@ -244,10 +248,11 @@ void RedisManager::RaidTeamInfo(uint16_t connObjNum_, uint16_t packetSize_, char
         raidTeamInfoResPacket.PacketId = (uint16_t)PACKET_ID::RAID_TEAMINFO_RESPONSE;
         raidTeamInfoResPacket.PacketLength = sizeof(RAID_TEAMINFO_RESPONSE);
         raidTeamInfoResPacket.teamLevel = teamInfo->userLevel;
-		raidTeamInfoResPacket.userRaidServerObjNum = i;
+        raidTeamInfoResPacket.userRaidServerObjNum = i;
         strncpy_s(raidTeamInfoResPacket.teamId, teamInfo->userId.c_str(), MAX_USER_ID_LEN);
 
-        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(RAID_TEAMINFO_RESPONSE), (char*)&raidTeamInfoResPacket);
+        connUsersManager->FindUser(connObjNum_)->
+            PushSendMsg(sizeof(RAID_TEAMINFO_RESPONSE), (char*)&raidTeamInfoResPacket);
     }
 
     if (tempRoom->SendUserCheck()) {
@@ -260,9 +265,9 @@ void RedisManager::RaidTeamInfo(uint16_t connObjNum_, uint16_t packetSize_, char
             raidStartReqPacket1.mapNum = tempRoom->GetMapNum();
             raidStartReqPacket1.mobHp = tempRoom->GetMobHp();
 
-            connUsersManager->FindUser(tempRoom->GetUserInfoByObjNum(i)->userConnObjNum)->PushSendMsg(sizeof(RAID_START), (char*)&raidStartReqPacket1);
+            connUsersManager->FindUser(tempRoom->GetUserInfoByObjNum(i)->userConnObjNum)->
+                PushSendMsg(sizeof(RAID_START), (char*)&raidStartReqPacket1);
         }
-
         tempRoom->SetGameRunning(true); // Set game start flag
         roomManager->InsertEndCheckSet(tempRoom);
     }
@@ -300,7 +305,7 @@ void RedisManager::RaidHit(uint16_t connObjNum_, uint16_t packetSize_, char* pPa
                 for (int i = 1; i <= MAX_RAID_ROOM_PLAYERS; i++) { // Send scores of users who participated in the raid
                     auto tempUser1 = tempRoom->GetUserInfoByObjNum(i);
 
-					for (int j = 1; j <= MAX_RAID_ROOM_PLAYERS; j++) {
+                    for (int j = 1; j <= MAX_RAID_ROOM_PLAYERS; j++) {
                         auto tempUser2 = tempRoom->GetUserInfoByObjNum(j);
 
                         SEND_RAID_SCORE sendScoreReqPacket;
@@ -310,10 +315,10 @@ void RedisManager::RaidHit(uint16_t connObjNum_, uint16_t packetSize_, char* pPa
                         sendScoreReqPacket.userScore = tempUser2->userScore.load();
 
                         connUsersManager->FindUser(tempUser1->userConnObjNum)->PushSendMsg(sizeof(SEND_RAID_SCORE), (char*)&sendScoreReqPacket);
-					}
+                    }
 
-                    if (tempUser1->userScore.load() > tempUser1->userMaxScore) {
-                        pipe.zadd("ranking", tempUser1->userId, (double)(tempUser1->userScore.load())); // Update Redis if new score exceeds previous best score
+                    if (tempUser1->userScore.load() > tempUser1->userMaxScore) { // Update Redis if new score exceeds previous best score
+                        pipe.zadd("ranking", tempUser1->userId, (double)(tempUser1->userScore.load()));
 
                         { // Send sync message to Center Server if new score exceeds previous best score
                             SYNC_HIGHSCORE_REQUEST shreq;
@@ -322,7 +327,7 @@ void RedisManager::RaidHit(uint16_t connObjNum_, uint16_t packetSize_, char* pPa
                             shreq.userScore = tempUser1->userScore.load();
                             strncpy_s(shreq.userId, tempUser1->userId.c_str(), MAX_USER_ID_LEN);
 
-                            connUsersManager->FindUser(centerServerObjNum)->PushSendMsg(sizeof(SYNC_HIGHSCORE_REQUEST), (char*)&shreq);
+                            connUsersManager->FindUser(static_cast<uint16_t>(ServerType::CenterServer))->PushSendMsg(sizeof(SYNC_HIGHSCORE_REQUEST), (char*)&shreq);
                         }
                     }
                 }
@@ -332,10 +337,10 @@ void RedisManager::RaidHit(uint16_t connObjNum_, uint16_t packetSize_, char* pPa
                 RAID_END_REQUEST_TO_MATCHING_SERVER raidEndReq;
                 raidEndReq.PacketId = (uint16_t)PACKET_ID::RAID_END_REQUEST_TO_MATCHING_SERVER;
                 raidEndReq.PacketLength = sizeof(RAID_END_REQUEST_TO_MATCHING_SERVER);
-				raidEndReq.gameServerNum = GAME_SERVER_NUM;
-				raidEndReq.roomNum = tempRoom->GetRoomNum();
+                raidEndReq.gameServerNum = GAME_SERVER_NUM;
+                raidEndReq.roomNum = tempRoom->GetRoomNum();
 
-                connUsersManager->FindUser(matchingServerObjNum)->PushSendMsg(sizeof(RAID_END_REQUEST_TO_MATCHING_SERVER), (char*)&raidEndReq);
+                connUsersManager->FindUser(static_cast<uint16_t>(ServerType::MatchingServer))->PushSendMsg(sizeof(RAID_END_REQUEST_TO_MATCHING_SERVER), (char*)&raidEndReq);
 
                 tempRoom->SetGameRunning(false); // Set game end flag
                 roomManager->DeleteMob(tempRoom);

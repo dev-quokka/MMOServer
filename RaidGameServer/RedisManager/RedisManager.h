@@ -30,12 +30,12 @@ public:
     // ====================== INITIALIZATION =======================
     void init(const uint16_t packetThreadCnt_);
     void SetManager(ConnUsersManager* connUsersManager_, RoomManager* roomManager_);
-    
+
 
     // ===================== PACKET MANAGEMENT ====================
     void PushRedisPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_);
-    
-    
+
+
     // ==================== CONNECTION INTERFACE ==================
     void Disconnect(uint16_t connObjNum_);
 
@@ -87,10 +87,6 @@ private:
 
     ConnUsersManager* connUsersManager;
     RoomManager* roomManager;
-
-    // 2 bytes
-    uint16_t centerServerObjNum = 0;
-    uint16_t matchingServerObjNum = 1;
 
     // 1 bytes
     std::atomic<bool> redisRun = false;
