@@ -145,7 +145,8 @@
 <br> 
 
 - #### Server & Channel Transition
-![Server   Channel Transition](https://github.com/user-attachments/assets/358ab894-4f9f-4c68-bcc5-b1ceb29d346d)
+![Server   Channel Transition](https://github.com/user-attachments/assets/66656260-fbaf-419b-b0e0-f1f23bda2f88)
+
 
 
 1. 유저가 중앙 서버에 연결되면, 서버 선택 페이지로 이동합니다.
