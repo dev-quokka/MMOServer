@@ -23,6 +23,7 @@
   #### 2. 보안 & 인증 (Security & Authentication)
     - 게임 시작 시 Login Server에서 JWT 토큰 발급 → Center Server에 인증 요청
     - 서버 간 이동 시 JWT 토큰 기반 인증 시스템으로 유저 식별 및 보안 강화
+    - 주요 정보(로그인 유저 식별, 장비 강화, 레이드 점수 저장) 처리 시 SQL Injection 방지를 위해 Prepared Statement 적용
 
   #### 3. 서버 구조 및 확장성 설계 (Scalable Multi-Server Architecture)
     - Center Server를 중심으로 Login, Matching, Raid, Channel Server 등 역할 분리
