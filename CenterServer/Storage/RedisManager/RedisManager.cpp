@@ -9,7 +9,6 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
 
     // CENTER
     packetIDTable[(uint16_t)PACKET_ID::USER_CONNECT_REQUEST] = &RedisManager::UserConnect;
-    packetIDTable[(uint16_t)PACKET_ID::USER_LOGOUT_REQUEST] = &RedisManager::Logout;
     packetIDTable[(uint16_t)PACKET_ID::SERVER_USER_COUNTS_REQUEST] = &RedisManager::SendServerUserCounts;
     packetIDTable[(uint16_t)PACKET_ID::MOVE_SERVER_REQUEST] = &RedisManager::MoveServer;
 
@@ -32,9 +31,6 @@ void RedisManager::init(const uint16_t RedisThreadCnt_) {
     packetIDTable[(uint16_t)PACKET_ID::RAID_SERVER_CONNECT_REQUEST] = &RedisManager::GameServerConnectRequest;
     packetIDTable[(uint16_t)PACKET_ID::MATCHING_RESPONSE_FROM_GAME_SERVER] = &RedisManager::CheckMatchSuccess;
     packetIDTable[(uint16_t)PACKET_ID::SYNC_HIGHSCORE_REQUEST] = &RedisManager::SyncUserRaidScore;
-
-    channelServerObjNums.resize(3, 0); // Channel Server ID start from 1 (index 0 is not used)
-    raidGameServerObjNums.resize(2, 0); // Raid Game Server ID start from 1 (index 0 is not used)
 
     RedisRun(RedisThreadCnt_);
 
@@ -404,8 +400,7 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
 
     auto tempUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
 
-    try {
-        // Generate JWT token
+    try { // Generate JWT token
         std::string token = jwt::create()
             .set_issuer("Center_Server")
             .set_subject("Move_Server")
@@ -414,7 +409,7 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
                 std::chrono::seconds{ 300 })
             .sign(jwt::algorithm::hs256{ JWT_SECRET });
 
-        tag = "{" + std::to_string(static_cast<uint16_t>(ServerType::ChannelServer01)) + "}";
+        tag = "{" + std::to_string(moveServerNum) + "}";
         std::string key = "jwtcheck:" + tag;
 
         auto pipe = redis->pipeline(tag);
@@ -448,7 +443,6 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
 
 void RedisManager::LoginServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto imMatchingReqPacket = reinterpret_cast<LOGIN_SERVER_CONNECT_REQUEST*>(pPacket_);
-    MatchingServerObjNum = connObjNum_;  // Initialize Login Server unique ID
 
     LOGIN_SERVER_CONNECT_RESPONSE imLRes;
     imLRes.PacketId = (uint16_t)PACKET_ID::LOGIN_SERVER_CONNECT_RESPONSE;
@@ -466,7 +460,7 @@ void RedisManager::LoginServerConnectRequest(uint16_t connObjNum_, uint16_t pack
 
 void RedisManager::ChannelServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto imChReqPacket = reinterpret_cast<CHANNEL_SERVER_CONNECT_REQUEST*>(pPacket_);
-    channelServerObjNums[imChReqPacket->channelServerNum] = connObjNum_; // Initialize Channel Server's unique ID
+    ServerAddressMap[static_cast<ServerType>(imChReqPacket->channelServerNum)].serverObjNum = connObjNum_;
 
     CHANNEL_SERVER_CONNECT_RESPONSE imChRes;
     imChRes.PacketId = (uint16_t)PACKET_ID::CHANNEL_SERVER_CONNECT_RESPONSE;
@@ -490,7 +484,8 @@ void RedisManager::SyncEqipmentEnhace(uint16_t connObjNum_, uint16_t packetSize_
 
 void RedisManager::MatchingServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto imMatchingReqPacket = reinterpret_cast<MATCHING_SERVER_CONNECT_REQUEST*>(pPacket_);
-    MatchingServerObjNum = connObjNum_;  // Initialize Matching Server unique ID
+
+    ServerAddressMap[ServerType::MatchingServer].serverObjNum = connObjNum_;
 
     MATCHING_SERVER_CONNECT_RESPONSE imMRes;
     imMRes.PacketId = (uint16_t)PACKET_ID::MATCHING_SERVER_CONNECT_RESPONSE;
@@ -513,7 +508,7 @@ void RedisManager::MatchStart(uint16_t connObjNum_, uint16_t packetSize_, char* 
     matchReqPacket.userCenterObjNum = connObjNum_;
     matchReqPacket.userGroupNum = tempUser->GetUserGroupNum();
 
-    connUsersManager->FindUser(MatchingServerObjNum)->PushSendMsg(sizeof(MATCHING_REQUEST_TO_MATCHING_SERVER), (char*)&matchReqPacket);
+    connUsersManager->FindUser(ServerAddressMap[ServerType::MatchingServer].serverObjNum)->PushSendMsg(sizeof(MATCHING_REQUEST_TO_MATCHING_SERVER), (char*)&matchReqPacket);
 }
 
 void RedisManager::MatchStartResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
@@ -559,7 +554,7 @@ void RedisManager::MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, ch
     matchCancelReqPacket.userCenterObjNum = connObjNum_;
     matchCancelReqPacket.userGroupNum = tempUser->GetLevel() / 3 + 1;
 
-    connUsersManager->FindUser(MatchingServerObjNum)->PushSendMsg(sizeof(RAID_MATCHING_RESPONSE), (char*)&matchCancelReqPacket);
+    connUsersManager->FindUser(ServerAddressMap[ServerType::MatchingServer].serverObjNum)->PushSendMsg(sizeof(RAID_MATCHING_RESPONSE), (char*)&matchCancelReqPacket);
 }
 
 void RedisManager::MatchingCancelResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
@@ -682,7 +677,7 @@ void RedisManager::CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_,
 
 void RedisManager::GameServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto imGameReqPacket = reinterpret_cast<RAID_SERVER_CONNECT_REQUEST*>(pPacket_);
-    channelServerObjNums[imGameReqPacket->gameServerNum] = connObjNum_; // Initialize Game Server's unique ID
+    ServerAddressMap[static_cast<ServerType>(imGameReqPacket->gameServerNum)].serverObjNum = connObjNum_;
 
     RAID_SERVER_CONNECT_RESPONSE imGameRes;
     imGameRes.PacketId = (uint16_t)PACKET_ID::RAID_SERVER_CONNECT_RESPONSE;
@@ -692,7 +687,7 @@ void RedisManager::GameServerConnectRequest(uint16_t connObjNum_, uint16_t packe
     connUsersManager->FindUser(connObjNum_)->SetPk(0); // Set server PK to 0 for servers connected to the center server
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(RAID_SERVER_CONNECT_RESPONSE), (char*)&imGameRes);
 
-    std::cout << "Game Server" << imGameReqPacket->gameServerNum << " Authentication Successful" << std::endl;
+    std::cout << "Game Server" << imGameReqPacket->gameServerNum - GAME_SERVER_START_NUMBER << " Authentication Successful" << std::endl;
 }
 
 void RedisManager::SyncUserRaidScore(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
