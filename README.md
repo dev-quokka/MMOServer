@@ -79,8 +79,7 @@
 <br> 
 
 
-#### ㅇ 프로젝트 소개서 - [MMOServer_Project_Intro.pdf](https://github.com/user-attachments/files/19905330/MMOServer_Project_Intro.pdf)
-
+#### ㅇ 프로젝트 소개서 - [MMOServer_Project_Intro.pdf](https://github.com/user-attachments/files/19958525/MMOServer_Project_Intro.pdf)
 
 
 
