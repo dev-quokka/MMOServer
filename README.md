@@ -2,11 +2,15 @@
 
 <br> 
 
-> **⏱️ 프로젝트 기간**: 2025.01.14 ~ 2025.04.22
->  
-> **🛠️ 사용 기술**: C++, IOCP, MySQL, Redis Cluster, Docker, Boost, TBB, JWT
-> 
-> **📌 주요 내용**: 분산 MMO 서버 설계 및 구현 / 실시간 레이드 전투 동기화 / JWT 인증 기반 서버 이동 & 중요 데이터 실시간 동기화
+**⏱️ 프로젝트 기간**  
+• **1차 개발**: IOCP & Redis Cluster 기반 MMO 게임 서버 구축 (2025.01.14 ~ 2025.02.28)  
+• **2차 리팩토링**: 서버 분할 구조 설계 및 Center Server 기능 분리 (2025.04.06 ~ 2025.04.22)
+
+**🛠️ 사용 기술**  
+C++, IOCP, MySQL, Redis Cluster, Docker, Boost, TBB, JWT
+
+**📌 주요 내용**  
+분산 MMO 서버 설계 및 구현 / 실시간 레이드 전투 동기화 / JWT 인증 기반 서버 이동 & 중요 데이터 실시간 동기화
 
 <br>
 
@@ -23,7 +27,7 @@
   #### 2. 보안 & 인증 (Security & Authentication)
     - 게임 시작 시 Login Server에서 JWT 토큰 발급 → Center Server에 인증 요청
     - 서버 간 이동 시 JWT 토큰 기반 인증 시스템으로 유저 식별 및 보안 강화
-    - 주요 정보(로그인 유저 식별, 장비 강화, 레이드 점수 저장) 처리 시 SQL Injection 방지를 위해 Prepared Statement 적용
+    - SQL Injection 방지를 위해 Prepared Statement 적용
 
   #### 3. 서버 구조 및 확장성 설계 (Scalable Multi-Server Architecture)
     - Center Server를 중심으로 Login, Matching, Raid, Channel Server 등 역할 분리
@@ -79,7 +83,8 @@
 <br> 
 
 
-#### ㅇ 프로젝트 소개서 - [MMOServer_Project_Intro.pdf](https://github.com/user-attachments/files/19905330/MMOServer_Project_Intro.pdf)
+#### ㅇ 프로젝트 소개서 - [MMOServer_Project_Intro.pdf](https://github.com/user-attachments/files/20421605/MMOServer_Project_Intro.pdf)
+
 
 
 
