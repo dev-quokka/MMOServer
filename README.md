@@ -92,11 +92,7 @@ C++, IOCP, MySQL, Redis Cluster, Docker, Boost, TBB, JWT
 <br>  
 
 ## [Flow Chart]
-- #### MMO Server
-![MMO SERVER Flow Chart 2 drawio](https://github.com/user-attachments/assets/d120a145-c85a-43ad-8bd4-54975ce93d78)
 
-
-<br>
 
 - #### User Connect
 ![Game Server Connect drawio](https://github.com/user-attachments/assets/efa77c95-aed4-487f-9d56-eb2d21af1d27)
