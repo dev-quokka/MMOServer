@@ -20,6 +20,7 @@
   #### 3. 서버 구조 및 확장성 설계 (Scalable Multi-Server Architecture)
     - Center Server를 중심으로 Login, Matching, Raid, Channel Server 등 역할 분리
     - 기능별 서버 간 통신 구조를 통해 확장성, 유지보수성, 부하 분산 확보
+    - Redis Cluster를 각 서버에서 공용 캐시로 사용하여, 서버 간 데이터 일관성 및 빠른 응답성 확보
     - 모든 서버에 고유 번호를 부여하여, 서버 간 통신의 일관성과 향후 서버 추가에 대비한 유연한 구조 설계
     
   #### 4. 게임 시스템 로직 (Game System Logic)
