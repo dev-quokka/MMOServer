@@ -99,19 +99,20 @@
 - #### Move Server
 ![Move Channel drawio](https://github.com/user-attachments/assets/ab0ea345-f916-4371-a4da-82483e784ca8)
 
+<br>
 
+- #### Cash Charge
+<img width="828" height="681" alt="Cash Charge drawio" src="https://github.com/user-attachments/assets/673a289b-5dcb-406d-9889-d69b756bb940" />
+
+##### 💡 위 흐름도는 전체 캐시 충전 과정을 정리한 것입니다. 
+##### 💡 이 중 저는 Center Server에서 Cash Server로부터 전달된 결제 결과를 받아, MySQL 및 Redis에 캐시를 반영하는 로직을 구현했습니다.
+
+
+<br>
 <br>
 
 - #### Raid Matching
 ![Raid Start drawio](https://github.com/user-attachments/assets/f767bc79-8db3-4c6e-820b-d6b9a1d119b7)
-
-
-<br>
-
-- #### Raid Start
-![Raid Game Start drawio](https://github.com/user-attachments/assets/6a371c20-4ef5-4c1b-beaf-baa65cbcfd7c)
-
-
 
 
 <br>
