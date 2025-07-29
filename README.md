@@ -156,6 +156,52 @@
 
 6. 채널 및 서버 이동 중에도 유저 수를 지속적으로 동기화합니다.
 
+<br> 
+
+- #### Shop Item Purchase
+![상점 아이템 구매](https://github.com/user-attachments/assets/c23041fc-d781-451d-8bf1-c43f4ca84272)
+
+1. 유저가 상점 아이템 구매 요청을 보내면, 서버는 해당 아이템의 결제 타입(골드, 캐시, 마일리지)을 확인합니다.
+
+2. 유저의 재화를 Redis Cluster에서 조회하여 구매 가능 여부를 판단합니다.
+
+3. 구매 가능 시 MySQL에서 재화 차감 및 아이템 지급을 트랜잭션으로 처리합니다.
+
+4. 트랜잭션이 성공하면, 유저에게 구매한 아이템 정보를 전송합니다.
+
+<br> 
+
+- #### Cash Charge
+![캐시 충전](https://github.com/user-attachments/assets/75472874-6ada-4f2e-947b-d727d061f053)
+
+1. 유저의 캐시 충전 요청이 들어오면, MySQL에 cash 증가량을 업데이트합니다.
+
+2. 업데이트가 성공하면, Redis Cluster의 cash 값을 hincyby로 증가시킵니다.
+
+3. 증가가 완료되면, 유저에게 업데이트된 cash 값을 전송합니다.
+
+4. 로그아웃 후에도 충전 내역은 유지됩니다.
+
+<br> 
+
+- #### Acquire Pass Item
+![패스 아이템 획득](https://github.com/user-attachments/assets/894a04f6-46c4-4daf-a354-4d7d44637a4c)
+
+1. 유저가 자신의 패스 레벨 이하의 아이템을 요청하면, 서버는 해당 아이템 정보를 반환합니다.
+
+2. 유저의 패스 레벨보다 높은 아이템이나 이미 획득한 아이템을 요청하면, 서버는 실패 응답을 반환합니다.
+
+<br> 
+
+- #### Pass Exp & Level Up
+![패스 경험치 및 레벨 업](https://github.com/user-attachments/assets/5632f6f1-44eb-4178-82d4-459a2fa17abd)
+
+1. 유저가 완료한 패스 미션 정보를 서버에 전송하면, 해당 미션 경험치로 레벨업 여부를 판단합니다.
+
+2. 경험치가 증가하면, 증가된 경험치와 레벨 정보를 유저에게 전송합니다.
+
+3. 로그아웃 후에도 각 패스 경험치 및 레벨 정보는 유지됩니다.
+
 <br>
 
 - #### Raid Start & Raid End (Mob Hp 0)
