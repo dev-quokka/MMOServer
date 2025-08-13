@@ -11,6 +11,7 @@
     - 객체 풀(Object Pool) 설계를 통한 동적 메모리 할당 최소화
     - 대량 데이터 송수신 시 char*기반 처리로 오버헤드 최소화
     - atomic, boost::lockfree_queue, tbb::concurrent_hash_map 등을 활용하여 mutex 사용 최소화
+    - MySQL 커넥션 풀 적용으로 커넥션 재사용 및 동시 요청 처리 성능 향상 
 
   #### 2. 보안 & 인증 (Security & Authentication)
     - 게임 시작 시 Login Server에서 JWT 토큰 발급 → Center Server에 인증 요청
@@ -26,6 +27,8 @@
   #### 4. 게임 시스템 로직 (Game System Logic)
     - 인벤토리 시스템: 아이템 획득, 삭제, 슬롯 이동, 장비 강화
     - 장비 강화 시스템: 난수 엔진 기반 확률 적용
+    - 상점 시스템: 로그인시 상점 아이템 목록 전달, 유저 보유 재화에 따른 아이템 구매 처리 및 획득
+    - 패스 시스템: 로그인시 각 패스 정보 전달, 패스 미션을 통한 경험치 획득·레벨업 및 레벨별 보상 지급
     - 경험치 획득 및 레벨업 시스템 구현
     - 레벨 그룹별 레이드 매칭 시스템 구현 
     - 실시간 레이드 전투 시스템 구현 (제한 시간 초과 또는 몬스터 HP 0 시 종료)
@@ -33,51 +36,11 @@
 
 <br> 
 
-### ㅇCenter Server - User Connection Management & Server Migration with JWT Issuance
-   - 전체 유저 접속 관리 및 인증 처리
-   - JWT 발급을 통한 서버 간 이동 및 보안 강화
-   - 채널 서버별 유저 수 상태 관리 및 전달
-   - 중요 데이터 Redis와 MySQL에 실시간 이중 동기화
-   - 로그아웃시, Redis → MySQL 일괄 데이터 저장 처리
-<br> 
-
-### ㅇLogin Server - User Authentication & Session Initialization
-   - 유저 로그인 요청 시, MySQL → Redis Cluster로 유저 데이터 로드  
-   - JWT 토큰을 생성하여 Redis에 저장하고 유저에게 전달
-   - 인증 및 초기화 완료 후 유저와 연결을 종료
-<br> 
-
-### ㅇChannel Server - Monster Hunting, Inventory Management, and Equipment Enhancement System
-   - 서버 내 채널 이동 관리
-   - 몬스터 사냥을 통한 경험치 획득 및 레벨업 처리
-   - 인벤토리 아이템 획득/삭제/이동 처리
-   - 장비 강화 기능 처리
-   - 레이드 랭킹 조회
-
-<br> 
-
-### ㅇMatching Server - User Group Matching & Room Assignment for Game Initialization
-   - 레벨 그룹 단위 유저 매칭
-   - 매칭 성공 시, 생성 가능한 방 번호와 매칭에 사용된 유저들의 PK를 게임 서버에 전달 
-   - 레이드 종료 후, 게임 서버로부터 종료된 방 번호를 수신하여 재등록
-
-<br> 
-
-### ㅇGame Server - Room Data Generation & User Synchronization for Gameplay
-   - 매칭 서버로부터 방 번호 및 유저 PK 수신 후, 방 생성   
-   - 모든 매칭 유저가 접속하면, 확률 기반으로 랜덤 맵을 생성하고 몬스터 HP 및 제한 시간 설정 후 유저에게 정보 전송 
-   - 전투 중 틱레이트 기반의 실시간 게임 상태 동기화
-   - 몬스터 HP가 0이 되거나 제한 시간이 초과되면, 조건에 따라 다른 방식으로 레이드 종료 처리
-
-<br> 
-
 #### ㅇ 개발 기간 
 - 2025.01.14 ~ 2025.02.28 : IOCP & Redis Cluster를 활용한 MMO 게임 서버 개발  
-- 2025.04.06 ~ 2025.04.22 : 서버 분할 구조 도입 및 리팩토링 (Center Server를 4개로 분할)
+- 2025.04.06 ~ 2025.04.22 : 서버 분할 구조 도입 및 코드 리팩토링 (Center Server를 4개로 분할)
 
-#### ㅇ 프로젝트 소개서 - [MMOServer_Project_Intro.pdf](https://github.com/user-attachments/files/20421605/MMOServer_Project_Intro.pdf)
-
-
+#### ㅇ 프로젝트 소개서 - [MMOServer_Project_Intro.pdf](https://github.com/user-attachments/files/21754065/MMOServer_Project_Intro.pdf)
 
 
 
@@ -91,24 +54,9 @@
 
 <br>
 
-- #### User Logout or Disconnect
-![logout drawio](https://github.com/user-attachments/assets/3428ac25-9ae1-4800-acb5-5b5cbc9dd620)
-
-<br>
-
 - #### Move Server
 ![Move Channel drawio](https://github.com/user-attachments/assets/ab0ea345-f916-4371-a4da-82483e784ca8)
 
-<br>
-
-- #### Cash Charge
-<img width="828" height="681" alt="Cash Charge drawio" src="https://github.com/user-attachments/assets/673a289b-5dcb-406d-9889-d69b756bb940" />
-
-##### 💡 위 흐름도는 전체 캐시 충전 과정을 정리한 것입니다. 
-##### 💡 이 중 저는 Center Server에서 Cash Server로부터 전달된 결제 결과를 받아, MySQL 및 Redis에 캐시를 반영하는 로직을 구현했습니다.
-
-
-<br>
 <br>
 
 - #### Raid Matching
@@ -143,7 +91,6 @@
 ![Server   Channel Transition](https://github.com/user-attachments/assets/66656260-fbaf-419b-b0e0-f1f23bda2f88)
 
 
-
 1. 유저가 중앙 서버에 연결되면, 서버 선택 페이지로 이동합니다.
 
 2. 서버를 선택하면 중앙 서버로부터 해당 서버의 주소와 JWT 토큰을 받아, 선택한 서버로 연결을 시도합니다.
@@ -158,52 +105,6 @@
 
 <br> 
 
-- #### Shop Item Purchase
-![상점 아이템 구매](https://github.com/user-attachments/assets/c23041fc-d781-451d-8bf1-c43f4ca84272)
-
-1. 유저가 상점 아이템 구매 요청을 보내면, 서버는 해당 아이템의 결제 타입(골드, 캐시, 마일리지)을 확인합니다.
-
-2. 유저의 재화를 Redis Cluster에서 조회하여 구매 가능 여부를 판단합니다.
-
-3. 구매 가능 시 MySQL에서 재화 차감 및 아이템 지급을 트랜잭션으로 처리합니다.
-
-4. 트랜잭션이 성공하면, 유저에게 구매한 아이템 정보를 전송합니다.
-
-<br> 
-
-- #### Cash Charge
-![캐시 충전](https://github.com/user-attachments/assets/75472874-6ada-4f2e-947b-d727d061f053)
-
-1. 유저의 캐시 충전 요청이 들어오면, MySQL에 cash 증가량을 업데이트합니다.
-
-2. 업데이트가 성공하면, Redis Cluster의 cash 값을 hincyby로 증가시킵니다.
-
-3. 증가가 완료되면, 유저에게 업데이트된 cash 값을 전송합니다.
-
-4. 로그아웃 후에도 충전 내역은 유지됩니다.
-
-<br> 
-
-- #### Acquire Pass Item
-![패스 아이템 획득](https://github.com/user-attachments/assets/894a04f6-46c4-4daf-a354-4d7d44637a4c)
-
-1. 유저가 자신의 패스 레벨 이하의 아이템을 요청하면, 서버는 해당 아이템 정보를 반환합니다.
-
-2. 유저의 패스 레벨보다 높은 아이템이나 이미 획득한 아이템을 요청하면, 서버는 실패 응답을 반환합니다.
-
-<br> 
-
-- #### Pass Exp & Level Up
-![패스 경험치 및 레벨 업](https://github.com/user-attachments/assets/5632f6f1-44eb-4178-82d4-459a2fa17abd)
-
-1. 유저가 완료한 패스 미션 정보를 서버에 전송하면, 해당 미션 경험치로 레벨업 여부를 판단합니다.
-
-2. 경험치가 증가하면, 증가된 경험치와 레벨 정보를 유저에게 전송합니다.
-
-3. 로그아웃 후에도 각 패스 경험치 및 레벨 정보는 유지됩니다.
-
-<br>
-
 - #### Raid Start & Raid End (Mob Hp 0)
 ![Raid Start   Raid End (Mob Hp 0)](https://github.com/user-attachments/assets/e2c99091-fabb-4900-b39a-fbed30f885d6)
 
@@ -216,16 +117,6 @@
 4. 레이드 종료 후, 유저는 자신의 점수와 다른 유저들의 점수를 확인할 수 있습니다.
 
 5. 서버는 각 유저의 획득 점수가 기존 최고 점수보다 높을 경우, 해당 점수로 랭킹을 업데이트합니다.
-
-<br>
-
-- #### Raid Start & Raid End (Time Out)
-![Raid Start   Raid End (Time Out)](https://github.com/user-attachments/assets/30675120-415f-4f0a-97ec-84087febf25a)
-
-
-1. 제한시간이 종료되면 레이드가 자동으로 종료됩니다.
- 
-2. 레이드 중 획득한 점수만 서버에 기록되며, 레이드 종료시 내 점수와 다른 유저의 점수를 반환받아 확인할 수 있습니다.
 
 <br>
 
