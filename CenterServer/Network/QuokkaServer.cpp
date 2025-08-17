@@ -63,7 +63,13 @@ bool QuokkaServer::StartWork() {
     inGameUserManager = new InGameUserManager;
     redisManager = new RedisManager;
 
+    // Cash Server : 11
+    ConnUser* cashConnObj = new ConnUser(MAX_CIRCLE_SIZE, static_cast<uint16_t>(ServerType::CashServer), sIOCPHandle, overLappedManager);
+    connUsersManager->InsertUser(static_cast<uint16_t>(ServerType::CashServer), cashConnObj);
+
     for (int i = 0; i < maxClientCount; i++) { // Create a user object
+        if (i == 11) continue;
+
         ConnUser* connUser = new ConnUser(MAX_CIRCLE_SIZE,i, sIOCPHandle, overLappedManager);
 
         AcceptQueue.push(connUser);
@@ -79,6 +85,8 @@ bool QuokkaServer::StartWork() {
     redisManager->init(MaxThreadCnt);// Run Redis Threads (The number of Clsuter Master Nodes + 1)
     inGameUserManager->Init(maxClientCount);
     redisManager->SetManager(connUsersManager, inGameUserManager);
+
+    // CashServerConnect();
 
     return true;
 }
@@ -120,7 +128,38 @@ void QuokkaServer::ServerEnd() {
 
     std::cout << "Wait 5 Seconds Before Shutdown" << std::endl;
     std::this_thread::sleep_for(std::chrono::seconds(5)); // Wait 5 seconds before server shutdown
-    std::cout << "Game Server1 Shutdown" << std::endl;
+    std::cout << "Center Server Shutdown" << std::endl;
+}
+
+
+// ======================== SERVER CONNECTION ==========================
+
+bool QuokkaServer::CashServerConnect() {
+    auto centerObj = connUsersManager->FindUser(static_cast<uint16_t>(ServerType::CashServer));
+
+    SOCKADDR_IN addr;
+    ZeroMemory(&addr, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(ServerAddressMap[ServerType::CashServer].port);
+    inet_pton(AF_INET, ServerAddressMap[ServerType::CashServer].ip.c_str(), &addr.sin_addr.s_addr);
+
+    std::cout << "Connecting to Cash Server" << std::endl;
+
+    if (connect(centerObj->GetSocket(), (SOCKADDR*)&addr, sizeof(addr))) {
+        std::cout << "Failed to Connect to Cash Server" << std::endl;
+        return false;
+    }
+
+    std::cout << "Cash Server Connected" << std::endl;
+
+    centerObj->ConnUserRecv();
+
+    CASH_SERVER_CONNECT_REQUEST cashReq;
+    cashReq.PacketId = (UINT16)PACKET_ID::CASH_SERVER_CONNECT_REQUEST;
+    cashReq.PacketLength = sizeof(CASH_SERVER_CONNECT_REQUEST);
+
+    centerObj->PushSendMsg(sizeof(CASH_SERVER_CONNECT_REQUEST), (char*)&cashReq);
+    return true;
 }
 
 
@@ -238,19 +277,8 @@ void QuokkaServer::AccepterThread() {
                 AcceptQueue.push(connUser);
             }
         }
-        else { // AcceptQueue empty, check waittingQueue
+        else { // AcceptQueue empty
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-            //while (AccepterRun) {
-            //    if (WaittingQueue.pop(connUser)) { // WaittingQueue not empty
-            //        WaittingQueue.push(connUser);
-            //    }
-            //    else { // WaittingQueue empty
-            //        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            //        break;
-            //    }
-            //}
-
         }
     }
 }

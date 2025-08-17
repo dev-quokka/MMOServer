@@ -4,8 +4,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-const uint32_t MAX_RECV_SIZE = 1024; // Set Max RECV Buf
-const uint32_t MAX_CIRCLE_SIZE = 8096;
+const uint32_t MAX_RECV_SIZE = 8096; // Set Max RECV Buf
 
 enum class TaskType {
 	TCP_RECV,

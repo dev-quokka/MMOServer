@@ -6,6 +6,8 @@
 #include <chrono>
 
 #include "UserSyncData.h"
+#include "ShopItemPacket.h"
+#include "PassDataPacket.h"
 
 constexpr uint16_t MAX_IP_LEN = 32;
 constexpr uint16_t MAX_SERVER_USERS = 128;
@@ -34,6 +36,18 @@ struct PACKET_HEADER
 };
 
 
+// ======================= TEST =======================
+
+struct CASH_CHARGE_COMPLETE_REQUEST : PACKET_HEADER {
+	uint32_t chargedCash = 0;
+};
+
+struct CASH_CHARGE_COMPLETE_RESPONSE : PACKET_HEADER {
+	uint32_t chargedCash = 0;
+	bool isSuccess = false;
+};
+
+
 // ======================= CENTER SERVER =======================
 
 struct USER_CONNECT_REQUEST_PACKET : PACKET_HEADER {
@@ -42,7 +56,7 @@ struct USER_CONNECT_REQUEST_PACKET : PACKET_HEADER {
 };
 
 struct USER_CONNECT_RESPONSE_PACKET : PACKET_HEADER {
-	bool isSuccess;
+	bool isSuccess = false;
 };
 
 struct USER_LOGOUT_REQUEST_PACKET : PACKET_HEADER {
@@ -64,8 +78,24 @@ struct SERVER_USER_COUNTS_REQUEST : PACKET_HEADER {
 };
 
 struct SERVER_USER_COUNTS_RESPONSE : PACKET_HEADER {
+	uint16_t serverUserCnt[MAX_SERVER_USERS + 1];
 	uint16_t serverCount;
-	char serverUserCnt[MAX_SERVER_USERS + 1];
+};
+
+struct SHOP_DATA_REQUEST : PACKET_HEADER {
+
+};
+
+struct SHOP_DATA_RESPONSE : PACKET_HEADER {
+	uint16_t shopItemSize;
+};
+
+struct PASS_DATA_REQUEST : PACKET_HEADER {
+
+};
+
+struct PASS_DATA_RESPONSE : PACKET_HEADER {
+	uint16_t passDataSize;
 };
 
 struct MOVE_SERVER_REQUEST : PACKET_HEADER {
@@ -99,6 +129,65 @@ struct RAID_RANKING_RESPONSE : PACKET_HEADER {
 	char reqScore[MAX_SCORE_SIZE + 1];
 };
 
+struct SHOP_BUY_ITEM_REQUEST : PACKET_HEADER {
+	uint16_t itemCode = 0;
+	uint16_t daysOrCount = 0; // [장비: 유저가 원하는 아이템의 사용 기간, 소비: 유저가 원하는 아이템 개수 묶음] 
+	uint16_t itemType; // 0: 장비, 1: 소비, 2: 재료
+};
+
+struct SHOP_BUY_ITEM_RESPONSE : PACKET_HEADER {
+	ShopItemForSend shopItemForSend;
+	uint32_t remainMoney;
+	uint16_t currencyType;
+	uint16_t position = 1;
+	bool isSuccess = false;
+};
+
+struct PASS_EXP_UP_REQUEST : PACKET_HEADER {
+	char passId[MAX_PASS_ID_LEN + 1];
+	uint16_t missionNum; // 수행할 미션 번호
+};
+
+struct PASS_EXP_UP_RESPONSE : PACKET_HEADER {
+	char passId[MAX_PASS_ID_LEN + 1];
+	uint16_t passLevel = 0;
+	uint16_t passExp;
+	bool isSuccess = false;
+};
+
+struct GET_PASS_ITEM_REQUEST : PACKET_HEADER {
+	char passId[MAX_PASS_ID_LEN + 1];
+	uint16_t passLevel;
+	uint16_t passCurrencyType;
+};
+
+struct GET_PASS_ITEM_RESPONSE : PACKET_HEADER {
+	PassItemForSend passItemForSend;
+	char passId[MAX_PASS_ID_LEN + 1];
+	uint16_t passLevel;
+	uint16_t passCurrencyType;
+	uint16_t position = 1;
+	bool passAcq = false;
+	bool isSuccess = false;
+};
+
+
+// ======================= CASH SERVER =======================
+
+struct CASH_SERVER_CONNECT_REQUEST : PACKET_HEADER {
+
+};
+
+struct CASH_SERVER_CONNECT_RESPONSE : PACKET_HEADER {
+	bool isSuccess = false;
+};
+
+struct CASH_CHARGE_RESULT_RESPONSE : PACKET_HEADER {
+	uint32_t chargedAmount; // 충전된 금액
+	uint16_t uCASH_CHARGE_RESULTserId; // 유저 고유 번호
+	bool isSuccess = false; // 충전 성공 유무
+};
+
 
 // ======================= LOGIN SERVER =======================
 
@@ -107,7 +196,7 @@ struct LOGIN_SERVER_CONNECT_REQUEST : PACKET_HEADER {
 };
 
 struct LOGIN_SERVER_CONNECT_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
+	bool isSuccess = false;
 };
 
 
@@ -118,7 +207,7 @@ struct CHANNEL_SERVER_CONNECT_REQUEST : PACKET_HEADER {
 };
 
 struct CHANNEL_SERVER_CONNECT_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
+	bool isSuccess = false;
 };
 
 struct USER_DISCONNECT_AT_CHANNEL_REQUEST : PACKET_HEADER {
@@ -139,7 +228,7 @@ struct MATCHING_SERVER_CONNECT_REQUEST : PACKET_HEADER {
 };
 
 struct MATCHING_SERVER_CONNECT_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
+	bool isSuccess = false;
 };
 
 struct MATCHING_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
@@ -150,7 +239,7 @@ struct MATCHING_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
 
 struct MATCHING_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
 	uint16_t userCenterObjNum;
-	bool isSuccess;
+	bool isSuccess = false;
 };
 
 struct MATCHING_SUCCESS_RESPONSE_TO_CENTER_SERVER : PACKET_HEADER {
@@ -167,7 +256,7 @@ struct MATCHING_CANCEL_REQUEST : PACKET_HEADER {
 };
 
 struct MATCHING_CANCEL_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
+	bool isSuccess = false;
 };
 
 struct MATCHING_CANCEL_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
@@ -177,7 +266,7 @@ struct MATCHING_CANCEL_REQUEST_TO_MATCHING_SERVER : PACKET_HEADER {
 
 struct MATCHING_CANCEL_RESPONSE_FROM_MATCHING_SERVER : PACKET_HEADER {
 	uint16_t userCenterObjNum;
-	bool isSuccess;
+	bool isSuccess = false;
 };
 
 
@@ -188,7 +277,7 @@ struct RAID_SERVER_CONNECT_REQUEST : PACKET_HEADER {
 };
 
 struct RAID_SERVER_CONNECT_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
+	bool isSuccess = false;
 };
 
 struct RAID_MATCHING_REQUEST : PACKET_HEADER {
@@ -221,12 +310,12 @@ struct SYNC_HIGHSCORE_REQUEST : PACKET_HEADER {
 enum class PACKET_ID : uint16_t {
 
 	// ======================= CENTER SERVER (1~ ) =======================
-
+	
 	// SYSTEM (1~)
 	USER_CONNECT_REQUEST = 1,
 	USER_CONNECT_RESPONSE = 2,
-	USER_LOGOUT_REQUEST = 3,
-	USER_FULL_REQUEST = 6,
+	USER_LOGOUT_REQUEST = 3, 
+	USER_FULL_REQUEST = 6, 
 	WAITTING_NUMBER_REQUSET = 7,
 	SERVER_USER_COUNTS_REQUEST = 8,
 	SERVER_USER_COUNTS_RESPONSE = 9,
@@ -243,6 +332,36 @@ enum class PACKET_ID : uint16_t {
 
 	RAID_END_REQUEST_TO_GAME_SERVER = 52,
 
+	// SHOP (101~ )
+	SHOP_DATA_REQUEST = 101,
+	SHOP_DATA_RESPONSE = 102,
+	SHOP_BUY_ITEM_REQUEST = 103,
+	SHOP_BUY_ITEM_RESPONSE = 104,
+
+	// PASSITEM (301~ )
+	PASS_DATA_REQUEST = 301,
+	PASS_DATA_RESPONSE = 302,
+	GET_PASS_ITEM_REQUEST = 303,
+	GET_PASS_ITEM_RESPONSE = 304,
+
+	PASS_EXP_UP_REQUEST = 310,
+	PASS_EXP_UP_RESPONSE = 311,
+
+
+	// ======================= CASH SERVER (501~ ) =======================	
+
+	CASH_SERVER_CONNECT_REQUEST = 501,
+	CASH_SERVER_CONNECT_RESPONSE = 502,
+
+	CASH_CHARGE_RESULT_RESPONSE = 503,
+
+
+
+
+	// 유저 캐시 충전 완료 요청 테스트용 (511,512)
+	CASH_CHARGE_COMPLETE_REQUEST = 511,
+	CASH_CHARGE_COMPLETE_RESPONSE = 512,
+	
 
 	// ======================= LOGIN SERVER (801~ ) =======================
 
@@ -271,7 +390,7 @@ enum class PACKET_ID : uint16_t {
 
 
 	// ======================= CHANNEL SERVER (1501~ ) =======================
-
+	
 	// SYSTEM (1501~)
 	CHANNEL_SERVER_CONNECT_REQUEST = 1501,
 	CHANNEL_SERVER_CONNECT_RESPONSE = 1502,
@@ -283,7 +402,7 @@ enum class PACKET_ID : uint16_t {
 
 
 	// ======================= MATCHING SERVER (5001~ ) =======================
-
+	
 	//SYSTEM (5001~)
 	MATCHING_SERVER_CONNECT_REQUEST = 5001,
 	MATCHING_SERVER_CONNECT_RESPONSE = 5002,
@@ -299,7 +418,7 @@ enum class PACKET_ID : uint16_t {
 
 
 	// ======================= RAID GAME SERVER (8001~ ) =======================
-
+	
 	RAID_SERVER_CONNECT_REQUEST = 8001,
 	RAID_SERVER_CONNECT_RESPONSE = 8002,
 

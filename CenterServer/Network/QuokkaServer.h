@@ -18,6 +18,9 @@ public:
     bool StartWork();
     void ServerEnd();
 
+    // ==================== SERVER CONNECTION ======================
+    bool CashServerConnect();
+
 private:
     // ===================== THREAD MANAGEMENT =====================
     bool CreateWorkThread();

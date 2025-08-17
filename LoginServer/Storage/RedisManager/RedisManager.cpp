@@ -14,6 +14,8 @@ void RedisManager::init(const uint16_t packetThreadCnt_) {
     packetIDTable[(UINT16)PACKET_ID::EQUIPMENT_REQUEST] = &RedisManager::GetEquipment;
     packetIDTable[(UINT16)PACKET_ID::CONSUMABLES_REQUEST] = &RedisManager::GetConsumables;
     packetIDTable[(UINT16)PACKET_ID::MATERIALS_REQUEST] = &RedisManager::GetMaterials;
+    packetIDTable[(UINT16)PACKET_ID::PASSINFO_REQUEST] = &RedisManager::GetPassInfos;
+    packetIDTable[(UINT16)PACKET_ID::PASSREWARDINFO_REQUEST] = &RedisManager::GetPassRewordInfos;
     packetIDTable[(UINT16)PACKET_ID::USER_GAMESTART_REQUEST] = &RedisManager::GameStart;
 
     RedisRun(packetThreadCnt_);
@@ -22,13 +24,13 @@ void RedisManager::init(const uint16_t packetThreadCnt_) {
     mySQLManager->init();
 
     auto tempRanks = mySQLManager->SetRankingInRedis();
-
     if (tempRanks.size() == 0) {
         std::cout << "(MySQL) Failed to set user rankings from MySQL." << std::endl;
         return;
     }
 
     SetRanking(tempRanks);
+    SetEventPassId();
 }
 
 void RedisManager::SetManager(ConnUsersManager* connUsersManager_) {
@@ -44,7 +46,10 @@ void RedisManager::SetRanking(std::vector<RANKING> ranks_) {
     }
 
     pipe.exec();
+}
 
+void RedisManager::SetEventPassId() {
+    if (!mySQLManager->GetEventPassId(eventPassInfoMap)) return;
 }
 
 
@@ -126,19 +131,15 @@ void RedisManager::GetUserInfo(uint16_t connObjNum_, uint16_t packetSize_, char*
     auto uiReq = reinterpret_cast<USERINFO_REQUEST*>(pPacket_);
     auto tempUser = connUsersManager->FindUser(connObjNum_);
 
-    std::pair<uint32_t, LOGIN_USERINFO> userInfoPk = mySQLManager->GetUserInfoById(std::string(uiReq->userId));
-
-    USERINFO tempUserInfo;
-
+    std::string tempUserId = std::string(uiReq->userId);
+    std::pair<uint32_t, LOGIN_USERINFO> userInfoPk;
+        
     USERINFO_RESPONSE uiRes;
     uiRes.PacketId = (UINT16)PACKET_ID::USERINFO_RESPONSE;
     uiRes.PacketLength = sizeof(USERINFO_RESPONSE);
 
-    if (userInfoPk.first == 0) { // Return value 0 indicates failure
-        std::cout << "GetUserInfo Fail" << std::endl;
-
-        tempUserInfo.level = 0;
-        uiRes.UserInfo = tempUserInfo;
+    if (!mySQLManager->GetUserInfoById(tempUserId, userInfoPk)){
+        std::cout << "[GetUserInfo] GetUserInfo Fail" << std::endl;
         connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(USERINFO_RESPONSE), (char*)&uiRes);
         return;
     }
@@ -154,6 +155,9 @@ void RedisManager::GetUserInfo(uint16_t connObjNum_, uint16_t packetSize_, char*
         pipe.hset(key, "userId", std::string(uiReq->userId))
             .hset(key, "level", std::to_string(tempLoginUserInfo.level))
             .hset(key, "exp", std::to_string(tempLoginUserInfo.exp))
+            .hset(key, "gold", std::to_string(tempLoginUserInfo.gold))
+            .hset(key, "cash", std::to_string(tempLoginUserInfo.cash))
+            .hset(key, "mileage", std::to_string(tempLoginUserInfo.mileage))
             .hset(key, "lastLogin", tempLoginUserInfo.lastLogin)
             .hset(key, "raidScore", std::to_string(tempLoginUserInfo.raidScore))
             .hset(key, "status", "Online")
@@ -162,25 +166,24 @@ void RedisManager::GetUserInfo(uint16_t connObjNum_, uint16_t packetSize_, char*
         pipe.exec();
     }
     catch (const sw::redis::Error& e) { // Redis Error
-        std::cerr << "Redis error : " << e.what() << std::endl;
-        std::cout << "GetUserInfo Fail" << std::endl;
-
-        tempUserInfo.level = 0;
-        uiRes.UserInfo = tempUserInfo;
+        std::cerr << "[GetUserInfo] Redis error : " << e.what() << std::endl;
         connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(USERINFO_RESPONSE), (char*)&uiRes);
         return;
     }
 
+    std::cout << "Successfully uploaded UserInfo to the redis cluster" << std::endl;
+
     tempUser->SetPk(userInfoPk.first);
 
+    USERINFO tempUserInfo;
     tempUserInfo.level = tempLoginUserInfo.level;
     tempUserInfo.exp = tempLoginUserInfo.exp;
     tempUserInfo.raidScore = tempLoginUserInfo.raidScore;
+    tempUserInfo.gold = tempLoginUserInfo.gold;
+    tempUserInfo.cash = tempLoginUserInfo.cash;
+    tempUserInfo.mileage = tempLoginUserInfo.mileage;
 
     uiRes.UserInfo = tempUserInfo;
-
-    std::cout << "Successfully uploaded UserInfo to the redis cluster" << std::endl;
-
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(USERINFO_RESPONSE), (char*)&uiRes);
 }
 
@@ -192,12 +195,11 @@ void RedisManager::GetEquipment(uint16_t connObjNum_, uint16_t packetSize_, char
     eqSend.PacketId = (UINT16)PACKET_ID::EQUIPMENT_RESPONSE;
     eqSend.PacketLength = sizeof(EQUIPMENT_RESPONSE);
 
-    std::vector<EQUIPMENT> eq = mySQLManager->GetUserEquipByPk(std::to_string(tempUser->GetPk()));
+    std::string tempPk = std::to_string(tempUser->GetPk());
+    std::vector<EQUIPMENT> eq;
 
-    if (eq.size() == 0) {  // Return value 0 indicates failure
-        std::cout << "Failed to Get User Get User Equipment" << std::endl;
-
-        eqSend.eqCount = 0;
+    if (!mySQLManager->GetUserEquipByPk(tempPk, eq)) {
+        std::cout << "[GetEquipment] Failed to Get User Get User Equipment" << std::endl;
         connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(EQUIPMENT_RESPONSE), (char*)&eqSend);
         return;
     }
@@ -208,16 +210,32 @@ void RedisManager::GetEquipment(uint16_t connObjNum_, uint16_t packetSize_, char
     std::string tag = "{" + std::to_string(tempUser->GetPk()) + "}";
     std::string key = "equipment:" + tag; // user:{pk}
 
-    auto pipe = redis->pipeline(tag);
+    try {
+        auto pipe = redis->pipeline(tag);
 
-    for (int i = 0; i < eq.size(); i++) {
-        pipe.hset(key, std::to_string(eq[i].position), std::to_string(eq[i].itemCode) + ":" + std::to_string(eq[i].enhance));
+        for (int i = 0; i < eq.size(); i++) {
+            pipe.hset(key, std::to_string(eq[i].position), std::to_string(eq[i].itemCode) + ":" + std::to_string(eq[i].enhance));
 
-        memcpy(tc, (char*)&eq[i], sizeof(EQUIPMENT));
-        tc += sizeof(EQUIPMENT);
+            memcpy(tc, (char*)&eq[i], sizeof(EQUIPMENT));
+            tc += sizeof(EQUIPMENT);
+        }
+
+        pipe.exec();
+    }
+    catch (const sw::redis::Error& e) { // Redis Error
+        std::cerr << "[GetEquipment] Redis error : " << e.what() << std::endl;
+        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(EQUIPMENT_RESPONSE), (char*)&eqSend);
+        delete[] tempC;
+        return;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "[GetEquipment] Exception error : " << e.what() << std::endl;
+        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(EQUIPMENT_RESPONSE), (char*)&eqSend);
+        delete[] tempC;
+        return;
     }
 
-    pipe.exec();
+    std::cout << "Successfully uploaded user's Equipment to the game server" << std::endl;
 
     eqSend.eqCount = eq.size();
     std::memcpy(eqSend.Equipments, tempC, MAX_INVEN_SIZE + 1);
@@ -225,7 +243,6 @@ void RedisManager::GetEquipment(uint16_t connObjNum_, uint16_t packetSize_, char
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(EQUIPMENT_RESPONSE), (char*)&eqSend);
 
     delete[] tempC;
-    std::cout << "Successfully uploaded user's Equipment to the game server" << std::endl;
 }
 
 void RedisManager::GetConsumables(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
@@ -236,13 +253,11 @@ void RedisManager::GetConsumables(uint16_t connObjNum_, uint16_t packetSize_, ch
     csSend.PacketId = (UINT16)PACKET_ID::CONSUMABLES_RESPONSE;
     csSend.PacketLength = sizeof(CONSUMABLES_RESPONSE);
 
-    std::vector<CONSUMABLES> cs = mySQLManager->GetUserConsumablesByPk(std::to_string(tempUser->GetPk()));
+    std::string tempPk = std::to_string(tempUser->GetPk());
+    std::vector<CONSUMABLES> cs; 
 
-    if (cs.size() == 0) {  // Return value 0 indicates failure
-        std::cout << "Failed to Get User Consumables" << std::endl;
-
-
-        csSend.csCount = 0;
+    if (!mySQLManager->GetUserConsumablesByPk(tempPk, cs)) {
+        std::cout << "[GetConsumables] Failed to Get User Consumables" << std::endl;
         connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(CONSUMABLES_RESPONSE), (char*)&csSend);
         return;
     }
@@ -253,16 +268,32 @@ void RedisManager::GetConsumables(uint16_t connObjNum_, uint16_t packetSize_, ch
     std::string tag = "{" + std::to_string(tempUser->GetPk()) + "}";
     std::string key = "consumables:" + tag; // user:{pk}
 
-    auto pipe = redis->pipeline(tag);
+    try {
+        auto pipe = redis->pipeline(tag);
 
-    for (int i = 0; i < cs.size(); i++) {
-        pipe.hset(key, std::to_string(cs[i].position), std::to_string(cs[i].itemCode) + ":" + std::to_string(cs[i].count));
+        for (int i = 0; i < cs.size(); i++) {
+            pipe.hset(key, std::to_string(cs[i].position), std::to_string(cs[i].itemCode) + ":" + std::to_string(cs[i].count));
 
-        memcpy(tc, (char*)&cs[i], sizeof(CONSUMABLES));
-        tc += sizeof(CONSUMABLES);
+            memcpy(tc, (char*)&cs[i], sizeof(CONSUMABLES));
+            tc += sizeof(CONSUMABLES);
+        }
+
+        pipe.exec();
+    }
+    catch (const sw::redis::Error& e) { // Redis Error
+        std::cerr << "[GetConsumables] Redis error : " << e.what() << std::endl;
+        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(CONSUMABLES_RESPONSE), (char*)&csSend);
+        delete[] tempC;
+        return;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "[GetConsumables] Exception error : " << e.what() << std::endl;
+        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(CONSUMABLES_RESPONSE), (char*)&csSend);
+        delete[] tempC;
+        return;
     }
 
-    pipe.exec();
+    std::cout << "Successfully uploaded user's Consumable to the game server" << std::endl;
 
     csSend.csCount = cs.size();
     std::memcpy(csSend.Consumables, tempC, MAX_INVEN_SIZE + 1);
@@ -270,7 +301,6 @@ void RedisManager::GetConsumables(uint16_t connObjNum_, uint16_t packetSize_, ch
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(CONSUMABLES_RESPONSE), (char*)&csSend);
 
     delete[] tempC;
-    std::cout << "Successfully uploaded user's Consumable to the game server" << std::endl;
 }
 
 void RedisManager::GetMaterials(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
@@ -281,12 +311,11 @@ void RedisManager::GetMaterials(uint16_t connObjNum_, uint16_t packetSize_, char
     mtSend.PacketId = (UINT16)PACKET_ID::MATERIALS_RESPONSE;
     mtSend.PacketLength = sizeof(MATERIALS_RESPONSE);
 
-    std::vector<MATERIALS> mt = mySQLManager->GetUserMaterialsByPk(std::to_string(tempUser->GetPk()));
+    std::string tempPk = std::to_string(tempUser->GetPk());
+    std::vector<MATERIALS> mt;
 
-    if (mt.size() == 0) {
-        std::cout << "Failed to Get User Materials" << std::endl;
-
-        mtSend.mtCount = 0;
+    if (!mySQLManager->GetUserMaterialsByPk(tempPk, mt)) {
+        std::cout << "[GetMaterials] Failed to Get User Materials" << std::endl;
         connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MATERIALS_RESPONSE), (char*)&mtSend);
         return;
     }
@@ -297,16 +326,26 @@ void RedisManager::GetMaterials(uint16_t connObjNum_, uint16_t packetSize_, char
     std::string tag = "{" + std::to_string(tempUser->GetPk()) + "}";
     std::string key = "materials:" + tag; // user:{pk}
 
-    auto pipe = redis->pipeline(tag);
+    try {
+        auto pipe = redis->pipeline(tag);
 
-    for (int i = 0; i < mt.size(); i++) {
-        pipe.hset(key, std::to_string(mt[i].position), std::to_string(mt[i].itemCode) + ":" + std::to_string(mt[i].count));
+        for (int i = 0; i < mt.size(); i++) {
+            pipe.hset(key, std::to_string(mt[i].position), std::to_string(mt[i].itemCode) + ":" + std::to_string(mt[i].count));
 
-        memcpy(tc, (char*)&mt[i], sizeof(MATERIALS));
-        tc += sizeof(MATERIALS);
+            memcpy(tc, (char*)&mt[i], sizeof(MATERIALS));
+            tc += sizeof(MATERIALS);
+        }
+
+        pipe.exec();
+    }
+    catch (const sw::redis::Error& e) { // Redis Error
+        std::cerr << "[GetMaterials] Redis error : " << e.what() << std::endl;
+        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MATERIALS_RESPONSE), (char*)&mtSend);
+        delete[] tempC;
+        return;
     }
 
-    pipe.exec();
+    std::cout << "Successfully uploaded user's Material to the game server" << std::endl;
 
     mtSend.mtCount = mt.size();
     std::memcpy(mtSend.Materials, tempC, MAX_INVEN_SIZE + 1);
@@ -314,7 +353,95 @@ void RedisManager::GetMaterials(uint16_t connObjNum_, uint16_t packetSize_, char
     connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(MATERIALS_RESPONSE), (char*)&mtSend);
 
     delete[] tempC;
-    std::cout << "Successfully uploaded user's Material to the game server" << std::endl;
+}
+
+void RedisManager::GetPassInfos(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    auto ugReq = reinterpret_cast<PASSINFO_REQUEST*>(pPacket_);
+    auto tempUser = connUsersManager->FindUser(connObjNum_);
+
+    PASSINFO_RESPONSE piRes;
+    piRes.PacketId = (UINT16)PACKET_ID::PASSINFO_RESPONSE;
+    piRes.PacketLength = sizeof(PASSINFO_RESPONSE);
+
+    std::string tempPk = std::to_string(tempUser->GetPk());
+    std::vector<USERPASSINFO> pi;
+
+    if (!mySQLManager->GetPassInfoByPk(tempPk, eventPassInfoMap, pi)) {
+        std::cout << "[GetPassInfos] Failed to Get User PassRewordInfos" << std::endl;
+        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(PASSINFO_RESPONSE), (char*)&piRes);
+        return;
+    }
+
+    auto passInfoSize = pi.size();
+
+    size_t packetSize = sizeof(PASSINFO_RESPONSE) + sizeof(USERPASSINFO) * passInfoSize;
+    char* packetBuffer = new char[packetSize];
+
+    piRes.passCount = passInfoSize;
+    memcpy(packetBuffer, &piRes, sizeof(PASSINFO_RESPONSE));
+
+    USERPASSINFO* passInfoVector = reinterpret_cast<USERPASSINFO*>(packetBuffer + sizeof(PASSINFO_RESPONSE));
+
+    std::string tempPassId;
+    std::string tag = "{" + std::to_string(tempUser->GetPk()) + "}:";
+    std::string passKey;
+
+    try {
+        auto pipe = redis->pipeline(tag);
+
+        for (int i = 0; i < passInfoSize; i++) {
+            tempPassId = pi[i].passInfo.passId;
+            passKey = "pass:" + tag + tempPassId;
+            redis->hset(passKey, "passLevel", std::to_string(pi[i].passLevel));
+            redis->hset(passKey, "passExp", std::to_string(pi[i].passExp));
+            redis->hset(passKey, "passCurrencyType", std::to_string(pi[i].passCurrencyType));
+
+            passInfoVector[i] = pi[i];
+        }
+
+        pipe.exec();
+    }
+    catch (const sw::redis::Error& e) { // Redis Error
+        std::cerr << "[GetPassInfos] Redis error : " << e.what() << std::endl;
+        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(PASSINFO_RESPONSE), (char*)&piRes);
+        return;
+    }
+
+    connUsersManager->FindUser(connObjNum_)->PushSendMsg(packetSize, packetBuffer);
+}
+
+void RedisManager::GetPassRewordInfos(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
+    auto ugReq = reinterpret_cast<PASSREWARDINFO_REQUEST*>(pPacket_);
+    auto tempUser = connUsersManager->FindUser(connObjNum_);
+
+    PASSREWARDINFO_RESPONSE priRes;
+    priRes.PacketId = (UINT16)PACKET_ID::PASSREWARDINFO_RESPONSE;
+    priRes.PacketLength = sizeof(PASSREWARDINFO_RESPONSE);
+
+    std::string tempPk = std::to_string(tempUser->GetPk());
+    std::vector<PASSREWARDNFO> pri;
+
+    if (!mySQLManager->GetPassDataByPk(tempPk, eventPassInfoMap, pri)) {
+        std::cout << "[GetPassRewordInfos] Failed to Get User PassRewordInfos" << std::endl;
+        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(PASSREWARDINFO_RESPONSE), (char*)&priRes);
+        return;
+    }
+
+    auto passRewardSize = pri.size();
+
+    size_t packetSize = sizeof(PASSREWARDINFO_RESPONSE) + sizeof(PASSREWARDNFO) * passRewardSize;
+    char* packetBuffer = new char[packetSize];
+
+    priRes.passRewordCount = passRewardSize;
+    memcpy(packetBuffer, &priRes, sizeof(PASSREWARDINFO_RESPONSE));
+
+    PASSREWARDNFO* passRewawrdVector = reinterpret_cast<PASSREWARDNFO*>(packetBuffer + sizeof(PASSREWARDINFO_RESPONSE));
+
+    for (int i = 0; i < passRewardSize; i++) {
+        passRewawrdVector[i] = pri[i];
+    }
+
+    connUsersManager->FindUser(connObjNum_)->PushSendMsg(packetSize, packetBuffer);
 }
 
 void RedisManager::GameStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
@@ -330,7 +457,7 @@ void RedisManager::GameStart(uint16_t connObjNum_, uint16_t packetSize_, char* p
             .set_issuer("session_server")
             .set_subject("Login_check")
             .set_expires_at(std::chrono::system_clock::now() +
-                std::chrono::seconds{ 600 })
+                std::chrono::seconds{ 300 })
             .sign(jwt::algorithm::hs256{ JWT_SECRET });
 
         std::string tag = "{" + std::string(ugReq->userId) + "}";
@@ -338,12 +465,14 @@ void RedisManager::GameStart(uint16_t connObjNum_, uint16_t packetSize_, char* p
 
         auto pipe = redis->pipeline(tag);
         pipe.hset(key, token, std::to_string(tempUser->GetPk()))
-            .expire(key, 15); // set ttl 1 hour
+            .expire(key, 300); // set ttl
         pipe.exec();
 
         strncpy_s(ugRes.Token, token.c_str(), 256);
-        connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(USER_GAMESTART_RESPONSE), (char*)&ugRes);
+        connUsersManager->FindUser(connObjNum_)->
+            PushSendMsg(sizeof(USER_GAMESTART_RESPONSE), (char*)&ugRes);
     }
+
     catch (const sw::redis::Error& e) {
         std::cerr << "Redis error : " << e.what() << std::endl;
 

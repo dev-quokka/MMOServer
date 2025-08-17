@@ -14,6 +14,8 @@
 #include "ChannelServersManager.h"
 #include "ConnUsersManager.h"
 #include "MySQLManager.h"
+#include "ShopDataManager.h"
+#include "PassRewardManager.h"
 
 const std::string JWT_SECRET = "Cute_Quokka";
 constexpr int MAX_CENTER_PACKET_SIZE = 256;
@@ -29,10 +31,15 @@ public:
         }
     }
 
-
+    // ======================= TEST =======================
+    void Test_CashCahrge(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    
     // ====================== INITIALIZATION =======================
     void init(const uint16_t RedisThreadCnt_);
     void SetManager(ConnUsersManager* connUsersManager_, InGameUserManager* inGameUserManager_);
+    void InitItemData();
+    void InitShopData();
+    void InitPassData();
 
 
     // ===================== PACKET MANAGEMENT =====================
@@ -41,6 +48,7 @@ public:
 
     // ==================== CONNECTION INTERFACE ===================
     void Disconnect(uint16_t connObjNum_);
+
 
 private:
     // ===================== REDIS MANAGEMENT =====================
@@ -54,14 +62,22 @@ private:
     std::vector<EQUIPMENT> GetUpdatedEquipment(uint16_t userPk_);
     std::vector<CONSUMABLES> GetUpdatedConsumables(uint16_t userPk_);
     std::vector<MATERIALS> GetUpdatedMaterials(uint16_t userPk_);
-
-
+    std::vector<UserPassDataForSync> GetUpdatedPassData(uint16_t userPk_);
+    
     // ======================= CENTER SERVER =======================
     void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void UserDisConnect(uint16_t connObjNum_);
     void SendServerUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void SendShopDataToClient(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void BuyItemFromShop(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void SendPassDataToClient(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void PassExpUp(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void GetPassItem(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
+    // ======================= CASH SERVER =======================
+    void CashServerConnectResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void CashChargeResultResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
     // ======================== LOGIN SERVER =======================
     void LoginServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
@@ -79,8 +95,8 @@ private:
     void MatchStartResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MatchingCancelResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    void CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-
+	void CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    
 
     // ======================= RAID GAME SERVER =======================
     void GameServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
@@ -97,22 +113,18 @@ private:
 
     // 80 bytes
     std::unordered_map<uint16_t, RECV_PACKET_FUNCTION> packetIDTable;
+    std::unordered_map<std::string, std::vector<uint16_t>> missionMap;
 
     // 32 bytes
-    std::vector<uint16_t> channelServerObjNums;
-    std::vector<uint16_t> raidGameServerObjNums;
     std::vector<std::thread> redisThreads;
 
-    // 16 bytes
+    // 8 bytes
     std::unique_ptr<sw::redis::RedisCluster> redis;
 
     MySQLManager* mySQLManager;
     ConnUsersManager* connUsersManager;
     InGameUserManager* inGameUserManager;
     ChannelServersManager* channelServersManager;
-
-    // 2 bytes
-    uint16_t MatchingServerObjNum = 0;
 
     // 1 bytes
     bool redisRun = false;

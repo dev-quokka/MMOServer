@@ -31,10 +31,12 @@ public:
     void init(const uint16_t packetThreadCnt_);
     void SetManager(ConnUsersManager* connUsersManager_);
     void SetRanking(std::vector<RANKING> ranks_);
+    void SetEventPassId();
 
 
     // ===================== PACKET MANAGEMENT =====================
     void PushRedisPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_);
+
 
 private:
     // ===================== REDIS MANAGEMENT ======================
@@ -49,6 +51,8 @@ private:
     void GetEquipment(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void GetConsumables(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void GetMaterials(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void GetPassInfos(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+    void GetPassRewordInfos(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void GameStart(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
     typedef void(RedisManager::* RECV_PACKET_FUNCTION)(uint16_t, uint16_t, char*);
@@ -64,6 +68,7 @@ private:
 
     // 32 bytes
     std::vector<std::thread> redisThreads;
+    std::unordered_map<std::string, PASSINFO> eventPassInfoMap;// 현재 진행중인 패스 ID Map { 패스 ID, 패스 정보 }
 
     // 16 bytes
     std::unique_ptr<sw::redis::RedisCluster> redis;

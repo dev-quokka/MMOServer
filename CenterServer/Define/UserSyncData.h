@@ -9,6 +9,9 @@ struct USERINFO {
 	std::string userId;
 	unsigned int raidScore = 0;
 	unsigned int exp = 0;
+	uint32_t gold = 0;
+	uint32_t cash = 0;
+	uint32_t mileage = 0;
 	uint16_t level = 0;
 };
 
