@@ -39,6 +39,7 @@
 #### ㅇ 개발 기간 
 - 2025.01.14 ~ 2025.02.28 : IOCP & Redis Cluster를 활용한 MMO 게임 서버 개발  
 - 2025.04.06 ~ 2025.04.22 : 서버 분할 구조 도입 (Center Server를 4개로 분할)
+- 2025.07.15 ~ 2025.07.30 : 아이템/상점/패스 콘텐츠 추가
 
 #### ㅇ 프로젝트 소개서 - [MMOServer_Project_Intro.pdf](https://github.com/user-attachments/files/22309430/MMOServer_Project_Intro.pdf)
 
