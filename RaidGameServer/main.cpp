@@ -1,14 +1,9 @@
 #include "GameServer1.h"
+#include "ServerAddress.h"
 
 // *** Start the matching server first, then the game server ***
 
 const uint16_t maxThreadCount = 1;
-
-std::unordered_map<ServerType, ServerAddress> ServerAddressMap = { // Set server addresses
-    { ServerType::CenterServer,     { "127.0.0.1", 9090 } },
-    { ServerType::RaidGameServer01, { "127.0.0.1", 9510 } },
-    { ServerType::MatchingServer,   { "127.0.0.1", 9131 } }
-};
 
 int main() {
 	GameServer1 gameServer1;

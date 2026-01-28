@@ -1,13 +1,8 @@
 #include "ServerEnum.h"
 #include "MatchingServer.h"
+#include "ServerAddress.h"
 
 constexpr uint16_t maxThreadCount = 1;
-
-std::unordered_map<ServerType, ServerAddress> ServerAddressMap = { // Set server addresses
-    { ServerType::CenterServer,     { "127.0.0.1", 9090 } },
-    { ServerType::RaidGameServer01, { "127.0.0.1", 9501 } },
-    { ServerType::MatchingServer,   { "127.0.0.1", 9131 } }
-};
 
 int main() {
 	MatchingServer matchingServer;

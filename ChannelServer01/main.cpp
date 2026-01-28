@@ -1,12 +1,7 @@
 #include "ChannelServer1.h"
+#include "ServerAddress.h"
 
 const uint16_t maxThreadCount = 1;
-
-std::unordered_map<ServerType, ServerAddress> ServerAddressMap = { // Set server addresses
-    { ServerType::CenterServer,     { "127.0.0.1", 9090 } },
-    { ServerType::ChannelServer01, { "127.0.0.1", 9211 } },
-    { ServerType::ChannelServer02, { "127.0.0.1", 9221 } }
-};
 
 int main() {
 	ChannelServer1 channelServer1;

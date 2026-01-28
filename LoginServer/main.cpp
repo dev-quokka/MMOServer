@@ -1,12 +1,8 @@
 #include "LoginServer.h"
 #include "MySQLManager.h"
+#include "ServerAddress.h"
 
 const uint16_t maxThreadCount = 1;
-
-std::unordered_map<ServerType, ServerAddress> ServerAddressMap = { // Set server addresses
-    { ServerType::CenterServer,     { "127.0.0.1", 9090 } },
-    { ServerType::LoginServer,   { "127.0.0.1", 9091 } },
-};
 
 int main() {
     LoginServer loginServer;
