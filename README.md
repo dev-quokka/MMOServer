@@ -69,71 +69,16 @@
 <br>
 
 ## [Test Output]
-- #### User Connect & Logout & Syncronization
-![User Connect   Logout   Syncronization](https://github.com/user-attachments/assets/97c207a0-864a-4b1a-8206-8164c79321bc)
 
-
-1. 유저가 게임 시작을 누르면, 로그인 정보를 Login Server로 전송합니다.
-   
-2. Login Server는 유저의 게임 시작 요청을 수신하면, MySQL에서 유저 정보와 인벤토리 데이터를 가져와 Redis Cluster에 로드합니다.
-
-3. 모든 데이터를 Redis Cluster에 정상적으로 로드한 후, JWT 토큰을 생성합니다.
-
-4. 생성된 JWT 토큰을 Redis Cluster에 저장하고, 동시에 유저에게 전송합니다.
-
-5. 유저는 전달받은 JWT 토큰으로 중앙 서버에 접속 요청을 전송합니다.
-
-6. 중앙 서버는 Redis Cluster에 저장된 JWT 토큰과 유저가 전송한 토큰을 비교하여, 일치하는 경우 접속을 허가합니다.
-
-7. 유저가 로그아웃하면, 중앙 서버는 Redis Cluster에 저장된 유저 데이터를 MySQL과 동기화합니다.
-
-<br> 
-
-- #### Server & Channel Transition
-![Server   Channel Transition](https://github.com/user-attachments/assets/66656260-fbaf-419b-b0e0-f1f23bda2f88)
-
-
-1. 유저가 중앙 서버에 연결되면, 서버 선택 페이지로 이동합니다.
-
-2. 서버를 선택하면 중앙 서버로부터 해당 서버의 주소와 JWT 토큰을 받아, 선택한 서버로 연결을 시도합니다.
-
-3. 서버와의 연결이 성공하면, 채널 이동 페이지로 전환됩니다.
-
-4. 유저가 서버 선택 페이지로 돌아갈 때, 접속 중인 서버는 중앙 서버에 유저 퇴장 신호를 보내어 서버 유저 수를 감소시킵니다.
- 
-5. 유저는 중앙 서버의 유저 수 감소 처리가 완료될 수 있도록 1초 동안 대기합니다.
-
-6. 채널 및 서버 이동 중에도 유저 수를 지속적으로 동기화합니다.
-
-<br> 
-
-- #### Raid Start & Raid End (Mob Hp 0)
-![Raid Start   Raid End (Mob Hp 0)](https://github.com/user-attachments/assets/e2c99091-fabb-4900-b39a-fbed30f885d6)
-
-1. 레이드가 시작되면, 유저는 서버로부터 참여한 다른 유저들의 정보를 전달받습니다.
-
-2. 전투가 시작되면, 서버는 레이드 상태 동기화를 위해 틱레이트 기반으로 동기화 메시지를 주기적으로 전송합니다.
-
-3. 레이드 몬스터의 HP가 0이 되면 레이드가 종료됩니다.
-
-4. 레이드 종료 후, 유저는 자신의 점수와 다른 유저들의 점수를 확인할 수 있습니다.
-
-5. 서버는 각 유저의 획득 점수가 기존 최고 점수보다 높을 경우, 해당 점수로 랭킹을 업데이트합니다.
+> 썸네일을 클릭하면 유튜브 시연 영상으로 이동합니다.
 
 <br>
 
-- #### Raid Group Check by Level
-![레이드 그룹별](https://github.com/user-attachments/assets/803de230-8b49-434c-9746-e3d4f310c9f9)
+#### 📺 MMO 서버 프로젝트 전체 동작 시연
 
 
-- 다른 레벨의 그룹이면 매칭이 불가능합니다.
+[![MMO 서버 프로젝트 시연](https://img.youtube.com/vi/fpL2SLlo7qA/0.jpg)](https://www.youtube.com/watch?v=fpL2SLlo7qA&t=49s)
 
-<br>
-
-- #### Equipment Enhancement
-![장비강화](https://github.com/user-attachments/assets/3dc8088e-f5b7-47d5-bef0-d6fe364b13a1)
-
-- 현재 강화 수치에 따라 확률을 차등 적용하여, 강화 성공 또는 실패를 반환합니다.
 
 
 
