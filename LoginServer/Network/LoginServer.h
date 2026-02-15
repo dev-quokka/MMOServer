@@ -10,6 +10,7 @@
 #include "OverLappedManager.h"
 #include "ConnUsersManager.h"
 #include "RedisManager.h"
+#include "MySQLManager.h"
 
 constexpr uint16_t MAX_USERS_OBJECT = 13; // User objects allocated for average Gmae Server1 load + additional allocation for connected servers 
 
@@ -20,7 +21,7 @@ class LoginServer {
 public:
 
     // ====================== INITIALIZATION =======================
-    bool init(const uint16_t MaxThreadCnt_, int port_);
+    bool init();
     bool StartWork();
     void ServerEnd();
 

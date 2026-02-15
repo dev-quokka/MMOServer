@@ -1,17 +1,12 @@
 #include "LoginServer.h"
-#include "MySQLManager.h"
-#include "ServerAddress.h"
-
-const uint16_t maxThreadCount = 1;
 
 int main() {
     LoginServer loginServer;
 
-    loginServer.init(maxThreadCount, ServerAddressMap[ServerType::LoginServer].port);
+    loginServer.init();
     loginServer.StartWork();
 
-    std::cout << "========= LOGIN SERVER START ========" << std::endl;
-    std::cout << "=== If You Want Exit, Write login ===" << std::endl;
+    std::cout << "========== 로그인 서버 ==========" << std::endl;
     std::string k = "";
 
     while (1) {

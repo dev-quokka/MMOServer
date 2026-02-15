@@ -14,7 +14,7 @@ public:
     QuokkaServer(uint16_t maxClientCount_) : maxClientCount(maxClientCount_), AcceptQueue(maxClientCount_), WaittingQueue(maxClientCount_) {}
 
     // ====================== INITIALIZATION =======================
-    bool init(const uint16_t MaxThreadCnt_, int port_);
+    bool init();
     bool StartWork();
     void ServerEnd();
 

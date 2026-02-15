@@ -4,6 +4,8 @@
 #include <string>
 #include <iostream>
 
+const uint16_t MAX_LEVEL = 15;
+
 class InGameUser {
 public:
 	InGameUser(std::vector<uint16_t>& expLimit_) : expLimit(expLimit_) {}
@@ -60,17 +62,22 @@ public:
 	// ======================== USER STATUS ========================
 
 	std::pair<uint16_t, unsigned int> ExpUp(short mobExp_) {
-		userExp += mobExp_;
 
+		if (userLevel == MAX_LEVEL) return { 0, 0 };
+
+		userExp += mobExp_;
 		uint16_t levelUpCnt = 0;
 
 		if (expLimit[userLevel] <= userExp) { // LEVEL UP
-			while (userExp >= expLimit[userLevel]) {
+			while (userExp >= expLimit[userLevel] && userLevel < MAX_LEVEL) {
+				userExp -= expLimit[userLevel];
+
 				userLevel++;
 				levelUpCnt++;
 			}
 		}
 
+		if (userLevel == MAX_LEVEL) return { levelUpCnt, 0 };
 		return { levelUpCnt , userExp }; // Increase Level, Current Exp
 	}
 

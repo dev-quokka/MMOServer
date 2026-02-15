@@ -78,8 +78,8 @@ struct SERVER_USER_COUNTS_REQUEST : PACKET_HEADER {
 };
 
 struct SERVER_USER_COUNTS_RESPONSE : PACKET_HEADER {
-	uint16_t serverUserCnt[MAX_SERVER_USERS + 1];
 	uint16_t serverCount;
+	uint16_t serverUserCnt[MAX_SERVER_USERS + 1];
 };
 
 struct SHOP_DATA_REQUEST : PACKET_HEADER {
@@ -133,13 +133,13 @@ struct SHOP_BUY_ITEM_REQUEST : PACKET_HEADER {
 	uint16_t itemCode = 0;
 	uint16_t daysOrCount = 0; // [장비: 유저가 원하는 아이템의 사용 기간, 소비: 유저가 원하는 아이템 개수 묶음] 
 	uint16_t itemType; // 0: 장비, 1: 소비, 2: 재료
+	uint16_t position;
 };
 
 struct SHOP_BUY_ITEM_RESPONSE : PACKET_HEADER {
 	ShopItemForSend shopItemForSend;
 	uint32_t remainMoney;
 	uint16_t currencyType;
-	uint16_t position = 1;
 	bool isSuccess = false;
 };
 

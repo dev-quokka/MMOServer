@@ -27,15 +27,15 @@ constexpr uint16_t DB_PORT = 3306;
 constexpr uint16_t dbConnectionCount = 5;
 
 
-struct AutoConn { // 함수 실행 후 커넥션, 세마포어 반환을 위한 구조체
+struct AutoConn { // 함수 실행 후 커넥션, 세마포어 자동 반환을 위한 임시 구조체 (안전성 및 가독성 향상 목적)
 	MYSQL* tempConn;
 	std::queue<MYSQL*>& dbPool_;
 	std::mutex& dbPoolMutex_;
 	std::counting_semaphore<dbConnectionCount>& semaphore_;
 
-	AutoConn(MYSQL* conn, std::queue<MYSQL*>& pool, 
-		std::mutex& mtx, std::counting_semaphore<dbConnectionCount>& sem) :
-		tempConn(conn), dbPool_(pool), dbPoolMutex_(mtx), semaphore_(sem) {}
+	AutoConn(MYSQL* conn, std::queue<MYSQL*>& pool, std::mutex& mtx, std::counting_semaphore<dbConnectionCount>& sem)
+		: tempConn(conn), dbPool_(pool), dbPoolMutex_(mtx), semaphore_(sem) {
+	}
 
 	~AutoConn() {
 		std::lock_guard<std::mutex> lock(dbPoolMutex_);

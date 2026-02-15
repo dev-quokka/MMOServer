@@ -8,6 +8,7 @@
 #include <sw/redis++/redis++.h>
 
 #include "Packet.h"
+#include "LuaScript.h"
 #include "InGameUser.h"
 #include "ServerChannelEnum.h"
 #include "InGameUserManager.h"
@@ -30,13 +31,13 @@ public:
     // ====================== INITIALIZATION =======================
     void init(const uint16_t RedisThreadCnt_);
     void SetManager(ConnUsersManager* connUsersManager_, InGameUserManager* inGameUserManager_);
-
+    
 
     // ===================== PACKET MANAGEMENT =====================
     void PushRedisPacket(const uint16_t connObjNum_, const uint32_t size_, char* recvData_);
+    
 
-
-    // ==================== INGAME MANAGEMENT ======================
+	// ==================== INGAME MANAGEMENT ======================
     bool EquipmentEnhance(uint16_t currentEnhanceCount_);
 
 
@@ -56,13 +57,13 @@ private:
 
     // ======================= CHANNEL SERVER =======================
     // SYSTEM
-    void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    void UserDisConnect(uint16_t connObjNum_);
+	void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_); 
+    void UserDisConnect(uint16_t connObjNum_); 
     void SendChannelUserCounts(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MoveChannel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void GetRanking(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
-    // USER STATUS
+	// USER STATUS
     void ExpUp(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
 
     // INVENTORY
@@ -94,7 +95,7 @@ private:
 
     // 32 bytes
     std::vector<std::thread> redisThreads;
-    std::vector<uint16_t> enhanceProbabilities = { 100,90,80,70,60,50,40,30,20,10 }; // Equipment enhance probabilities
+    std::vector<uint16_t> enhanceProbabilities = { 100,80,60,40,20,10,5,3,2,1 }; // Equipment enhance probabilities
     std::vector<unsigned int> mobExp = { 0,1,2,3,4,5,6,7,8,9,10 }; // Experience points for each monster based on monster index
     std::vector<std::string> itemType = { "equipment", "consumables", "materials" };
 

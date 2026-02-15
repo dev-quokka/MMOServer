@@ -16,7 +16,7 @@
 
 #pragma comment(lib, "ws2_32.lib") // 비주얼에서 소켓프로그래밍 하기 위한 것
 
-constexpr uint16_t INVENTORY_SIZE = 11; // 10개면 +1해서 11개로 해두기
+constexpr uint16_t INVENTORY_SIZE = 10; // 0번 인덱스도 사용하기
 constexpr uint16_t UDP_PORT = 40001;
 
 class User {
@@ -37,7 +37,7 @@ public:
         recv(userSkt, recvBuffer, PACKET_SIZE, 0);
 
         auto* mtPacket = reinterpret_cast<CASH_CHARGE_COMPLETE_RESPONSE*>(recvBuffer);
-    
+
         if (!mtPacket->isSuccess) {
             std::cout << "충전 실패" << '\n';
             return;
@@ -112,6 +112,8 @@ public:
         auto eqPacket = reinterpret_cast<EQUIPMENT_RESPONSE*>(recvBuffer);
         char* ptr = recvBuffer + sizeof(PACKET_HEADER) + sizeof(uint16_t);
 
+        eq.resize(INVENTORY_SIZE);
+
         for (int i = 1; i < INVENTORY_SIZE; i++) {
             eq[i].position = i;
         }
@@ -143,7 +145,9 @@ public:
         std::vector<CONSUMABLES> tempCs(csPacket->csCount);
         char* ptr2 = recvBuffer + sizeof(PACKET_HEADER) + sizeof(uint16_t);
 
-        for (int i = 1; i < INVENTORY_SIZE; i++) {
+        cs.resize(INVENTORY_SIZE);
+
+        for (int i = 0; i < INVENTORY_SIZE; i++) {
             cs[i].position = i;
         }
 
@@ -174,7 +178,9 @@ public:
         std::vector<MATERIALS> tempMt(mtPacket->mtCount);
         char* ptr3 = recvBuffer + sizeof(PACKET_HEADER) + sizeof(uint16_t);
 
-        for (int i = 1; i < INVENTORY_SIZE; i++) {
+        mt.resize(INVENTORY_SIZE);
+
+        for (int i = 0; i < INVENTORY_SIZE; i++) {
             mt[i].position = i;
         }
 
@@ -348,49 +354,48 @@ public:
 
         std::cout << "상점 데이터 수신 성공" << '\n';
 
+        //// ============================ 패스 데이터 요청 ============================
 
-        // ============================ 패스 데이터 요청 ============================
+        //PASS_DATA_REQUEST passReq;
+        //passReq.PacketId = (uint16_t)PACKET_ID::PASS_DATA_REQUEST;
+        //passReq.PacketLength = sizeof(PASS_DATA_REQUEST);
 
-        PASS_DATA_REQUEST passReq;
-        passReq.PacketId = (uint16_t)PACKET_ID::PASS_DATA_REQUEST;
-        passReq.PacketLength = sizeof(PASS_DATA_REQUEST);
+        //send(userSkt, (char*)&passReq, sizeof(passReq), 0);
+        //recv(userSkt, recvBuffer, sizeof(PASS_DATA_RESPONSE), 0);
 
-        send(userSkt, (char*)&passReq, sizeof(passReq), 0);
-        recv(userSkt, recvBuffer, sizeof(PASS_DATA_RESPONSE), 0);
+        //auto pdRes = reinterpret_cast<PASS_DATA_RESPONSE*>(recvBuffer);
+        //uint16_t passDataCount = pdRes->passDataSize;
 
-        auto pdRes = reinterpret_cast<PASS_DATA_RESPONSE*>(recvBuffer);
-        uint16_t passDataCount = pdRes->passDataSize;
+        //recv(userSkt, recvBuffer + sizeof(PASS_DATA_RESPONSE), PACKET_SIZE, 0);
 
-        recv(userSkt, recvBuffer + sizeof(PASS_DATA_RESPONSE), PACKET_SIZE, 0);
+        //PassItemForSend* dataArray = reinterpret_cast<PassItemForSend*>(recvBuffer + sizeof(PASS_DATA_RESPONSE));
 
-        PassItemForSend* dataArray = reinterpret_cast<PassItemForSend*>(recvBuffer + sizeof(PASS_DATA_RESPONSE));
+        //for (int i = 0; i < passDataCount; i++) {
+        //    std::string passId = (std::string)dataArray[i].passId;
+        //    PassItem_Client pc;
 
-        for (int i = 0; i < passDataCount; i++) {
-            std::string passId = (std::string)dataArray[i].passId;
-            PassItem_Client pc;
+        //    pc.SetData(dataArray[i]);
 
-            pc.SetData(dataArray[i]);
+        //    auto it = passRewardInfoMap.find(passId);
+        //    if (it != passRewardInfoMap.end()) {
+        //        PASSREWARDNFO_CLIENT& rewardInfo = it->second;
 
-            auto it = passRewardInfoMap.find(passId);
-            if (it != passRewardInfoMap.end()) {
-                PASSREWARDNFO_CLIENT& rewardInfo = it->second;
+        //        if (rewardInfo.passCurrencyType == pc.passCurrencyType) {
+        //            uint16_t level = dataArray[i].passLevel;
 
-                if (rewardInfo.passCurrencyType == pc.passCurrencyType) {
-                    uint16_t level = dataArray[i].passLevel;
+        //            if (level < 64) {
+        //                pc.getCheck = (rewardInfo.passReqwardBits >> (level - 1)) != 0; // 코드 잘 들어가는지 체크. (*비트 사용할때 -1 합시다)
+        //            }
+        //            else { // 잘못된 데이터
+        //                return false;
+        //            }
+        //        }
+        //    }
 
-                    if (level < 64) {
-                        pc.getCheck = (rewardInfo.passReqwardBits >> (level-1)) != 0; // 코드 잘 들어가는지 체크. (*비트 사용할때 -1 합시다)
-                    }
-                    else { // 잘못된 데이터
-                        return false;
-                    }
-                }
-            }
+        //    passDataMap[passId][{pc.passLevel, pc.passCurrencyType}] = pc;
+        //}
 
-            passDataMap[passId][{pc.passLevel, pc.passCurrencyType}] = pc;
-        }
-
-        std::cout << "패스 데이터 수신 성공" << '\n';
+        // std::cout << "패스 데이터 수신 성공" << '\n';
         std::cout << userId << " 게임 접속 성공 !" << '\n';
     }
 
@@ -481,9 +486,9 @@ public:
 
         std::cout << std::endl;
 
-        for (int i = 1; i < ucResPacket->serverCount; i++) {
+        for (int i = 0; i < ucResPacket->serverCount; i++) {
             memcpy((char*)&tempC, ptr, sizeof(uint16_t));
-            std::cout << i << "서버 유저 수 : " << tempC << std::endl;
+            std::cout << i+1 << "서버 유저 수 : " << tempC << std::endl;
             tempV[i] = tempC;
             ptr += sizeof(uint16_t);
         }
@@ -677,12 +682,11 @@ public:
     }
 
     void GetMyInfo() {
-        std::cout << "골드 : " << userGold << "캐쉬 : " << userCash << "마일리지 : " << userMileage << '\n';
-
-        std::cout << "아이디 : " << userId << std::endl;
+        std::cout << "ID : " << userId << std::endl;
         std::cout << "레벨 : " << level << std::endl;
         std::cout << "경험치 : " << exp << std::endl;
         std::cout << "레이드 최고 점수 : " << raidScore << std::endl;
+        std::cout << "Gold: " << userGold << " / Cash : " << userCash << " / Mileage : " << userMileage << '\n';
     }
 
     void AddExpFromMob(uint16_t mobNum_) {
@@ -698,15 +702,16 @@ public:
 
         if (ucResPacket->increaseLevel == 0) { // Only Exp Up
             exp = ucResPacket->currentExp;
-            std::cout << mobNum_ << " 몬스터를 잡았습니다 !" << std::endl;
+            std::cout << "Exp : " << mobNum_ << "의 몬스터를 잡았습니다 !" << std::endl;
             std::cout << "현재 레벨 : " << level.load() << std::endl;
             std::cout << "현재 경험치 : " << exp << std::endl;
         }
         else { // Level up
             level.fetch_add(ucResPacket->increaseLevel);
             exp = ucResPacket->currentExp;
+            std::cout << "****** 레벨업 ******" << '\n' << '\n';
+
             std::cout << mobNum_ << " 몬스터를 잡았습니다 !" << std::endl;
-            std::cout << "레벨업 했습니다 !" << std::endl;
             std::cout << "현재 레벨 : " << level.load() << std::endl;
             std::cout << "현재 경험치 : " << exp << std::endl;
         }
@@ -719,27 +724,34 @@ public:
     }
 
     void GetInventory(uint16_t invenNum_) {
+        bool emptyCheck = true;
+
         if (invenNum_ == 1) {
-            std::cout << "장비 인벤토리" << std::endl;
+            std::cout << "** 장비 인벤토리 **" << std::endl;
             for (int i = 0; i < eq.size(); i++) {
                 if (eq[i].itemCode == 0) continue;
-                std::cout << eq[i].position << "번 위치에 +" << eq[i].enhance << "강화 되어있는 " << eq[i].itemCode << "번 아이템 존재" << std::endl;
+                std::cout << i << "번 위치에 +" << eq[i].enhance << "강화 되어있는 " << eq[i].itemCode << "번 아이템 존재" << std::endl;
+                emptyCheck = false;
             }
         }
         else if (invenNum_ == 2) {
             std::cout << "소비 인벤토리" << std::endl;
-            for (int i = 0; i < eq.size(); i++) {
+            for (int i = 0; i < cs.size(); i++) {
                 if (cs[i].itemCode == 0) continue;
                 std::cout << cs[i].position << "번 위치에 " << cs[i].itemCode << "번 아이템 " << cs[i].count << "개 존재" << std::endl;
+                emptyCheck = false;
             }
         }
         else if (invenNum_ == 3) {
             std::cout << "재료 인벤토리" << std::endl;
-            for (int i = 0; i < eq.size(); i++) {
+            for (int i = 0; i < mt.size(); i++) {
                 if (mt[i].itemCode == 0) continue;
                 std::cout << mt[i].position << "번 위치에 " << mt[i].itemCode << "번 아이템 " << mt[i].count << "개 존재" << std::endl;
+                emptyCheck = false;
             }
         }
+
+        if (emptyCheck) std::cout << "인벤토리가 비었습니다" << '\n';
         return;
     }
 
@@ -748,29 +760,27 @@ public:
             MOV_EQUIPMENT_REQUEST miReq;
             miReq.PacketId = (UINT16)PACKET_ID::MOV_EQUIPMENT_REQUEST;
             miReq.PacketLength = sizeof(MOV_EQUIPMENT_REQUEST);
-
-            EQUIPMENT currentE = eq[currentpos_];
-            EQUIPMENT moveE = eq[movepos_];
-
-            miReq.dragItemCode = moveE.itemCode;
-            miReq.dragItemEnhancement = moveE.enhance;
-            miReq.dragItemPos = currentE.position;
-            miReq.targetItemCode = currentE.itemCode;
-            miReq.targetItemEnhancement = currentE.enhance;
-            miReq.targetItemPos = moveE.position;
+            miReq.currentItemPos = currentpos_;
+            miReq.targetItemPos = movepos_;
 
             send(channelSkt, (char*)&miReq, sizeof(miReq), 0);
             recv(channelSkt, recvBuffer, PACKET_SIZE, 0);
 
             auto miResPacket = reinterpret_cast<MOV_EQUIPMENT_RESPONSE*>(recvBuffer);
 
-            if (!miResPacket->isSuccess) return false;
+           
 
-            moveE.position = miReq.dragItemPos;
-            currentE.position = miReq.targetItemPos;
-
-            eq[currentpos_] = moveE;
-            eq[movepos_] = currentE;
+            if (miResPacket->checkNum == 0) {
+                std::cout << "슬롯 이동 실패" << '\n';
+                return false;
+            }
+            else if (miResPacket->checkNum == 1) { // 단순 이동
+                eq[movepos_] = eq[currentpos_];
+                eq[currentpos_].itemCode = 0; // 초기화
+            }
+            else if (miResPacket->checkNum == 2) {
+                std::swap(eq[currentpos_], eq[movepos_]);
+            }
 
             return true;
         }
@@ -1209,7 +1219,7 @@ public:
         while (syncRun) {
             int serverAddrSize = sizeof(serverAddr);
             int received = recvfrom(udpSkt, recvUDPBuffer, sizeof(recvUDPBuffer), 0, (sockaddr*)&serverAddr, &serverAddrSize);
-            
+
             if (received == sizeof(unsigned int)) { // 데이터 잘 들어왔으면 동기화
                 unsigned int mobHp_ = *(unsigned int*)recvUDPBuffer;
                 mobHp.store(mobHp_);
@@ -1223,7 +1233,7 @@ public:
         unsigned int teamScore = 0;
 
         while (mobHp >= 0 || (std::chrono::steady_clock::now() < rEndTime)) {
-			std::cout << "Mob Hp : " << mobHp.load() << std::endl;
+            std::cout << "Mob Hp : " << mobHp.load() << std::endl;
             std::cout << "Input Damage" << std::endl;
             unsigned int damage;
             std::cin >> damage;
@@ -1298,8 +1308,8 @@ public:
         rrReq.PacketLength = sizeof(RAID_RANKING_REQUEST);
         rrReq.startRank = rank;
 
-        send(userSkt, (char*)&rrReq, sizeof(rrReq), 0);
-        recv(userSkt, recvBuffer, PACKET_SIZE, 0);
+        send(channelSkt, (char*)&rrReq, sizeof(rrReq), 0);
+        recv(channelSkt, recvBuffer, PACKET_SIZE, 0);
 
         auto reRes = reinterpret_cast<RAID_RANKING_RESPONSE*>(recvBuffer);
 
@@ -1335,16 +1345,22 @@ public:
     }
 
     void GetShopInfo() {
-        std::cout << "골드 : " << userGold << "캐쉬 : " << userCash << "마일리지 : " << userMileage << '\n' << '\n';
 
-        for (auto& s : shopItems) {
+        std::cout << "**** 쿼카 상점 ****" << '\n' << '\n';
+        std::cout << "// 유저 보유 재화 // " << '\n';
+        std::cout << "Gold: " << userGold << " / Cash : " << userCash << " / Mileage : " << userMileage << '\n' << '\n';
+
+        for (int i = 0; i < shopItems.size(); i++) {
+            auto& s = shopItems[i];
+
+            std::cout << i+1 << ". ";
 
             switch (s.itemType) {
             case 0: { // 장비
                 std::cout << s.itemCode << "번 장비 아이템 ";
 
                 if (s.currencyType == 0) {
-                    std::cout  << s.daysOrCount  <<"일권 가격: " << s.itemPrice << "골드" << '\n';
+                    std::cout << s.daysOrCount << "일권 가격: " << s.itemPrice << "골드" << '\n';
                 }
                 else if (s.currencyType == 1) {
                     std::cout << s.daysOrCount << "일권 가격: " << s.itemPrice << "캐시" << '\n';
@@ -1386,38 +1402,73 @@ public:
         }
     }
 
-    void BuyItemFromShop(uint16_t a, uint16_t b, uint16_t c) {
+    // 현재 유저 넣을 수 있는 인벤 위치 찾기 (서버에서 해당 위치 비었는지 한번 더 체크 진행 )
+    uint16_t PositionCheck(uint16_t itemType_) {
+        switch (itemType_) {
+        case 0: { // 장비
+            for (int i = 0; i < eq.size(); i++) {
+                if (eq[i].itemCode == 0) return i;
+            }
+            return -1;
+        }
+        case 1: { // 소비
+            for (int i = 0; i < eq.size(); i++) {
+                if (cs[i].itemCode == 0) return i;
+            }
+            return -1;
+        }
+        case 2: { // 재료
+            for (int i = 0; i < eq.size(); i++) {
+                if (mt[i].itemCode == 0) return i;
+            }
+            return -1;
+        }
+        }
+    }
+
+    void BuyItemFromShop(int idx_) {
+        auto& s = shopItems[idx_];
+
+        uint16_t itemCode_ = s.itemCode;
+        uint16_t daysOrCount_ = s.daysOrCount;
+        uint16_t itemType_ = s.itemType;
+
+        uint16_t tempPos = PositionCheck(itemType_);
+        if (tempPos == -1) {
+            std::cout << "공간 부족 ! 아이템 구매 실패" << '\n';
+            return;
+        }
 
         SHOP_BUY_ITEM_REQUEST sbReq;
         sbReq.PacketId = (UINT16)PACKET_ID::SHOP_BUY_ITEM_REQUEST;
         sbReq.PacketLength = sizeof(SHOP_BUY_ITEM_REQUEST);
-        sbReq.itemCode = a;
-        sbReq.daysOrCount = b;
-        sbReq.itemType = c;
+        sbReq.itemCode = itemCode_;
+        sbReq.daysOrCount = daysOrCount_;
+        sbReq.itemType = itemType_;
+        sbReq.position = tempPos;
 
         send(userSkt, (char*)&sbReq, sizeof(sbReq), 0);
         recv(userSkt, recvBuffer, PACKET_SIZE, 0);
 
         auto sbRes = reinterpret_cast<SHOP_BUY_ITEM_RESPONSE*>(recvBuffer);
-        std::cout << sbRes->position << std::endl;
         if (sbRes->isSuccess) {
             switch (sbRes->shopItemForSend.itemType) {
             case 0: { // 장비
                 EQUIPMENT acqEq;
                 acqEq.itemCode = sbRes->shopItemForSend.itemCode;
-                eq[sbRes->position] = acqEq;
+                eq[tempPos] = acqEq;
                 break;
             }
             case 1: { // 소비
                 CONSUMABLES acqCs;
                 acqCs.itemCode = sbRes->shopItemForSend.itemCode;
-                cs[sbRes->position] = acqCs;
+                cs[tempPos] = acqCs;
                 break;
             }
             case 2: { // 재료
                 MATERIALS acqMt;
                 acqMt.itemCode = sbRes->shopItemForSend.itemCode;
-                mt[sbRes->position] = acqMt;
+                mt[tempPos] = acqMt;
                 break;
             }
             }
@@ -1441,6 +1492,7 @@ public:
                 std::cout << "남은 마일리지 : " << sbRes->remainMoney << '\n';
                 break;
             }
+
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(500)); // 구매 요청 후 재 구매 제한 시간 설정
         }
@@ -1483,7 +1535,7 @@ public:
         recv(userSkt, recvBuffer, PACKET_SIZE, 0);
 
         auto sbRes = reinterpret_cast<GET_PASS_ITEM_RESPONSE*>(recvBuffer);
-        
+
         if (!sbRes->isSuccess) {
             std::cout << "획득 실패. 패스 레벨 미달" << '\n';
             std::this_thread::sleep_for(std::chrono::milliseconds(500)); // 패스 획득 요청 후 획득 제한 시간 설정
@@ -1493,24 +1545,24 @@ public:
         PassItemForSend tempP = sbRes->passItemForSend;
 
         switch (tempP.itemType) {
-            case 0: { // 장비
-                EQUIPMENT acqEq;
-                acqEq.itemCode = tempP.itemCode;
-                eq[sbRes->position] = acqEq;
-            }
-            break;
-            case 1: { // 소비
-                CONSUMABLES acqCs;
-                acqCs.itemCode = tempP.itemCode;
-                cs[sbRes->position] = acqCs;
-            }
-            break;
-            case 2: { // 재료
-                MATERIALS acqMt;
-                acqMt.itemCode = tempP.itemCode;
-                mt[sbRes->position] = acqMt;
-            }
-            break;
+        case 0: { // 장비
+            EQUIPMENT acqEq;
+            acqEq.itemCode = tempP.itemCode;
+            eq[sbRes->position] = acqEq;
+        }
+              break;
+        case 1: { // 소비
+            CONSUMABLES acqCs;
+            acqCs.itemCode = tempP.itemCode;
+            cs[sbRes->position] = acqCs;
+        }
+              break;
+        case 2: { // 재료
+            MATERIALS acqMt;
+            acqMt.itemCode = tempP.itemCode;
+            mt[sbRes->position] = acqMt;
+        }
+              break;
         }
 
         std::cout << "획득 성공" << '\n';
@@ -1521,7 +1573,7 @@ public:
         std::this_thread::sleep_for(std::chrono::milliseconds(500)); // 패스 획득 요청 후 획득 제한 시간 설정
     }
 
-    void GetPassExp(std::string& passId_, uint16_t missionNum_){
+    void GetPassExp(std::string& passId_, uint16_t missionNum_) {
 
         PASS_EXP_UP_REQUEST peuReq;
         peuReq.PacketId = (UINT16)PACKET_ID::PASS_EXP_UP_REQUEST;
@@ -1573,9 +1625,9 @@ private:
 
     std::string userId = "quokka";
 
-    std::vector<EQUIPMENT> eq{ INVENTORY_SIZE };
-    std::vector<CONSUMABLES> cs{ INVENTORY_SIZE };
-    std::vector<MATERIALS> mt{ INVENTORY_SIZE };
+    std::vector<EQUIPMENT> eq;
+    std::vector<CONSUMABLES> cs;
+    std::vector<MATERIALS> mt;
 
 
     // PASSINFO

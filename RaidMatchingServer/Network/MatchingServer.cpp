@@ -2,9 +2,11 @@
 
 // =========================== INITIALIZATION ===========================
 
-bool MatchingServer::Init(const uint16_t MaxThreadCnt_, int port_) {
+bool MatchingServer::Init() {
+    int port_ = ServerAddressMap[ServerType::MatchingServer].port;
+
     WSAData wsadata;
-    MaxThreadCnt = MaxThreadCnt_; // Set the number of worker threads
+    MaxThreadCnt = maxThreadCount; // Set the number of worker threads
 
     if (WSAStartup(MAKEWORD(2, 2), &wsadata)) {
         std::cout << "Failed to WSAStartup" << std::endl;
@@ -206,7 +208,7 @@ void MatchingServer::WorkThread() {
 
         if (!gqSucces || (dwIoSize == 0 && overlappedEx->taskType != TaskType::ACCEPT)) { // Server Disconnect
             std::cout << "socket " << connServer->GetSocket() << " Disconnected" << std::endl;
-            
+
             if (connObjNum == 0) {
                 std::cout << "========= Center Server Disconnected =========" << std::endl;
             }

@@ -11,8 +11,6 @@ const int MAX_SERVER_USERS = 128;
 const int MAX_JWT_TOKEN_LEN = 256;
 const int MAX_SCORE_SIZE = 512;
 
-constexpr int GAME_SERVER_NUM = 1;
-
 struct DataPacket {
 	uint32_t dataSize;
 	uint16_t connObjNum;

@@ -11,7 +11,7 @@
 
 class MySQLManager {
 public:
-	~MySQLManager(){
+	~MySQLManager() {
 		mysql_close(ConnPtr);
 		std::cout << "MySQL End" << std::endl;
 	}

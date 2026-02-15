@@ -18,7 +18,7 @@ constexpr uint16_t MAX_CHANNEL1_USERS_COUNT = 10; // // Maximum number of users 
 class ChannelServer1 {
 public:
     // ====================== INITIALIZATION =======================
-    bool init(const uint16_t MaxThreadCnt_, int port_);
+    bool init();
     bool StartWork();
     void ServerEnd();
 

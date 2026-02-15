@@ -3,8 +3,8 @@
 #include <string>
 #include <unordered_map>
 
-constexpr uint16_t CHANNEL_SERVER_START_NUMBER = 0;
-constexpr uint16_t GAME_SERVER_START_NUMBER = 2;
+constexpr uint16_t GAME_SERVER_START_NUMBER = 50;
+constexpr uint16_t SERVER_COUNT = 3;
 
 //  =========================== SERVER INFO  ===========================
 
@@ -12,13 +12,11 @@ enum class ServerType : uint16_t {
 	// Center Server (0)
 	CenterServer = 0,
 
-	// Login Server (4)
-	LoginServer = 4
-};
+	// Game Server (3~)
+	RaidGameServer01 = 3,
 
-enum class ChannelServerType : uint16_t {
-	CH_01 = 1, // Channe Server1
-	CH_02 = 2, // Channe Server2
+	// Matching Server (5)
+	MatchingServer = 5,
 };
 
 struct ServerAddress {
@@ -28,5 +26,6 @@ struct ServerAddress {
 
 inline std::unordered_map<ServerType, ServerAddress> ServerAddressMap = { // Set server addresses
 	{ ServerType::CenterServer,     { "127.0.0.1", 9090 } },
-	{ ServerType::LoginServer,   { "127.0.0.1", 9091 } },
+	{ ServerType::RaidGameServer01, { "127.0.0.1", 9501 } },
+	{ ServerType::MatchingServer,   { "127.0.0.1", 9131 } }
 };

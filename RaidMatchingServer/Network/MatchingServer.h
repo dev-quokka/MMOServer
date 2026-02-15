@@ -14,7 +14,7 @@
 class MatchingServer {
 public:
 	// ======================= INITIALIZATION =======================
-	bool Init(const uint16_t MaxThreadCnt_, int port_);
+	bool Init();
 	bool StartWork();
 	void ServerEnd();
 

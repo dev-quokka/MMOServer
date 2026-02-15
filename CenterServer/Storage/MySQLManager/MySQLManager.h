@@ -44,7 +44,6 @@ public:
 
 	// ======================== TRANSACTION ========================
 	bool CashCharge(uint32_t userPk_, uint32_t chargedAmount);
-	bool BuyItem(uint16_t itemCode, uint16_t daysOrCounts_, uint16_t itemType_, uint16_t currencyType_, uint32_t userPk_, uint32_t itemPrice_);
 
 
 private:

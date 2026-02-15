@@ -2,9 +2,11 @@
 
 // ========================== INITIALIZATION ===========================
 
-bool GameServer1::init(const uint16_t MaxThreadCnt_, int port_) {
+bool GameServer1::init() {
+    int port_ = ServerAddressMap[ServerType::RaidGameServer01].port;
+
     WSADATA wsadata;
-    MaxThreadCnt = MaxThreadCnt_; // Set the number of worker threads
+    MaxThreadCnt = maxThreadCount; // Set the number of worker threads
 
     if (WSAStartup(MAKEWORD(2, 2), &wsadata)) {
         std::cout << "Failed to WSAStartup" << std::endl;
@@ -64,12 +66,12 @@ bool GameServer1::StartWork() {
     redisManager = new RedisManager;
 
     // 0 : Center Server
-    ConnUser* centerConnUser = new ConnUser(MAX_CIRCLE_SIZE, 0, sIOCPHandle, overLappedManager);
-    connUsersManager->InsertUser(0, centerConnUser);
+    ConnUser* centerConnUser = new ConnUser(MAX_CIRCLE_SIZE, static_cast<uint16_t>(ServerType::CenterServer), sIOCPHandle, overLappedManager);
+    connUsersManager->InsertUser(static_cast<uint16_t>(ServerType::CenterServer), centerConnUser);
 
     // 5 : Matching Server
-    ConnUser* matchingConnUser = new ConnUser(MAX_CIRCLE_SIZE, 5, sIOCPHandle, overLappedManager);
-    connUsersManager->InsertUser(1, matchingConnUser);
+    ConnUser* matchingConnUser = new ConnUser(MAX_CIRCLE_SIZE, static_cast<uint16_t>(ServerType::MatchingServer), sIOCPHandle, overLappedManager);
+    connUsersManager->InsertUser(static_cast<uint16_t>(ServerType::MatchingServer), matchingConnUser);
 
     for (int i = 1; i < MAX_USERS_OBJECT; i++) { // Make ConnUsers Queue
         if (i == 5) continue;
@@ -77,14 +79,14 @@ bool GameServer1::StartWork() {
 
         AcceptQueue.push(connUser); // Push ConnUser
         connUsersManager->InsertUser(i, connUser); // Init ConnUsers
-    }
-
+    } 
+    
     roomManager->init();
     redisManager->init(MaxThreadCnt);
     redisManager->SetManager(connUsersManager, roomManager);
 
-    MatchingServerConnect();
     CenterServerConnect();
+    MatchingServerConnect();
 
     return true;
 }
@@ -125,7 +127,7 @@ void GameServer1::ServerEnd() {
 // ======================== SERVER CONNECTION ==========================
 
 bool GameServer1::CenterServerConnect() {
-    auto centerObj = connUsersManager->FindUser(0);
+    auto centerObj = connUsersManager->FindUser(static_cast<uint16_t>(ServerType::CenterServer));
 
     SOCKADDR_IN addr;
     ZeroMemory(&addr, sizeof(addr));
@@ -147,15 +149,14 @@ bool GameServer1::CenterServerConnect() {
     RAID_SERVER_CONNECT_REQUEST imReq;
     imReq.PacketId = (UINT16)PACKET_ID::RAID_SERVER_CONNECT_REQUEST;
     imReq.PacketLength = sizeof(RAID_SERVER_CONNECT_REQUEST);
-    imReq.gameServerNum = GAME_SERVER_NUM;
+    imReq.gameServerNum = static_cast<uint16_t>(ServerType::RaidGameServer01);
 
     centerObj->PushSendMsg(sizeof(RAID_SERVER_CONNECT_REQUEST), (char*)&imReq);
-
     return true;
 }
 
 bool GameServer1::MatchingServerConnect() {
-    auto matchingObj = connUsersManager->FindUser(1);
+    auto matchingObj = connUsersManager->FindUser(static_cast<uint16_t>(ServerType::MatchingServer));
 
     SOCKADDR_IN addr;
     ZeroMemory(&addr, sizeof(addr));
@@ -177,7 +178,7 @@ bool GameServer1::MatchingServerConnect() {
     MATCHING_SERVER_CONNECT_REQUEST_FROM_RAID_SERVER imReq;
     imReq.PacketId = (UINT16)PACKET_ID::MATCHING_SERVER_CONNECT_REQUEST_FROM_RAID_SERVER;
     imReq.PacketLength = sizeof(MATCHING_SERVER_CONNECT_REQUEST_FROM_RAID_SERVER);
-    imReq.gameServerNum = GAME_SERVER_NUM;
+    imReq.gameServerNum = static_cast<uint16_t>(ServerType::RaidGameServer01);
 
     matchingObj->PushSendMsg(sizeof(MATCHING_SERVER_CONNECT_REQUEST_FROM_RAID_SERVER), (char*)&imReq);
 
@@ -302,15 +303,6 @@ void GameServer1::AccepterThread() {
         }
         else { // AcceptQueue empty
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            //while (AccepterRun) {
-            //    if (WaittingQueue.pop(connUser)) { // WaittingQueue not empty
-            //        WaittingQueue.push(connUser);
-            //    }
-            //    else { // WaittingQueue empty
-            //        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            //        break;
-            //    }
-            //}
         }
     }
 }

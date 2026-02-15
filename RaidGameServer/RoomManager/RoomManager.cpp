@@ -62,9 +62,10 @@ bool RoomManager::CreateTickRateThread() {
 
 void RoomManager::TickRateThread() {
     auto tickRate = std::chrono::milliseconds(1000 / TICK_RATE); // Set tick interval
+    auto nextTick = std::chrono::steady_clock::now();
 
     while (tickRateRun) { 
-        auto timeCheck = std::chrono::steady_clock::now() + tickRate; 
+        nextTick += tickRate;
 
         if (roomMap.empty()) { // No active room
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -72,24 +73,18 @@ void RoomManager::TickRateThread() {
         }
 
         for (auto iter = roomMap.begin(); iter != roomMap.end(); iter++) { // Send synchronization data
-
             if (iter->second->IsGameRunning()) {
                 iter->second->SendSyncMsg();
             }
         }
 
-        auto timeEnd = std::chrono::steady_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeCheck);
-
-        if (elapsed < tickRate) {
-            std::this_thread::sleep_for(tickRate - elapsed);
-        }
-
+        std::this_thread::sleep_until(nextTick);
     }
 }
 
 void RoomManager::TimeCheckThread() {
     Room* room_;
+
     while (timeChekcRun) {
         if (!endRoomCheckSet.empty()) { // Active room exists
             room_ = (*endRoomCheckSet.begin());
@@ -152,7 +147,8 @@ void RoomManager::DeleteRoom(uint16_t roomNum_) {
 // ====================== RAID CLEANUP =========================
 
 void RoomManager::DeleteMob(Room* room_) { // Raid mob defeated
-    if (room_->TimeOverCheck()) { // The room was already removed due to a timeout check
+    // The room was already removed due to a timeout check
+    if (room_->TimeOverCheck()) {
         DeleteRoom(room_->GetRoomNum());
         return;
     }

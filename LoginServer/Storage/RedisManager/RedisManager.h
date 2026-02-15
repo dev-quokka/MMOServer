@@ -82,4 +82,3 @@ private:
     // 1 bytes
     std::atomic<bool>  redisRun = false;
 };
-

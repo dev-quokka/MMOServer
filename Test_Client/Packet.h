@@ -234,7 +234,7 @@ struct SERVER_USER_COUNTS_REQUEST : PACKET_HEADER {
 
 struct SERVER_USER_COUNTS_RESPONSE : PACKET_HEADER {
 	uint16_t serverCount;
-	char serverUserCnt[MAX_SERVER_USERS + 1];
+	uint16_t serverUserCnt[MAX_SERVER_USERS + 1];
 };
 
 struct SHOP_DATA_REQUEST : PACKET_HEADER {
@@ -293,13 +293,13 @@ struct SHOP_BUY_ITEM_REQUEST : PACKET_HEADER {
 	uint16_t itemCode = 0;
 	uint16_t daysOrCount = 0; // [장비: 유저가 원하는 아이템의 사용 기간, 소비: 유저가 원하는 아이템 개수 묶음] 
 	uint16_t itemType; // 0: 장비, 1: 소비, 2: 재료
+	uint16_t position;
 };
 
 struct SHOP_BUY_ITEM_RESPONSE : PACKET_HEADER {
 	ShopItemForSend shopItemForSend;
 	uint32_t remainMoney;
 	uint16_t currencyType;
-	uint16_t position;
 	bool isSuccess = false;
 };
 
@@ -400,8 +400,8 @@ struct EXP_UP_REQUEST : PACKET_HEADER {
 };
 
 struct EXP_UP_RESPONSE : PACKET_HEADER {
-	uint16_t increaseLevel;
 	unsigned int currentExp;
+	uint16_t increaseLevel;
 };
 
 struct LEVEL_UP_RESPONSE : PACKET_HEADER {
@@ -483,22 +483,17 @@ struct ENH_EQUIPMENT_REQUEST : PACKET_HEADER {
 };
 
 struct ENH_EQUIPMENT_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
 	uint16_t Enhancement = 0;
+	bool isSuccess;
 };
 
 struct MOV_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t dragItemPos; // (Max 10)
-	uint16_t dragItemCode;
-	uint16_t dragItemEnhancement;
-
-	uint16_t targetItemPos; // (Max 10)
-	uint16_t targetItemCode;
-	uint16_t targetItemEnhancement;
+	uint16_t currentItemPos;
+	uint16_t targetItemPos;
 };
 
 struct MOV_EQUIPMENT_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
+	uint16_t checkNum;
 };
 
 
@@ -592,10 +587,7 @@ enum class PACKET_ID : uint16_t {
 	MATCHING_CANCEL_REQUEST = 47,
 	MATCHING_CANCEL_RESPONSE = 48,
 	RAID_READY_REQUEST = 49,
-
-	RAID_RANKING_REQUEST = 55,
-	RAID_RANKING_RESPONSE = 56,
-
+	
 	// SHOP (101~ )
 	SHOP_DATA_REQUEST = 101,
 	SHOP_DATA_RESPONSE = 102,
@@ -648,6 +640,9 @@ enum class PACKET_ID : uint16_t {
 	CHANNEL_USER_COUNTS_RESPONSE = 1514,
 	MOVE_CHANNEL_REQUEST = 1515,
 	MOVE_CHANNEL_RESPONSE = 1516,
+	RAID_RANKING_REQUEST = 1517,
+	RAID_RANKING_RESPONSE = 1518,
+
 
 	// USER STATUS (1521~)
 	EXP_UP_REQUEST = 1521,

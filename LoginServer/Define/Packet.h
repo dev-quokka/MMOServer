@@ -38,17 +38,17 @@ struct LOGIN_SERVER_CONNECT_REQUEST : PACKET_HEADER {
 };
 
 struct LOGIN_SERVER_CONNECT_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
+	bool isSuccess = false;
 };
 
 struct SYNCRONIZE_LEVEL_REQUEST : PACKET_HEADER {
-	uint16_t level;
-	uint16_t userPk;
-	unsigned int currentExp;
+	uint16_t level = 0;
+	uint16_t userPk = 1;
+	unsigned int currentExp = 0;
 };
 
 struct SYNCRONIZE_LOGOUT_REQUEST : PACKET_HEADER {
-	uint16_t userPk;
+	uint16_t userPk = 0;
 };
 
 struct USER_GAMESTART_REQUEST : PACKET_HEADER {
@@ -72,7 +72,7 @@ struct EQUIPMENT_REQUEST : PACKET_HEADER {
 };
 
 struct EQUIPMENT_RESPONSE : PACKET_HEADER {
-	uint16_t eqCount;
+	uint16_t eqCount = 0;
 	char Equipments[MAX_INVEN_SIZE+1];
 };
 
@@ -81,7 +81,7 @@ struct CONSUMABLES_REQUEST : PACKET_HEADER {
 };
 
 struct CONSUMABLES_RESPONSE : PACKET_HEADER {
-	uint16_t csCount;
+	uint16_t csCount = 0;
 	char Consumables[MAX_INVEN_SIZE+1];
 };
 
@@ -90,10 +90,25 @@ struct MATERIALS_REQUEST : PACKET_HEADER {
 };
 
 struct MATERIALS_RESPONSE : PACKET_HEADER {
-	uint16_t mtCount;
+	uint16_t mtCount = 0;
 	char Materials[MAX_INVEN_SIZE+1];
 };
 
+struct PASSINFO_REQUEST : PACKET_HEADER {
+
+};
+
+struct PASSINFO_RESPONSE : PACKET_HEADER {
+	uint16_t passCount = 0;
+};
+
+struct PASSREWARDINFO_REQUEST : PACKET_HEADER {
+
+};
+
+struct PASSREWARDINFO_RESPONSE : PACKET_HEADER {
+	uint16_t passRewordCount = 0;
+};
 
 enum class PACKET_ID : uint16_t {
 
@@ -116,6 +131,10 @@ enum class PACKET_ID : uint16_t {
 	CONSUMABLES_RESPONSE = 820,
 	MATERIALS_REQUEST = 821,
 	MATERIALS_RESPONSE = 822,
+	PASSREWARDINFO_REQUEST = 823,
+	PASSREWARDINFO_RESPONSE = 824,
+	PASSINFO_REQUEST = 825,
+	PASSINFO_RESPONSE = 826,
 
 	// SYNCRONIZATION (851~)
 	SYNCRONIZE_LEVEL_REQUEST = 851,

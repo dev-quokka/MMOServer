@@ -472,12 +472,17 @@ void RedisManager::UserDisConnect(uint16_t connObjNum_) {
 
     std::string tag = "{" + std::to_string(tempPk) + "}";
     std::string userInfokey = "userinfo:" + tag;
+    std::string equipmentkey = "equipment:" + tag;
+    std::string consumablekey = "consumables:" + tag;
+    std::string materialkey = "materials:" + tag;
 
     try {
         auto pipe = redis->pipeline(tag);
 
         redis->hset(userInfokey, "userstate", "offline"); // Set user status to "offline" in Redis Cluster
-        redis->expire(userInfokey, std::chrono::seconds(1800)); // ttl 30분 설정
+        redis->expire(equipmentkey, std::chrono::seconds(180)); // ttl 3분 설정
+        redis->expire(consumablekey, std::chrono::seconds(180)); // ttl 3분 설정
+        redis->expire(materialkey, std::chrono::seconds(180)); // ttl 3분 설정
 
         pipe.exec();
 
@@ -596,129 +601,116 @@ void RedisManager::MoveServer(uint16_t connObjNum_, uint16_t packetSize_, char* 
 void RedisManager::BuyItemFromShop(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto buyItemReq = reinterpret_cast<SHOP_BUY_ITEM_REQUEST*>(pPacket_);
 
+    ConnUser* user = connUsersManager->FindUser(connObjNum_);
+    auto tempInGameUser = inGameUserManager->GetInGameUserByObjNum(connObjNum_);
+
+    std::cout << "[ID : " << tempInGameUser->GetId()
+        << " / ItemCode : " << buyItemReq->itemCode
+        << "] 구매 요청" << '\n';
+
     SHOP_BUY_ITEM_RESPONSE shopBuyRes;
     shopBuyRes.PacketId = (uint16_t)PACKET_ID::SHOP_BUY_ITEM_RESPONSE;
     shopBuyRes.PacketLength = sizeof(SHOP_BUY_ITEM_RESPONSE);
 
-    ConnUser* user = connUsersManager->FindUser(connObjNum_);
-    std::string currencyTypeKey = "userinfo:{" + std::to_string(user->GetPk()) + "}";
-
-    auto itemInfo = ShopDataManager::GetInstance().GetItem(buyItemReq->itemCode, buyItemReq->daysOrCount);
-    if (!itemInfo) {
-        std::cerr << "[BuyItemFromShop] Unknown Item" << '\n';
-        shopBuyRes.isSuccess = false;
-        user->PushSendMsg(sizeof(shopBuyRes), (char*)&shopBuyRes);
-    }
-    
-    auto tempItemCurrencyType = itemInfo->currencyType;
-    shopBuyRes.currencyType = itemInfo->currencyType;
-
     auto BuyItemFail = [&]() {
         shopBuyRes.isSuccess = false;
         user->PushSendMsg(sizeof(shopBuyRes), (char*)&shopBuyRes);
-    };
+        };
 
-    if (currencyTypeMap.find(tempItemCurrencyType) == currencyTypeMap.end()) {
+    auto itemInfo = ShopDataManager::GetInstance().GetItem(buyItemReq->itemCode, buyItemReq->daysOrCount);
+    if (!itemInfo) {
+        std::cerr << "[BuyItemFromShop] Unknown Item\n";
+        BuyItemFail();
+        return;
+    }
+
+    shopBuyRes.currencyType = itemInfo->currencyType;
+
+    auto it = currencyTypeMap.find(itemInfo->currencyType);
+    if (it == currencyTypeMap.end()) {
         std::cerr << "[BuyItemFromShop] Unknown currency type" << '\n';
         BuyItemFail();
         return;
     }
 
-    uint32_t userMoney = 0;
-    auto moneyType = currencyTypeMap.at(tempItemCurrencyType);
+    const std::string moneyField = it->second;
+    const std::string tag = "{" + std::to_string(user->GetPk()) + "}";
+    const std::string currencyTypeKey = "userinfo:" + tag;
 
+    // itemType에 따른 인벤 키 결정
+    std::string invenKey;
+    if (buyItemReq->itemType == 0)      invenKey = "equipment:" + tag;
+    else if (buyItemReq->itemType == 1) invenKey = "consumables:" + tag;
+    else if (buyItemReq->itemType == 2) invenKey = "materials:" + tag;
+    else {
+        std::cerr << "[BuyItemFromShop] Unknown itemType\n";
+        BuyItemFail();
+        return;
+    }
+
+    std::string itemValue;
+    if (buyItemReq->itemType == 0) {
+        itemValue = std::to_string(itemInfo->itemCode) + ":" + "0";
+    }
+    else {
+        itemValue = std::to_string(itemInfo->itemCode) + ":" + std::to_string(itemInfo->daysOrCount);
+    }
+
+    // Lua로 원자 구매 처리
+    // luaVal 반환값 의미:
+    //  0 이상 : 성공 (구매 후 남은 재화 반환)
+    // -1      : 재화 부족
+    // -2      : 슬롯 사용 중 (비정상 요청)
+    // -3      : 유저 재화 정보 없음
+    // -4      : 재화 데이터 파싱 실패 (데이터 이상)
     try {
-        auto val = redis->hget(currencyTypeKey, moneyType);
-        if (!val) {
-            std::cerr << "[BuyItemFromShop] Redis key not found : " << currencyTypeKey << '\n';
-            BuyItemFail();
+        long long luaVal = redis->eval<long long>(
+            BuyItemScript,
+            { currencyTypeKey, invenKey },
+            { moneyField,
+              std::to_string(itemInfo->itemPrice),
+              std::to_string(buyItemReq->position),
+              itemValue }
+        );
+
+        if (luaVal >= 0) {
+            // 아이템 구매 성공
+            shopBuyRes.isSuccess = true;
+            shopBuyRes.shopItemForSend = *itemInfo;
+            shopBuyRes.remainMoney = static_cast<uint32_t>(luaVal);
+            user->PushSendMsg(sizeof(shopBuyRes), (char*)&shopBuyRes);
+
+
+            // 출력 테스트용
+            std::string itemType;
+            switch (itemInfo->itemType) {
+            case 0: itemType = "장비"; break;
+            case 1: itemType = "소비"; break;
+            case 2: itemType = "재료"; break;
+            }
+
+            std::cout << "[유저 ID : " << tempInGameUser->GetId()
+                << " / ItemCode : " << shopBuyRes.shopItemForSend.itemCode
+                << "] 구매 성공" << '\n';
+
             return;
         }
-        userMoney = std::stoul(*val);
-    }
-    catch (const std::exception& e) {
-        std::cerr << "[BuyItemFromShop] Redis get failed : " << e.what() << '\n';
+
+        // 실패 코드별 로그
+        if (luaVal == -1) std::cout << "구매 실패: 재화 부족" << '\n';
+        else if (luaVal == -2) std::cout << "구매 실패: 슬롯 사용중" << '\n';
+        else if (luaVal == -3) std::cout << "구매 실패: 재화 필드 없음(유저 정보 누락)"  << '\n';
+        else if (luaVal == -4) std::cout << "구매 실패: 재화 데이터 이상(숫자 아님)" << '\n';
+        else std::cout << "구매 실패: 알 수 없음" << "\n";
+
         BuyItemFail();
         return;
-    }
-
-    if (userMoney < itemInfo->itemPrice) {
-        BuyItemFail();
-        return;
-    }
-
-    std::string tag = "{" + std::to_string(user->GetPk()) + "}";
-    std::string invenKey;
-
-    if (buyItemReq->itemType == 0) { // 장비
-        invenKey = "equipment:" + tag;
-    }
-    else if (buyItemReq->itemType == 1) { // 소비
-        invenKey = "consumables:" + tag;
-    }
-    else if (buyItemReq->itemType == 2) { // 재료
-        invenKey = "materials:" + tag;
-    }
-
-    try {
-        // 유저 금액 차감
-        redis->hincrby(currencyTypeKey, moneyType, -static_cast<int64_t>(itemInfo->itemPrice));
     }
     catch (const sw::redis::Error& e) {
-        std::cerr << "[BuyItemFromShop] Redis failed : " << e.what() << '\n';
+        std::cerr << "[BuyItemFromShop] Redis Lua eval failed: " << e.what() << "\n";
         BuyItemFail();
         return;
     }
-
-    try {
-        // 인벤토리에 아이템 추가
-        redis->hset(invenKey, std::to_string(buyItemReq->itemType), std::to_string(itemInfo->itemCode) + ":" + std::to_string(itemInfo->daysOrCount));
-    }
-    catch (const sw::redis::Error& e) {
-        // 인벤토리 삽입 실패 시, 차감한 금액 복구
-        redis->hincrby(currencyTypeKey, moneyType, itemInfo->itemPrice);
-
-        std::cerr << "[BuyItemFromShop] Redis failed : " << e.what() << '\n';
-        BuyItemFail();
-        return;
-    }
-
-    // MySQL 트랜잭션 실행 (금액 차감 + 아이템 삽입)
-    bool dbSuccess = mySQLManager->BuyItem(itemInfo->itemCode, itemInfo->daysOrCount, buyItemReq->itemType,
-        itemInfo->currencyType, user->GetPk(), itemInfo->itemPrice);
-
-    if (!dbSuccess) { 
-        // MySQL 트랜잭션 실패 시 Redis 상태 복원 (금액 복구 및 아이템 제거)
-        redis->hincrby(currencyTypeKey, moneyType, itemInfo->itemPrice);
-        redis->hdel(invenKey, std::to_string(buyItemReq->itemType));
-
-        BuyItemFail();
-        return;
-    }
-
-    // 아이템 구매 성공
-    shopBuyRes.isSuccess = true;
-    shopBuyRes.shopItemForSend = *itemInfo;
-    shopBuyRes.remainMoney = (userMoney - itemInfo->itemPrice);
-    user->PushSendMsg(sizeof(shopBuyRes), (char*)&shopBuyRes);
-
-
-
-
-    // 출력 테스트용
-    auto tempInGameUserID = inGameUserManager->GetInGameUserByObjNum(connObjNum_)->GetId();
-
-    std::string itemType;
-    switch (itemInfo->itemType) {
-    case 0: itemType = "장비"; break;
-    case 1: itemType = "소비"; break;
-    case 2: itemType = "재료"; break;
-    }
-
-    std::cout << "[유저 ID : " << tempInGameUserID
-        << "] 아이템 타입 : " << itemType
-        << " / 아이템 코드 : " << shopBuyRes.shopItemForSend.itemCode
-        << " / 남은 " + moneyType + " : " << shopBuyRes.remainMoney << '\n';
 }
 
 void RedisManager::SendPassDataToClient(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
@@ -1129,7 +1121,7 @@ void RedisManager::MatchingCancelResponse(uint16_t connObjNum_, uint16_t packetS
 void RedisManager::CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_) {
     auto matchSuccessReqPacket = reinterpret_cast<MATCHING_RESPONSE_FROM_GAME_SERVER*>(pPacket_);
 
-    auto raidServerNum = matchSuccessReqPacket->serverNum + GAME_SERVER_START_NUMBER;
+    auto raidServerNum = matchSuccessReqPacket->serverNum;
     uint16_t tempRoomNum = matchSuccessReqPacket->roomNum;
 
     RAID_READY_REQUEST raidReadyReqPacket;
@@ -1168,13 +1160,13 @@ void RedisManager::CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_,
                 .expire(key, 60);
 
             pipe.hset("userinfo:{" + std::to_string(tempUser->GetPk()) + "}", "userstate", "inRaid"); // Set user status to "inRaid" in Redis Cluster
-
+            
             pipe.exec();
 
             strncpy_s(raidReadyReqPacket.serverToken, token.c_str(), MAX_JWT_TOKEN_LEN + 1);
 
             connUsersManager->FindUser(matchSuccessReqPacket->userCenterObjNum)->PushSendMsg(sizeof(RAID_READY_REQUEST), (char*)&raidReadyReqPacket);
-            std::cout << "매칭 성공 pk : " << connUsersManager->FindUser(matchSuccessReqPacket->userCenterObjNum)->GetPk() << std::endl;
+            std::cout << inGameUserManager->GetInGameUserByObjNum(matchSuccessReqPacket->userCenterObjNum)->GetId() << " 레이드 매칭 성공" <<  std::endl;
         }
         catch (const sw::redis::Error& e) {
             raidReadyReqPacket.roomNum = 0;

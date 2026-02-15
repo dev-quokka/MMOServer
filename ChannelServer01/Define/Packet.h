@@ -106,9 +106,9 @@ struct EXP_UP_RESPONSE : PACKET_HEADER {
 //  ---------------------------- INVENTORY  ----------------------------
 
 struct ADD_ITEM_REQUEST : PACKET_HEADER {
-	uint16_t itemType;
+	uint16_t itemType; 
 	uint16_t itemPosition;
-	uint16_t itemCount;
+	uint16_t itemCount; 
 	uint16_t itemCode;
 };
 
@@ -117,8 +117,8 @@ struct ADD_ITEM_RESPONSE : PACKET_HEADER {
 };
 
 struct DEL_ITEM_REQUEST : PACKET_HEADER {
-	uint16_t itemType;
-	uint16_t itemPosition;
+	uint16_t itemType; 
+	uint16_t itemPosition; 
 };
 
 struct DEL_ITEM_RESPONSE : PACKET_HEADER {
@@ -126,10 +126,10 @@ struct DEL_ITEM_RESPONSE : PACKET_HEADER {
 };
 
 struct MOD_ITEM_REQUEST : PACKET_HEADER {
-	uint16_t itemType;
+	uint16_t itemType; 
 	uint16_t itemPosition;
 	uint16_t itemCount;
-	uint16_t itemCode;
+	uint16_t itemCode; 
 };
 
 struct MOD_ITEM_RESPONSE : PACKET_HEADER {
@@ -137,15 +137,15 @@ struct MOD_ITEM_RESPONSE : PACKET_HEADER {
 };
 
 struct MOV_ITEM_REQUEST : PACKET_HEADER {
-	uint16_t ItemType;
+	uint16_t ItemType; 
 
 	uint16_t dragItemPos;
 	uint16_t dragItemCode;
 	uint16_t dragItemCount;
 
-	uint16_t targetItemPos;
+	uint16_t targetItemPos; 
 	uint16_t targetItemCode;
-	uint16_t targetItemCount;
+	uint16_t targetItemCount; 
 };
 
 struct MOV_ITEM_RESPONSE : PACKET_HEADER {
@@ -155,8 +155,8 @@ struct MOV_ITEM_RESPONSE : PACKET_HEADER {
 //  ---------------------------- INVENTORY:EQUIPMENT  ----------------------------
 
 struct ADD_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t itemPosition;
-	uint16_t Enhancement;
+	uint16_t itemPosition; 
+	uint16_t Enhancement; 
 	uint16_t itemCode;
 };
 
@@ -165,7 +165,7 @@ struct ADD_EQUIPMENT_RESPONSE : PACKET_HEADER {
 };
 
 struct DEL_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t itemPosition;
+	uint16_t itemPosition; 
 };
 
 struct DEL_EQUIPMENT_RESPONSE : PACKET_HEADER {
@@ -173,11 +173,11 @@ struct DEL_EQUIPMENT_RESPONSE : PACKET_HEADER {
 };
 
 struct ENH_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t itemPosition;
+	uint16_t itemPosition; 
 };
 
 struct ENH_EQUIPMENT_RESPONSE : PACKET_HEADER {
-	uint16_t Enhancement = 0;
+	uint16_t Enhancement;
 	bool isSuccess;
 };
 
@@ -188,17 +188,12 @@ struct SYNC_EQUIPMENT_ENHANCE_REQUEST : PACKET_HEADER {
 };
 
 struct MOV_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t dragItemPos;
-	uint16_t dragItemCode;
-	uint16_t dragItemEnhancement;
-
+	uint16_t currentItemPos; 
 	uint16_t targetItemPos;
-	uint16_t targetItemCode;
-	uint16_t targetItemEnhancement;
 };
 
 struct MOV_EQUIPMENT_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
+	uint16_t checkNum;
 };
 
 

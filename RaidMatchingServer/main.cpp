@@ -1,16 +1,12 @@
 #include "ServerEnum.h"
 #include "MatchingServer.h"
-#include "ServerAddress.h"
-
-constexpr uint16_t maxThreadCount = 1;
 
 int main() {
-	MatchingServer matchingServer;
-    matchingServer.Init(maxThreadCount, ServerAddressMap[ServerType::MatchingServer].port);
+    MatchingServer matchingServer;
+    matchingServer.Init();
     matchingServer.StartWork();
 
-    std::cout << "========= MATCHING SERVER START ========" << std::endl;
-    std::cout << "=== If You Want Exit, Write matching ===" << std::endl;
+    std::cout << "========== ¸ÅÄª ¼­¹ö ==========" << std::endl;
     std::string k = "";
 
     while (1) {
@@ -20,5 +16,5 @@ int main() {
 
     matchingServer.ServerEnd();
 
-	return 0;
+    return 0;
 }

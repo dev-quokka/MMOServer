@@ -373,7 +373,7 @@ bool MySQLManager::GetPassInfoByPk(std::string& userPk_, std::unordered_map<std:
 
 bool MySQLManager::GetPassDataByPk(std::string& userPk_, std::unordered_map<std::string, PASSINFO>& eventPassInfoMap_, std::vector<PASSREWARDNFO>& pri_) {
 
-	std::string query_s = "SELECT passId, rewardBits, passCurrencyType FROM PassUserRewardData WHERE userPk = " + userPk_; 
+	std::string query_s = "SELECT passId, rewardBits, passCurrencyType FROM PassUserRewardData WHERE userPk = " + userPk_;
 
 	const char* Query = query_s.c_str();
 
@@ -384,7 +384,7 @@ bool MySQLManager::GetPassDataByPk(std::string& userPk_, std::unordered_map<std:
 
 	try {
 		Result = mysql_store_result(ConnPtr);
-		if (Result == nullptr) { 
+		if (Result == nullptr) {
 			std::cerr << "[GetPassDataByPk] Failed to store result : " << mysql_error(ConnPtr) << std::endl;
 			return false;
 		}

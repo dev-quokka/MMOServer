@@ -133,12 +133,12 @@ void RedisManager::GetUserInfo(uint16_t connObjNum_, uint16_t packetSize_, char*
 
     std::string tempUserId = std::string(uiReq->userId);
     std::pair<uint32_t, LOGIN_USERINFO> userInfoPk;
-        
+
     USERINFO_RESPONSE uiRes;
     uiRes.PacketId = (UINT16)PACKET_ID::USERINFO_RESPONSE;
     uiRes.PacketLength = sizeof(USERINFO_RESPONSE);
 
-    if (!mySQLManager->GetUserInfoById(tempUserId, userInfoPk)){
+    if (!mySQLManager->GetUserInfoById(tempUserId, userInfoPk)) {
         std::cout << "[GetUserInfo] GetUserInfo Fail" << std::endl;
         connUsersManager->FindUser(connObjNum_)->PushSendMsg(sizeof(USERINFO_RESPONSE), (char*)&uiRes);
         return;
@@ -148,7 +148,7 @@ void RedisManager::GetUserInfo(uint16_t connObjNum_, uint16_t packetSize_, char*
     std::string key = "userinfo:" + tag; // user:{pk}
 
     auto tempLoginUserInfo = userInfoPk.second;
-    
+
     try {
         auto pipe = redis->pipeline(tag);
 
@@ -254,7 +254,7 @@ void RedisManager::GetConsumables(uint16_t connObjNum_, uint16_t packetSize_, ch
     csSend.PacketLength = sizeof(CONSUMABLES_RESPONSE);
 
     std::string tempPk = std::to_string(tempUser->GetPk());
-    std::vector<CONSUMABLES> cs; 
+    std::vector<CONSUMABLES> cs;
 
     if (!mySQLManager->GetUserConsumablesByPk(tempPk, cs)) {
         std::cout << "[GetConsumables] Failed to Get User Consumables" << std::endl;

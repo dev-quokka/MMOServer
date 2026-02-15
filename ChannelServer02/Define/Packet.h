@@ -177,7 +177,7 @@ struct ENH_EQUIPMENT_REQUEST : PACKET_HEADER {
 };
 
 struct ENH_EQUIPMENT_RESPONSE : PACKET_HEADER {
-	uint16_t Enhancement = 0;
+	uint16_t Enhancement;
 	bool isSuccess;
 };
 
@@ -188,17 +188,12 @@ struct SYNC_EQUIPMENT_ENHANCE_REQUEST : PACKET_HEADER {
 };
 
 struct MOV_EQUIPMENT_REQUEST : PACKET_HEADER {
-	uint16_t dragItemPos;
-	uint16_t dragItemCode;
-	uint16_t dragItemEnhancement;
-
+	uint16_t currentItemPos;
 	uint16_t targetItemPos;
-	uint16_t targetItemCode;
-	uint16_t targetItemEnhancement;
 };
 
 struct MOV_EQUIPMENT_RESPONSE : PACKET_HEADER {
-	bool isSuccess;
+	uint16_t checkNum;
 };
 
 

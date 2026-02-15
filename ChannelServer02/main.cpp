@@ -1,16 +1,12 @@
 #include "ChannelServer2.h"
-#include "ServerAddress.h"
-
-const uint16_t maxThreadCount = 1;
 
 int main() {
     ChannelServer2 channelServer2;
 
-    channelServer2.init(maxThreadCount, ServerAddressMap[ServerType::ChannelServer02].port);
+    channelServer2.init();
     channelServer2.StartWork();
 
-    std::cout << "=== CHANNEL SERVER 2 START ===" << std::endl;
-    std::cout << "=== If You Want Exit, Write channel2 ===" << std::endl;
+    std::cout << "========== 채널 서버2 ==========" << std::endl;
     std::string k = "";
 
     while (1) {

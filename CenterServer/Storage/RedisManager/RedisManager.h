@@ -8,6 +8,7 @@
 #include <sw/redis++/redis++.h>
 
 #include "Packet.h"
+#include "LuaScript.h"
 #include "InGameUser.h"
 #include "ServerChannelEnum.h"
 #include "InGameUserManager.h"

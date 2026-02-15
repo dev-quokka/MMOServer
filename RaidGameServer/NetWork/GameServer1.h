@@ -15,7 +15,7 @@ constexpr uint16_t MAX_USERS_OBJECT = 13; // User objects allocated for average 
 class GameServer1 {
 public:
     // ====================== INITIALIZATION =======================
-    bool init(const uint16_t MaxThreadCnt_, int port_);
+    bool init();
     bool StartWork();
     void ServerEnd();
 

@@ -2,9 +2,11 @@
 
 // ========================== INITIALIZATION ===========================
 
-bool LoginServer::init(const uint16_t MaxThreadCnt_, int port_) {
+bool LoginServer::init() {
+    int port_ = ServerAddressMap[ServerType::LoginServer].port;
+
     WSADATA wsadata;
-    MaxThreadCnt = MaxThreadCnt_; // Set the number of worker threads
+    MaxThreadCnt = maxThreadCount; // Set the number of worker threads
 
     if (WSAStartup(MAKEWORD(2, 2), &wsadata)) {
         std::cout << "Failed to WSAStartup" << std::endl;

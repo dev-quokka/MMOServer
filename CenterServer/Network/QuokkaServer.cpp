@@ -2,9 +2,11 @@
 
 // ========================== INITIALIZATION ===========================
 
-bool QuokkaServer::init(const uint16_t MaxThreadCnt_, int port_) {
+bool QuokkaServer::init() {
+    int port_ = ServerAddressMap[ServerType::CenterServer].port;
+
     WSADATA wsadata;
-    MaxThreadCnt = MaxThreadCnt_; // Set the number of worker threads
+    MaxThreadCnt = maxThreadCount; // Set the number of worker threads
 
     if (WSAStartup(MAKEWORD(2, 2), &wsadata)) {
         std::cout << "Failed to WSAStartup" << std::endl;
@@ -224,13 +226,13 @@ void QuokkaServer::WorkThread() {
         connUser = connUsersManager->FindUser(connObjNum);
 
         if (!gqSucces || (dwIoSize == 0 && overlappedEx->taskType != TaskType::ACCEPT)) { // User Disconnected
-            std::cout << "socket " << connUser->GetSocket() << " Disconnected" << std::endl;
-
             redisManager->Disconnect(connObjNum);
             inGameUserManager->Reset(connObjNum);
             connUser->Reset(); // Reset 
             UserCnt.fetch_sub(1); // UserCnt -1
             AcceptQueue.push(connUser);
+
+            std::cout << "socket " << connUser->GetSocket() << " Disconnected" << std::endl;
             continue;
         }
 

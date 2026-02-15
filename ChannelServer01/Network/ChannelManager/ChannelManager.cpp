@@ -25,7 +25,7 @@ bool ChannelManager::InsertChannel(uint16_t channelNum, uint16_t userObjNum_, In
 	return true;
 }
 
-void ChannelManager::LeaveChannel(uint16_t channelNum, uint16_t userObjNum_) { // Decrease the user count in the channel if the user is in a channel
+void ChannelManager::LeaveChannel(uint16_t channelNum, uint16_t userObjNum_) {
 	channels[channelNum]->RemoveUser(userObjNum_);
 }
 
@@ -35,6 +35,5 @@ std::vector<uint16_t> ChannelManager::GetChannels() {
 	for (int i = 1; i < channels.size(); i++) {
 		k[i] = channels[i]->GetUserCount();
 	}
-
 	return k;
 }

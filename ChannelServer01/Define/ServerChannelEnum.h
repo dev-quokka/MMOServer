@@ -3,7 +3,6 @@
 #include <string>
 #include <unordered_map>
 
-constexpr int CHANNEL_SERVER_NUM = 1;
 constexpr uint16_t CHANNEL_SERVER_START_NUMBER = 0;
 
 //  =========================== SERVER INFO  ===========================
@@ -13,13 +12,16 @@ enum class ServerType : uint16_t {
 	CenterServer = 0,
 
 	// Channel Server (1~)
-	ChannelServer01 = 1,
-	ChannelServer02 = 2
+	ChannelServer01 = 1
 };
 
 struct ServerAddress {
 	std::string ip;
 	uint16_t port;
+	uint16_t serverObjNum;
 };
 
-extern std::unordered_map<ServerType, ServerAddress> ServerAddressMap;
+inline std::unordered_map<ServerType, ServerAddress> ServerAddressMap = {
+	{ ServerType::CenterServer,    { "127.0.0.1", 9090, 0 } },
+	{ ServerType::ChannelServer01, { "127.0.0.1", 9211, 0 } }
+};

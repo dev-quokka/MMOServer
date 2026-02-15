@@ -12,13 +12,15 @@
 #include "InGameUserManager.h"
 #include "RedisManager.h"
 
-constexpr uint16_t MAX_USERS_OBJECT = 30; // User objects allocated for average Channel Server1 load
-constexpr uint16_t MAX_CHANNEL1_USERS_COUNT = 10; // // Maximum number of users per channel * number of channel
+const uint16_t MAX_USERS_OBJECT = 30; // User objects allocated for average Channel Server1 load
+const uint16_t MAX_CHANNEL1_USERS_COUNT = 10; // // Maximum number of users per channel * number of channel
+
+const uint16_t maxThreadCount = 1;
 
 class ChannelServer2 {
 public:
     // ====================== INITIALIZATION =======================
-    bool init(const uint16_t MaxThreadCnt_, int port_);
+    bool init();
     bool StartWork();
     void ServerEnd();
 

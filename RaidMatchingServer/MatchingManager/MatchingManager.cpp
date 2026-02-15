@@ -55,6 +55,8 @@ uint16_t MatchingManager::Insert(uint16_t userPk_, uint16_t userCenterObjNum_, u
     uint16_t groupNum = userGroupNum_;
 
     if (matchingMap.find(accessor, groupNum)) { // Insert Success
+        std::cout << "insert pk : " << userPk_ << std::endl;
+
         auto [iter, inserted] = accessor->second.insert(tempRoom);
         return userCenterObjNum_;
     }
@@ -84,7 +86,7 @@ uint16_t MatchingManager::CancelMatching(uint16_t userCenterObjNum_, uint16_t us
 }
 
 void MatchingManager::InserRoomNum(uint16_t roomNum_) {
-	roomNumQueue.push(roomNum_); // Insert room number
+    roomNumQueue.push(roomNum_); // Insert room number
 }
 
 void MatchingManager::MatchingThread(uint16_t groupStartIdx_, uint16_t groupEndIdx_) {
@@ -116,13 +118,15 @@ void MatchingManager::MatchingThread(uint16_t groupStartIdx_, uint16_t groupEndI
                             rMatchingResPacket.userCenterObjNum = tempMatchedUser[k]->userCenterObjNum;
                             rMatchingResPacket.userPk = tempMatchedUser[k]->userPk;
 
-                            connServersManager->GetGameServerObjNum(1)->  // Send matched user data to the game server
+                            std::cout << "Send pk : " << tempMatchedUser[k]->userPk << std::endl;
+
+                            connServersManager->GetGameServerObjNum(3)->  // Send matched user data to the game server
                                 PushSendMsg(sizeof(MATCHING_REQUEST_TO_GAME_SERVER), (char*)&rMatchingResPacket);
 
                             delete tempMatchedUser[k];
                         }
 
-						std::cout << "Matched Success Room Num : " << tempRoomNum << std::endl;
+                        std::cout << "Matched Success Room Num : " << tempRoomNum << std::endl;
 
                         tempRoomNum = 0; // If roomNum is used, reset it to 0
                         tempMatchedUser.clear();
@@ -160,7 +164,7 @@ void MatchingManager::MatchingThread(uint16_t groupStartIdx_, uint16_t groupEndI
                         rMatchingResPacket.userCenterObjNum = tempMatchedUser[k]->userCenterObjNum;
                         rMatchingResPacket.userPk = tempMatchedUser[k]->userPk;
 
-                        connServersManager->GetGameServerObjNum(1)->  // Send matched user data to the game server
+                        connServersManager->GetGameServerObjNum(3)->  // Send matched user data to the game server
                             PushSendMsg(sizeof(MATCHING_REQUEST_TO_GAME_SERVER), (char*)&rMatchingResPacket);
 
                         delete tempMatchedUser[k];

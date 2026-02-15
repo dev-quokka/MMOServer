@@ -2,9 +2,11 @@
 
 // ========================== INITIALIZATION ===========================
 
-bool ChannelServer2::init(const uint16_t MaxThreadCnt_, int port_) {
+bool ChannelServer2::init() {
+    int port_ = ServerAddressMap[ServerType::ChannelServer02].port;
+
     WSAData wsadata;
-    MaxThreadCnt = MaxThreadCnt_; // Set the number of worker threads
+    MaxThreadCnt = maxThreadCount; // Set the number of worker threads
 
     if (WSAStartup(MAKEWORD(2, 2), &wsadata)) {
         std::cout << "Failed to WSAStartup" << std::endl;
@@ -140,7 +142,7 @@ bool ChannelServer2::CenterServerConnect() {
     CHANNEL_SERVER_CONNECT_REQUEST imReq;
     imReq.PacketId = (UINT16)PACKET_ID::CHANNEL_SERVER_CONNECT_REQUEST;
     imReq.PacketLength = sizeof(CHANNEL_SERVER_CONNECT_REQUEST);
-    imReq.channelServerNum = CHANNEL_SERVER_NUM;
+    imReq.channelServerNum = static_cast<uint16_t>(ServerType::ChannelServer02);
 
     centerObj->PushSendMsg(sizeof(CHANNEL_SERVER_CONNECT_REQUEST), (char*)&imReq);
 
@@ -224,7 +226,7 @@ void ChannelServer2::WorkThread() {
 
         if (overlappedEx->taskType == TaskType::ACCEPT) { // User Connect
             if (connUser->ConnUserRecv()) {
-                std::cout << "socket " << connUser->GetSocket() << " Connection Requset" << std::endl;
+                std::cout << "socket " << connUser->GetSocket() << " Connection Request" << std::endl;
             }
             else { // Bind Fail
                 connUser->Reset(); // Reset ConnUser
@@ -266,15 +268,6 @@ void ChannelServer2::AccepterThread() {
         }
         else { // AcceptQueue empty
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            //while (AccepterRun) {
-            //    if (WaittingQueue.pop(connUser)) { // WaittingQueue not empty
-            //        WaittingQueue.push(connUser);
-            //    }
-            //    else { // WaittingQueue empty
-            //        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            //        break;
-            //    }
-            //}
         }
     }
 }

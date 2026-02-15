@@ -2,9 +2,11 @@
 
 // ========================== INITIALIZATION ===========================
 
-bool ChannelServer1::init(const uint16_t MaxThreadCnt_, int port_) {
+bool ChannelServer1::init() {
+    int port_ = ServerAddressMap[ServerType::ChannelServer01].port;
+
     WSAData wsadata;
-    MaxThreadCnt = MaxThreadCnt_; // Set the number of worker threads
+    MaxThreadCnt = maxThreadCount; // Set the number of worker threads
 
     if (WSAStartup(MAKEWORD(2, 2), &wsadata)) {
         std::cout << "Failed to WSAStartup" << std::endl;
@@ -140,7 +142,7 @@ bool ChannelServer1::CenterServerConnect() {
     CHANNEL_SERVER_CONNECT_REQUEST imReq;
     imReq.PacketId = (UINT16)PACKET_ID::CHANNEL_SERVER_CONNECT_REQUEST;
     imReq.PacketLength = sizeof(CHANNEL_SERVER_CONNECT_REQUEST);
-    imReq.channelServerNum = CHANNEL_SERVER_NUM;
+    imReq.channelServerNum = static_cast<uint16_t>(ServerType::ChannelServer01);
 
     centerObj->PushSendMsg(sizeof(CHANNEL_SERVER_CONNECT_REQUEST), (char*)&imReq);
 
@@ -264,17 +266,8 @@ void ChannelServer1::AccepterThread() {
                 AcceptQueue.push(connUser);
             }
         }
-        else { // AcceptQueue empty
+		else { // AcceptQueue empty
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            //while (AccepterRun) {
-            //    if (WaittingQueue.pop(connUser)) { // WaittingQueue not empty
-            //        WaittingQueue.push(connUser);
-            //    }
-            //    else { // WaittingQueue empty
-            //        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            //        break;
-            //    }
-            //}
         }
     }
 }
