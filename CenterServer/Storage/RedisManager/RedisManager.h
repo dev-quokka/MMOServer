@@ -34,9 +34,10 @@ public:
 
     // ======================= TEST =======================
     void Test_CashCahrge(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    
+
     // ====================== INITIALIZATION =======================
-    void init(const uint16_t RedisThreadCnt_);
+    void Init(const uint16_t RedisThreadCnt_);
+    void InitLuaScript();
     void SetManager(ConnUsersManager* connUsersManager_, InGameUserManager* inGameUserManager_);
     void InitItemData();
     void InitShopData();
@@ -64,7 +65,7 @@ private:
     std::vector<CONSUMABLES> GetUpdatedConsumables(uint16_t userPk_);
     std::vector<MATERIALS> GetUpdatedMaterials(uint16_t userPk_);
     std::vector<UserPassDataForSync> GetUpdatedPassData(uint16_t userPk_);
-    
+
     // ======================= CENTER SERVER =======================
     void UserConnect(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void UserDisConnect(uint16_t connObjNum_);
@@ -96,8 +97,8 @@ private:
     void MatchStartResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MatchingCancel(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
     void MatchingCancelResponse(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-	void CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
-    
+    void CheckMatchSuccess(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
+
 
     // ======================= RAID GAME SERVER =======================
     void GameServerConnectRequest(uint16_t connObjNum_, uint16_t packetSize_, char* pPacket_);
@@ -115,6 +116,9 @@ private:
     // 80 bytes
     std::unordered_map<uint16_t, RECV_PACKET_FUNCTION> packetIDTable;
     std::unordered_map<std::string, std::vector<uint16_t>> missionMap;
+
+    // 40 bytes
+    std::string buyItemSha;
 
     // 32 bytes
     std::vector<std::thread> redisThreads;
