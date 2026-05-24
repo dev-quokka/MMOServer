@@ -12,6 +12,7 @@
     - 대량 데이터 송수신 시 char*기반 처리로 오버헤드 최소화
     - atomic, boost::lockfree_queue, tbb::concurrent_hash_map 등을 활용하여 mutex 사용 최소화
     - MySQL 커넥션 풀 적용으로 커넥션 재사용 및 동시 요청 처리 성능 향상 
+    - Redis Pipeline 및 Lua 스크립트(EVALSHA) 활용으로 다중 명령 처리 시 RTT 및 네트워크 비용 최소화
 
   #### 2. 보안 & 인증 (Security & Authentication)
     - 게임 시작 시 Login Server에서 JWT 토큰 발급 → Center Server에 인증 요청
