@@ -134,3 +134,70 @@
 > 썸네일을 클릭하면 유튜브 시연 영상으로 이동합니다.
 
 [![MMO 서버 프로젝트 시연](https://img.youtube.com/vi/fpL2SLlo7qA/0.jpg)](https://www.youtube.com/watch?v=fpL2SLlo7qA&t=49s)
+
+<br>
+
+## Performance Improvements
+
+코드 검토 또는 부하 테스트 중 발견한 개선점을 적용하고,   
+Python 기반 load test client로 기존과 동일한 조건의 부하 테스트를 통해      
+안정성과 응답 성능 변화를 측정해 개선 효과를 검증합니다.
+
+<br>
+
+### Optimization #1 — AcceptQueue Lock-free Queue 도입
+
+---
+
+### Problem
+다수의 워커 스레드가 AcceptQueue에 동시 접근(push/pop)하는 구조에서    
+Mutex 락 비용이 짧은 임계구역 대비 부담일 가능성이 있음.
+
+Lock-free queue가 적합해 보였으나, 직관에 의존한 결정을 지양하고    
+측정 기반으로 두 방식의 실제 성능 차이를 확인하고자 함.
+
+---
+
+### Solution
+
+#### Before — Mutex + std::queue
+```cpp
+std::mutex m1;
+std::queue AcceptQueue;
+
+{
+    std::lock_guard lg(m1);
+    AcceptQueue.push(connUser);
+}
+```
+
+#### After — Lock-free queue (boost)
+```cpp
+boost::lockfree::queue AcceptQueue;
+AcceptQueue.push(connUser);  // CAS 기반 atomic 연산
+```
+
+<br>
+
+같은 인터페이스를 유지하기 위해 두 구현 모두 push/pop 시그니처를    
+동일하게 맞춰서 사용처 코드는 변경하지 않고 헤더만 교체하여 비교 가능하도록 구성.
+
+---
+
+### Load Test Result
+
+**조건**: 서버 워커 4개 / 클라이언트 동시성 4~128 / 1000 connections × 5 runs
+
+| Concurrency | Mutex (ms) | Lock-free (ms) | 개선 |
+|---|---|---|---|
+| 4 | 726 | 563 | -22.5% |
+| 8 | 748 | 521 | -30.3% |
+| 16 | 775 | 556 | -28.3% |
+| 32 | 815 | 554 | -32.1% |
+| 64 | 789 | 549 | -30.5% |
+| 128 | 748 | 705 | -5.8% |
+
+- 4\~64 구간에서 일관되게 20\~32% 처리 시간 단축
+- 32 threads 기준 TPS 1227 → 1807 (+47%)
+- 128 구간에서 격차 축소 — Lock-free 또한 극한 경합에서 CAS 재시도 비용 누적
+- 측정 결과를 기반으로 패킷 처리 매니저 큐에도 동일 패턴 적용
