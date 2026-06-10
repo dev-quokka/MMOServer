@@ -36,7 +36,8 @@
     - 주요 데이터(레이드 점수, 장비 강화)는 Redis Cluster와 MySQL에 실시간 이중 동기화 
     
 
-#### ㅇ 프로젝트 소개서 - [MMOServer_Project_Intro.pdf](https://github.com/user-attachments/files/22309430/MMOServer_Project_Intro.pdf)
+#### ㅇ 프로젝트 소개서 - [MMOServer_Project_Intro.pdf](https://github.com/user-attachments/files/28784576/_._._MMOGameServer.pdf)
+
 
 
 
