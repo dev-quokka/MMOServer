@@ -134,7 +134,13 @@
 - #### 📺 MMO 서버 프로젝트 전체 동작 시연
 > 썸네일을 클릭하면 유튜브 시연 영상으로 이동합니다.
 
-[![MMO 서버 프로젝트 시연](https://img.youtube.com/vi/fpL2SLlo7qA/0.jpg)](https://www.youtube.com/watch?v=fpL2SLlo7qA&t=49s)
+<a href="https://youtu.be/OrwSciNoCAc">
+  <img src="https://img.youtube.com/vi/OrwSciNoCAc/maxresdefault.jpg"
+       alt="MMO 서버 프로젝트 시연"
+       width="500">
+</a>
+
+<br>
 
 <br>
 
